@@ -1,0 +1,24 @@
+# Local toolchains downloaded by setup.bat
+tools/
+*.tgz
+*.zip
+
+# Mill build outputs
+out/
+.mill/
+.bsp/
+.metals/
+.idea/
+.vscode/
+
+# Gowin EDA flow outputs
+build_eda/
+
+# Simulation artifacts & traces
+simulation/*.vvp
+simulation/*.log
+*.vcd
+
+# Python cache
+__pycache__/
+*.py[cod]
