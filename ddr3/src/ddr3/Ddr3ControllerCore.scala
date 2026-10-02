@@ -75,6 +75,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     val rclksel     = out Bits(3 bits)
     val best_rot    = out UInt(3 bits)
     val best_score  = out UInt(4 bits)
+    val dbg_state   = out Bits(4 bits)
 
     // Direct interface to GowinDdr3Phy
     val phy = new Bundle {
@@ -146,6 +147,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
 
   val wlevel_done  = RegInit(False)
   val wlevel_cnt   = Reg(UInt(4 bits)) init(0)
+  val wlevel_tries = Reg(UInt(9 bits)) init(0)
   val wstep        = Reg(Bits(8 bits)) init(if (config.isSimulation) B"8'h18" else B"8'h00")
 
   val rcalib_done  = RegInit(False)
@@ -389,7 +391,17 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
           is(config.WLMRD / 4 + 6) {
             dqs_out := 0
             dqs_oen := 0
-            when(!io.phy.dq_raw(0) || !io.phy.dq_raw(8)) {
+            wlevel_tries := wlevel_tries + 1
+            // Watchdog: after 2 full wstep turns with no lock, stop looping
+            // and continue with a sentinel (W=FF on UART). A silent infinite
+            // loop here bricks the board with zero diagnostics; the data-eye
+            // sweep downstream scores low instead (visible C), and the UART
+            // progress line shows where we are.
+            when(wlevel_tries === 511) {
+              wlevel_done := True
+              wstep := B"8'hFF"
+              setCmd(0, CMD_SetModeReg, MR1(15 downto 13), MR1(12 downto 0)) // exit write leveling
+            } elsewhen(!io.phy.dq_raw(0) || !io.phy.dq_raw(8)) {
               wstep := (wstep.asUInt + 1).asBits
               wlevel_cnt := 0
               cycle := config.WLMRD / 4 - 1 // loop back
@@ -697,6 +709,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     tick := False
     cycle := 0
     wlevel_cnt := 0
+    wlevel_tries := 0
     wlevel_done := False
     wstep := (if (config.isSimulation) B"8'h18" else B"8'h00")
     rcalib_cnt := 0
@@ -761,6 +774,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   io.rclksel          := rclksel
   io.best_rot         := bestRot
   io.best_score       := bestCnt
+  io.dbg_state        := state.asBits
 
   // Formal properties (SymbiYosys). Only elaborated under the formal
   // backend: zero impact on Ddr3Gen Verilog output.
