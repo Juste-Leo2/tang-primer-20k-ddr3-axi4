@@ -140,6 +140,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   val CKE          = RegInit(False)
   val busy         = RegInit(True)
   val data_ready   = RegInit(False)
+  val init_done_latched = RegInit(False)
 
   val wlevel_done  = RegInit(False)
   val wlevel_cnt   = Reg(UInt(4 bits)) init(0)
@@ -536,6 +537,8 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     rcalib_tries := 0
     rclkpos := (if (config.isSimulation) B"2'd1" else B"2'd0")
     rclksel := (if (config.isSimulation) B"3'd6" else B"3'd0")
+    init_done_latched := False
+    rburst_seen := 0
     resetn_delay := False
     state := Ddr3State.RST_WAIT
   }
@@ -565,7 +568,6 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   io.phy.resetn_delay := resetn_delay
 
   // Status outputs
-  val init_done_latched = RegInit(False)
   when(!busy && (state === Ddr3State.IDLE) && wlevel_done && rcalib_done) {
     init_done_latched := True
   }
