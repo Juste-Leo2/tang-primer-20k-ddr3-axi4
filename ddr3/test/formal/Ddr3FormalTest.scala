@@ -34,7 +34,7 @@ object Ddr3FormalProof {
     implicit val className: String = "Ddr3FormalBmc"
     FormalConfig
       .withSymbiYosys
-      .withBMC(500)
+      .withBMC(300)
       .withTimeout(600)
       .withDebug
       .withSyncResetDefault
