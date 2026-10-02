@@ -6,6 +6,11 @@ import java.io.File
 object ddr3 extends ScalaModule {
   def scalaVersion = "2.12.18"
 
+  // Repo-anchored tools dir: moduleDir is <repo>/ddr3 regardless of the
+  // mill daemon's cwd (user.dir) or inherited env, so this candidate
+  // always resolves the in-tree oss-cad-suite from setup.bat.
+  val repoToolsDir = (moduleDir / os.up / "tools" / "oss-cad-suite").toString.replace('\\', '/')
+
   override def mvnDeps = Seq(
     mvn"com.github.spinalhdl::spinalhdl-core:1.15.0",
     mvn"com.github.spinalhdl::spinalhdl-lib:1.15.0"
@@ -27,6 +32,7 @@ object ddr3 extends ScalaModule {
 
       val ossCandidates = Seq(
         sys.env.getOrElse("OSS_CAD_SUITE_HOME", ""),
+        ddr3.repoToolsDir,
         s"$repoDir/tools/oss-cad-suite",
         s"$userHome/.spinalml_tools/oss-cad-suite"
       ).filter(_.nonEmpty)

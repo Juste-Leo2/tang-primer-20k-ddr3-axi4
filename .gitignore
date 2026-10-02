@@ -17,6 +17,7 @@ build_eda/
 # Simulation artifacts & traces
 simulation/*.vvp
 simulation/*.log
+simulation/*.err
 *.vcd
 
 # Python cache

@@ -109,8 +109,16 @@ def run(vvp_file, timeout=900):
     log = SIM / (Path(vvp_file).stem + ".log")
     print(f"vvp streaming -> {log}", flush=True)
     with open(log, "w") as f:
-        rc = sh_stream([VVP, str(vvp_file)], f, timeout)
-    return rc
+        print("$", " ".join([VVP, str(vvp_file)]), flush=True)
+        env = get_env()
+        p = subprocess.Popen([VVP, str(vvp_file)], stdout=f,
+                             stderr=subprocess.STDOUT, env=env, cwd=str(SIM))
+        try:
+            return p.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            f.write("\n[TIMEOUT]\n")
+            return 124
 
 
 def main():
