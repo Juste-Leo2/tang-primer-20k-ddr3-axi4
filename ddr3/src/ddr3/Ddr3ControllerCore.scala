@@ -152,7 +152,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   // cannot hang iverilog forever (wall-clock). HW path untouched.
   val rcalib_tries = Reg(UInt(6 bits)) init(0)
   val rclkpos      = Reg(Bits(2 bits)) init(if (config.isSimulation) B"2'd1" else B"2'd0")
-  val rclksel      = Reg(Bits(3 bits)) init(if (config.isSimulation) B"3'd6" else B"3'd0")
+  val rclksel      = Reg(Bits(3 bits)) init(if (config.isSimulation) B"3'd0" else B"3'd0")
   val rburst_seen  = Reg(Bits(2 bits)) init(0)
   val dqs_hold     = RegInit(False)
 
@@ -536,7 +536,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     rcalib_done := False
     rcalib_tries := 0
     rclkpos := (if (config.isSimulation) B"2'd1" else B"2'd0")
-    rclksel := (if (config.isSimulation) B"3'd6" else B"3'd0")
+    rclksel := (if (config.isSimulation) B"3'd0" else B"3'd0")
     init_done_latched := False
     rburst_seen := 0
     resetn_delay := False
@@ -567,8 +567,10 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   io.phy.CKE          := CKE
   io.phy.resetn_delay := resetn_delay
 
-  // Status outputs
-  when(!busy && (state === Ddr3State.IDLE) && wlevel_done && rcalib_done) {
+  // Status outputs. The set condition is gated by both resets: Spinal emits
+  // the domain reset first in the always block, so an unguarded set would
+  // override a coincident reset (formal P5 caught exactly this).
+  when(io.phy.rst_lock_n && !ClockDomain.current.isResetActive && !busy && (state === Ddr3State.IDLE) && wlevel_done && rcalib_done) {
     init_done_latched := True
   }
   io.init_done        := init_done_latched
