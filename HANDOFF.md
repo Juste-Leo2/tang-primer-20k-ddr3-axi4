@@ -1,8 +1,9 @@
 # HANDOFF — reprise du debug DDR3 128-bit (contexte compacté)
 
-Date : 03/10/2026. Repo : `E:\tang-primer-20k-ddr3-axi4` (`/mnt/e/tang-primer-20k-ddr3-axi4` sous WSL).
+Date : 03/10/2026. Repo déplacé `E:\` → **`I:\tang-primer-20k-ddr3-axi4`**
+(`/mnt/i/tang-primer-20k-ddr3-axi4` sous WSL). Adapter tous les chemins `E:` en `I:`.
 But : contrôleur DDR3 BL8 128-bit pour accélérateur IA. Docs de fond : `audit.md`,
-`doc/bug-02-10-26-18h20.md`.
+`doc/bug-02-10-26-18h20.md` (résolution bug 3 le 03/10).
 
 ## 1. Règle d'environnement (CRITIQUE)
 
@@ -37,9 +38,15 @@ powershell.exe -NoProfile -Command "Start-Process -FilePath 'E:\tang-primer-20k-
 powershell.exe -NoProfile -Command "python simulation/sim_ddr.py --spinal 2>&1 | Select-Object -Last 3"
 # -> BUILD rc = 0, produit simulation/tb_spinal.vvp
 
-# Run simu en détaché (I/O très lent, ~15 min pour ~14 us sim-time)
-powershell.exe -NoProfile -Command "Start-Process -FilePath 'E:\tang-primer-20k-ddr3-axi4\tools\oss-cad-suite\bin\vvp.exe' -ArgumentList 'E:\tang-primer-20k-ddr3-axi4\simulation\tb_spinal.vvp' -WorkingDirectory 'E:\tang-primer-20k-ddr3-axi4\simulation' -RedirectStandardOutput 'E:\tang-primer-20k-ddr3-axi4\simulation\tb_spinal.log' -WindowStyle Hidden; echo SIM_LAUNCHED"
-# -> log : simulation/tb_spinal.log (gitignoré), VCD : simulation/tb_spinal.vcd (430 Mo !)
+# Run simu en détaché : TOUJOURS via sim_ddr.py (il met bin+lib au PATH,
+# sinon vvp meurt sur "system.vpi introuvable" + "$display() not defined").
+# Ne JAMAIS lancer vvp.exe brut en détaché (Start-Process n'hérite pas le PATH).
+powershell.exe -NoProfile -Command "Start-Process -FilePath 'C:\Python314\python.exe' -ArgumentList 'simulation\sim_ddr.py --spinal --run' -WorkingDirectory 'I:\tang-primer-20k-ddr3-axi4' -RedirectStandardOutput 'I:\tang-primer-20k-ddr3-axi4\simulation\sim_launch.log' -RedirectStandardError 'I:\tang-primer-20k-ddr3-axi4\simulation\sim_launch.err' -WindowStyle Hidden; echo RELAUNCHED"
+# -> log : simulation/tb_spinal.log (gitignoré), VCD : simulation/tb_spinal.vcd
+# (586 Mo, cwd fixé dans sim_ddr.py run()). Machine rapide : ~10 min.
+# ATTENTION bash : `$env` manglé (expansion bash) -> passer par cmd.exe /c 'set ...'
+# ou éviter `$`. `tail` inexistant côté cmd. `ls | Select-String` lit le CONTENU
+# des binaires -> Get-ChildItem -Name pour lister.
 
 # Tuer des process bloqués
 powershell.exe -NoProfile -Command "taskkill /F /IM vvp.exe"
@@ -112,37 +119,42 @@ Points durs déjà établis (ne pas les redécouvrir) :
 - Les asserts P1-P14 sont dans `Ddr3ControllerCore.scala` sous
   `if (GenerationFlags.formal)` + `when(pastValidAfterReset())` (zéro impact RTL).
 
-## 6. État actuel exact (03/10/2026)
+## 6. État actuel exact (03/10/2026 soir — SIMU 8/8 OK)
 
-Implémenté et commité ou en place :
-- Training sur données (option 2) : écriture motif `0x1000-0x1007` en bloc 0 via
-  l'état WRITE, sweep 41 essais avec **score /8 par réglage + best-of-sweep**
-  (`Ddr3ControllerCore.scala`, `bestCnt/bestPos/bestSel`, gate `seen==11` anti-stale).
-- `dqs_read` élargie à **2 cycles pclk** (`rdCyc`, `rdCyc+1`).
-- Seed SIM : `(rclkpos,rclksel) = (0,0)` (HW inchangé à `(0,0)` déjà).
-- Fix prouvés formellement : parking reset Hi-Z (P9), `init_done`+`rburst_seen`
-  clear au reset + garde anti-reset sur le set (P5).
-- Formel BMC300 : 300/300 steps sans violation (statut wrapper TIMEOUT, à passer à 1200).
+**`SPINAL SIM: ALL TESTS PASSED`, 8/8 `READ OK`, `lock (0,0) rot=6 score=8`.**
+Committé : `calib: double-burst + rotation auto, score 8/8, 2/8 reads OK`.
+En place depuis (non committé) : HOLD tardif reverté + `dqs_read` en WRITE.
 
-**Dernier résultat simu (seed 0,0 + pulse 2 cycles) : AUCUN `seen` nulle part
-(score=x partout, lock best (0,0)/0 par défaut, 8 mismatch).** L'impulsion 2-cycles
-a même tué la détection qui marchait en 1-cycle (singles à (1,1),(2,0),(2,3)).
-Pire : en 1-cycle/seed (1,0), verrou (1,1) avec beats 0,1 capturés (doublés) —
-fenêtre ~2.5-5 ns (2-4 beats max), jamais 8. **Question ouverte n°1 : la fenêtre
-`rd_en` du modèle peut-elle couvrir 10 ns ?** Mesurer `dqs_en` haut (montée/descente)
-autour d'une lecture à (1,0) 1-cycle si besoin de trancher.
+- Double-burst (2 READ tCCD sans AP + PRE explicite, calib + fonctionnel),
+  `dqs_read` 4 pclk (~40 ns), latch training au cycle `data_ready`,
+  `HOLD` par itération, gate sur score seul (RBURST mort : `dqs_en` collé).
+- Sweep score les **8 rotations** (`bestRot`, égalité → plus petit indice),
+  `rsp` dé-rotaté. Rotation sim stable = 6 (pure, identique tous réglages).
+- Fenêtre toujours ouverte : `dqs_read` aussi en WRITE → `dqs_en` ne retombe
+  jamais après init → jamais de front parasite `0→X` (pré-armement `wpt_q`)
+  → rotation stable calib→fonctionnel (avant : dérive rot 4→2 entre reads).
+- Seed SIM/HW : `(0,0)` (sweep trouve 8 dès le 1er essai).
+- Fix prouvés formellement (ancien RTL) : parking reset Hi-Z (P9),
+  `init_done`+`rburst_seen` clear au reset + garde anti-reset (P5). P7/P14/P3
+  MAJ (BL8 sans AP, 2e burst, dé-rotation). `withTimeout` 600→1200.
+- Infra : `build.mill` oss-cad-suite ancré sur `moduleDir` (+ `setx`
+  `OSS_CAD_SUITE_HOME` persistant) — fix `sby.exe not found` (`forkEnv` vide
+  car `user.dir` du daemon ≠ repo). `sim_ddr.py` lance vvp avec
+  `cwd=simulation/`. `.gitignore` couvre `simulation/*.err`.
+- Formal BMC300 nouveau RTL : run en cours (timeout 1200, verdict attendu PASS
+  propre). Dernier run (ancien RTL) : engine `passed`, wrapper TIMEOUT (bénin).
+
+**`xxxx` restants dans les logs = normaux :** DRAM non-écrite avant le
+training-write (modèle Micron retourne X) + sweep-1 pré-training. Zéro X en
+fonctionnel. Seuls warnings Micron : `tWLH/tWLS` (bénins, présents en baseline).
 
 ## 7. Mission pour l'IA suivante
 
-1. Relire `Ddr3ControllerCore.scala` (surtout `dqs_read`, `READ_CALIB`, training),
-   le Verilog généré `hw/gen/Ddr3ControllerSim.v` si doute, et `prim_sim_tb.v`
-   §DQS (lignes ~13674-14300).
-2. Trancher la question n°1 par mesure VCD (pas par théorie) : largeur/position
-   de `dqs_en` vs rafale DQS à (1,0) 1-cycle.
-3. Apporter LA correction qui donne `score=8` au sweep puis `8/8 READ OK` :
-   pistes par probabilité : (a) revenir impulsion 1-cycle + seed (1,0) et chercher
-   le réglage pleine-fenêtre via le survey (déjà instrumenté) ; (b) si la fenêtre
-   modèle est intrinsèquement < 10 ns, double-lecture + recollement des moitiés ;
-   (c) valider sur HW (memtest UART) que le silicium n'a pas ce plafond.
+1. Vérifier le verdict formel (nouveau RTL) : `formal/.../status` PASS propre.
+2. Valider sur HW (memtest UART) : la rotation silicium peut différer — le
+   sweep auto s'adapte, lire le verrou UART (`pos/sel/rot/score`).
+3. Ensuite seulement : `row14/2048Mb` + `Ddr3Axi4` 128-bit pour IA (cf. audit P4).
+   Pistes d'économie : sweep-1 pré-training inutile (41 essais sur X) — écrire
+   le training AVANT le sweep et ne faire qu'un passage.
 4. Ne committer que du validé (l'utilisateur commit/push lui-même) ; mettre à jour
    `doc/bug-02-10-26-18h20.md` et ce fichier.
