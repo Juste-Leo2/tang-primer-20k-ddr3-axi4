@@ -156,6 +156,19 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   val rburst_seen  = Reg(Bits(2 bits)) init(0)
   val dqs_hold     = RegInit(False)
 
+  // Data-eye training (option 2): a known pattern is written once to block 0
+  // through the normal WRITE path, then the read sweep compares full 128-bit
+  // data (not just RBURST strobe detect, which is blind to partial bursts).
+  // NOTE: training clobbers block 0 (undefined at power-up per JEDEC; on a
+  // re-reset previous contents of block 0 are lost — documented tradeoff).
+  val trainPat  = B"128'h10071006100510041003100210011000" // 8 distinct beats
+  val training  = RegInit(True)
+  val trainDone = RegInit(False)
+  val dqAssembled = (io.phy.dq_in(7) ## io.phy.dq_in(6) ## io.phy.dq_in(5) ## io.phy.dq_in(4) ##
+                     io.phy.dq_in(3) ## io.phy.dq_in(2) ## io.phy.dq_in(1) ## io.phy.dq_in(0))
+  // Exact compare (X-hostile): stale or partial captures never match.
+  val dqMatch = dqAssembled === trainPat
+
   // Autonomous Refresh timer (every 7.8 us = 781 cycles @ 100MHz)
   // Sim uses a shorter period so iverilog runs cover several refreshes.
   val refreshPeriod = if (config.isSimulation) 200 else 780
@@ -344,9 +357,10 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
             // $display is simulation-only: the formal backend lowers
             // report() to assert(1'b0), which would fail the proof.
             if (!GenerationFlags.formal) {
-              report(L"RCALIB chk pos=$rclkpos sel=$rclksel seen=$rburst_seen cnt=$rcalib_cnt tries=$rcalib_tries")
+              report(L"RCALIB chk pos=$rclkpos sel=$rclksel seen=$rburst_seen match=$dqMatch cnt=$rcalib_cnt tries=$rcalib_tries")
             }
-            when(rburst_seen =/= B"2'b11") {
+            // Data-eye lock: strobe seen AND full 128-bit pattern match.
+            when(!(rburst_seen === B"2'b11" && dqMatch)) {
               rclksel := (rclksel.asUInt + 1).asBits
               when(rclksel === 7) {
                 rclkpos := (rclkpos.asUInt + 1).asBits
@@ -389,7 +403,20 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
       }
 
       is(Ddr3State.IDLE) {
-        when(refresh_due) {
+        when(training) {
+          // Training write: preload block-0 pattern req, reuse the WRITE
+          // path (with auto-precharge: row closed after, re-ACTed by calib).
+          training := False
+          trainDone := True
+          reqReg.write := True
+          reqReg.addr := 0
+          reqReg.wdata := trainPat
+          reqReg.wstrb := B"16'hFFFF"
+          setCmd(0, CMD_BankActivate, B"3'b0", B"0".resized)
+          state := Ddr3State.WRITE
+          cycle := 1
+          busy := True
+        } elsewhen(refresh_due) {
           // Autonomous refresh
           setCmd(0, CMD_AutoRefresh, B"3'b0", B"0".resized)
           state := Ddr3State.REFRESH
@@ -492,8 +519,15 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
         }
 
         when(cycle === 28 / 4) {
-          busy  := False
-          state := Ddr3State.IDLE
+          when(trainDone) {
+            // Training write done: back to calib (re-ACTs the row).
+            trainDone := False
+            state := Ddr3State.READ_CALIB
+            cycle := 0
+          } otherwise {
+            busy  := False
+            state := Ddr3State.IDLE
+          }
         }
       }
 
@@ -535,6 +569,8 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     rcalib_cnt := 0
     rcalib_done := False
     rcalib_tries := 0
+    training := True
+    trainDone := False
     rclkpos := (if (config.isSimulation) B"2'd1" else B"2'd0")
     rclksel := (if (config.isSimulation) B"3'd0" else B"3'd0")
     init_done_latched := False
