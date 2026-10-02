@@ -119,22 +119,13 @@ module tb_spinal;
         end
     end
 
-    // Cycle-accurate debug monitor
+    // Cycle-accurate debug monitor (remove once calib understood)
     always @(posedge pclk) begin
         if (!init_done && $time > 100000) begin
-            $display("DBG t=%t st=%d cyc=%d dqsrd=%h rburst=%b wstep=%h pos=%d sel=%d dqs_en=%b dqsin=%b rd_en=%b",
+            $display("DBG t=%t st=%d cyc=%d dqsrd=%h rburst=%b wstep=%h pos=%d sel=%d",
                 $time, u_dut.coreArea_core.state, u_dut.coreArea_core.cycle,
                 u_dut.coreArea_core_io_phy_dqs_read, u_dut.phy_io_rburst,
-                wstep, rclkpos, rclksel,
-                u_dut.phy.dQS_1.dqs_en, u_dut.phy.dQS_1.DQSIN, u_dut.phy.dQS_1.rd_en);
-            $fflush();
-        end
-    end
-
-    always @(dqs) begin
-        if (u_dut.coreArea_core.state == 5) begin
-            $display("DBG_PAD t=%t DQS=%b dqs_en=%b DQSIN=%b rd_en=%b RBURST=%b",
-                $time, dqs, u_dut.phy.dQS_1.dqs_en, u_dut.phy.dQS_1.DQSIN, u_dut.phy.dQS_1.rd_en, u_dut.phy.dQS_1.RBURST);
+                wstep, rclkpos, rclksel);
             $fflush();
         end
     end
@@ -153,13 +144,15 @@ module tb_spinal;
             req_strb  <= 16'hFFFF;
             @(posedge pclk);
             req_valid <= 1'b0;
-            @(posedge pclk);
             $display("WRITE blk=%h data=%h", blk, v);
             $fflush();
+            @(posedge pclk);
+            wait(req_ready == 1'b1);
         end
     endtask
 
     task doread(input [26:0] blk, input [127:0] expected);
+        integer to_cnt;
         begin
             wait(req_ready == 1'b1);
             @(posedge pclk);
@@ -168,9 +161,18 @@ module tb_spinal;
             req_addr  <= blk;
             @(posedge pclk);
             req_valid <= 1'b0;
-            start_time <= $time;
-            #0.01 wait(rsp_valid == 1'b1 || $time > start_time + 500_000);
-            @(posedge pclk);
+            to_cnt = 0;
+            while (!rsp_valid && to_cnt < 200) begin
+                @(posedge pclk);
+                to_cnt = to_cnt + 1;
+            end
+            if (!rsp_valid) begin
+                $display("ERROR: timeout waiting for rsp_valid at blk %h at %t", blk, $time);
+            end
+            $display("DEBUG_READ t=%t to_cnt=%d rsp_valid=%b [0]=%h [1]=%h [2]=%h [3]=%h [4]=%h [5]=%h [6]=%h [7]=%h",
+                $time, to_cnt, rsp_valid,
+                u_dut.phy_io_dq_in_0, u_dut.phy_io_dq_in_1, u_dut.phy_io_dq_in_2, u_dut.phy_io_dq_in_3,
+                u_dut.phy_io_dq_in_4, u_dut.phy_io_dq_in_5, u_dut.phy_io_dq_in_6, u_dut.phy_io_dq_in_7);
             $display("READ  blk=%h got=%h expected=%h %s", blk, rsp_rdata, expected,
                      (rsp_rdata === expected) ? "OK" : "MISMATCH");
             $fflush();
@@ -178,6 +180,8 @@ module tb_spinal;
                 $display("ERROR: mismatch at blk %h", blk);
                 errors = errors + 1;
             end
+            @(posedge pclk);
+            wait(req_ready == 1'b1);
         end
     endtask
 
