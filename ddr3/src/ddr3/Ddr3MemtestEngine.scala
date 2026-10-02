@@ -34,6 +34,7 @@ class Ddr3MemtestEngine(
     val rclksel          = in Bits(3 bits)
     val best_rot         = in UInt(3 bits)
     val best_score       = in UInt(4 bits)
+    val dbg_state        = in Bits(4 bits)
 
     // User outputs
     val uart_tx          = out Bool()
@@ -145,6 +146,7 @@ class Ddr3MemtestEngine(
   val fsm = new StateMachine {
     val sBootBanner: State    = new State
     val sWaitCalib: State     = new State
+    val sPrintCalib: State    = new State
     val sPrintBanner: State   = new State
     val sSingleWriteAW: State = new State
     val sSingleWriteW0: State = new State
@@ -209,13 +211,41 @@ class Ddr3MemtestEngine(
         msgIndex := 0
         goto(sPrintBanner)
       } otherwise {
-        // Send a dot '.' every ~500ms to show life while waiting for calibration
+        // Every ~500ms, print a progress line instead of a bare dot, so a
+        // stuck calibration tells us WHERE it is stuck (controller state +
+        // write-leveling taps). Format: "[CAL s=X W=HH]\r\n".
         delayCounter := delayCounter + 1
         when(delayCounter === (clkFreqHz / 2)) {
           delayCounter := 0
-          when(!printValid) {
-            printChar  := 0x2E // '.'
-            printValid := True
+          msgIndex := 0
+          goto(sPrintCalib)
+        }
+      }
+    }
+
+    // Progress line while calibrating: "[CAL s=X W=HH]\r\n" (X = controller
+    // state 0-9, HH = write-leveling taps; W=FF means the WL watchdog fired).
+    sPrintCalib.whenIsActive {
+      when(!printValid) {
+        switch(msgIndex) {
+          is(0)  { printChar := 0x5B; printValid := True; msgIndex := msgIndex + 1 } // [
+          is(1)  { printChar := 0x43; printValid := True; msgIndex := msgIndex + 1 } // C
+          is(2)  { printChar := 0x41; printValid := True; msgIndex := msgIndex + 1 } // A
+          is(3)  { printChar := 0x4C; printValid := True; msgIndex := msgIndex + 1 } // L
+          is(4)  { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(5)  { printChar := 0x73; printValid := True; msgIndex := msgIndex + 1 } // s
+          is(6)  { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
+          is(7)  { printChar := nibbleToAscii(io.dbg_state); printValid := True; msgIndex := msgIndex + 1 }
+          is(8)  { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(9)  { printChar := 0x57; printValid := True; msgIndex := msgIndex + 1 } // W
+          is(10) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
+          is(11) { printChar := nibbleToAscii(io.wstep(7 downto 4)); printValid := True; msgIndex := msgIndex + 1 }
+          is(12) { printChar := nibbleToAscii(io.wstep(3 downto 0)); printValid := True; msgIndex := msgIndex + 1 }
+          is(13) { printChar := 0x0D; printValid := True; msgIndex := msgIndex + 1 } // \r
+          is(14) { printChar := 0x0A; printValid := True; msgIndex := msgIndex + 1 } // \n
+          default {
+            msgIndex := 0
+            goto(sWaitCalib)
           }
         }
       }
