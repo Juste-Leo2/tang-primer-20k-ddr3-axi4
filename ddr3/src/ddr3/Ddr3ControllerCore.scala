@@ -151,7 +151,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   // SIM-only watchdog: counts calib misses so a never-locking sweep
   // cannot hang iverilog forever (wall-clock). HW path untouched.
   val rcalib_tries = Reg(UInt(6 bits)) init(0)
-  val rclkpos      = Reg(Bits(2 bits)) init(if (config.isSimulation) B"2'd1" else B"2'd0")
+  val rclkpos      = Reg(Bits(2 bits)) init(if (config.isSimulation) B"2'd0" else B"2'd0")
   val rclksel      = Reg(Bits(3 bits)) init(if (config.isSimulation) B"3'd0" else B"3'd0")
   val rburst_seen  = Reg(Bits(2 bits)) init(0)
   val dqs_hold     = RegInit(False)
@@ -168,6 +168,18 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                      io.phy.dq_in(3) ## io.phy.dq_in(2) ## io.phy.dq_in(1) ## io.phy.dq_in(0))
   // Exact compare (X-hostile): stale or partial captures never match.
   val dqMatch = dqAssembled === trainPat
+  // Per-beat score 0..8 for best-of-sweep eye search.
+  val beatOk = Vec(Bool(), 8)
+  for (i <- 0 until 8) {
+    beatOk(i) := dqAssembled(i * 16 + 15 downto i * 16) === trainPat(i * 16 + 15 downto i * 16)
+  }
+  val matchCnt = (beatOk(0).asUInt.resize(4) + beatOk(1).asUInt.resize(4) +
+                  beatOk(2).asUInt.resize(4) + beatOk(3).asUInt.resize(4) +
+                  beatOk(4).asUInt.resize(4) + beatOk(5).asUInt.resize(4) +
+                  beatOk(6).asUInt.resize(4) + beatOk(7).asUInt.resize(4))
+  val bestCnt = Reg(UInt(4 bits)) init(0)
+  val bestPos = Reg(Bits(2 bits)) init(B"2'd0")
+  val bestSel = Reg(Bits(3 bits)) init(B"3'd0")
 
   // Autonomous Refresh timer (every 7.8 us = 781 cycles @ 100MHz)
   // Sim uses a shorter period so iverilog runs cover several refreshes.
@@ -213,11 +225,15 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   when(io.phy.rburst(0)) { rburst_seen(0) := True }
   when(io.phy.rburst(1)) { rburst_seen(1) := True }
 
-  // Generate dqs_read pulse
+  // Generate dqs_read pulse, 2 pclk wide: a 1-cycle pulse only marginally
+  // loads the DQS primitive's free-running rd pipeline (update every 4th
+  // fast clock), giving a razor-thin capture window. 2 cycles guarantee
+  // solid loading and a burst-covering rd_en. Data-compare validates mapping.
+  val rdCyc = rclkpos.asUInt.resize(5) + config.RCD / 4 + 1
   val dqs_read = Reg(Bits(4 bits)) init(0)
   dqs_read := 0
   when((state === Ddr3State.READ || state === Ddr3State.READ_CALIB) &&
-       cycle === (rclkpos.asUInt.resize(5) + config.RCD / 4 + 1)) {
+       (cycle === rdCyc || cycle === rdCyc + 1)) {
     dqs_read := B"4'b1111"
   }
 
@@ -347,6 +363,9 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
             setCmd(0, CMD_BankActivate, B"3'b0", B"0".resized)
             rcalib_cnt := 0
             rcalib_tries := 0
+            bestCnt := 0
+            bestPos := rclkpos
+            bestSel := rclksel
           }
           is(config.RCD / 4) {
             // Issue BL8 read without auto-precharge
@@ -357,42 +376,35 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
             // $display is simulation-only: the formal backend lowers
             // report() to assert(1'b0), which would fail the proof.
             if (!GenerationFlags.formal) {
-              report(L"RCALIB chk pos=$rclkpos sel=$rclksel seen=$rburst_seen match=$dqMatch cnt=$rcalib_cnt tries=$rcalib_tries")
+              report(L"RCALIB chk pos=$rclkpos sel=$rclksel seen=$rburst_seen score=$matchCnt best=$bestCnt tries=$rcalib_tries")
             }
-            // Data-eye lock: strobe seen AND full 128-bit pattern match.
-            when(!(rburst_seen === B"2'b11" && dqMatch)) {
-              rclksel := (rclksel.asUInt + 1).asBits
-              when(rclksel === 7) {
-                rclkpos := (rclkpos.asUInt + 1).asBits
+            // Best-of-sweep eye search: strobe seen AND strictly better
+            // beat score (0..8). No early stop: one full survey, then lock
+            // the best setting. Stale-full patterns are rejected by the
+            // rburst_seen gate.
+            when(rburst_seen === B"2'b11" && matchCnt > bestCnt) {
+              bestCnt := matchCnt
+              bestPos := rclkpos
+              bestSel := rclksel
+            }
+            rclksel := (rclksel.asUInt + 1).asBits
+            when(rclksel === 7) {
+              rclkpos := (rclkpos.asUInt + 1).asBits
+            }
+            rcalib_cnt := 0
+            rcalib_tries := rcalib_tries + 1
+            // Survey length covers the full 32-setting grid (plus margin):
+            // lock best, precharge, continue to functional tests.
+            when(rcalib_tries === 40) {
+              if (!GenerationFlags.formal) {
+                report(L"RCALIB lock best pos=$bestPos sel=$bestSel score=$bestCnt")
               }
-              rcalib_cnt := 0
-              rcalib_tries := rcalib_tries + 1
-              // SIM debug fallback: after a full 32-position sweep with no
-              // double-hit, force baseline's proven (1,7) window and continue
-              // to functional tests instead of looping forever.
-              if (config.isSimulation) {
-                when(rcalib_tries === 40) {
-                  if (!GenerationFlags.formal) {
-                    report("RCALIB WARN: sweep exhausted, forcing pos=1 sel=7")
-                  }
-                  rclkpos := B"2'd1"
-                  rclksel := B"3'd7"
-                  rcalib_done := True
-                  setCmd(0, CMD_PreCharge, B"3'b0", B"0".resized)
-                } otherwise {
-                  cycle := config.RCD / 4 // loop back
-                }
-              } else {
-                cycle := config.RCD / 4 // loop back
-              }
+              rclkpos := bestPos
+              rclksel := bestSel
+              rcalib_done := True
+              setCmd(0, CMD_PreCharge, B"3'b0", B"0".resized)
             } otherwise {
-              rcalib_cnt := rcalib_cnt + 1
-              when(rcalib_cnt === config.rcalibCount - 1) {
-                rcalib_done := True
-                setCmd(0, CMD_PreCharge, B"3'b0", B"0".resized)
-              } otherwise {
-                cycle := config.RCD / 4
-              }
+              cycle := config.RCD / 4 // loop back
             }
           }
           is(config.RCD / 4 + 10 + config.RP / 4) {
@@ -571,7 +583,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     rcalib_tries := 0
     training := True
     trainDone := False
-    rclkpos := (if (config.isSimulation) B"2'd1" else B"2'd0")
+    rclkpos := (if (config.isSimulation) B"2'd0" else B"2'd0")
     rclksel := (if (config.isSimulation) B"3'd0" else B"3'd0")
     init_done_latched := False
     rburst_seen := 0
