@@ -141,8 +141,18 @@ En place depuis (non committé) : HOLD tardif reverté + `dqs_read` en WRITE.
   `OSS_CAD_SUITE_HOME` persistant) — fix `sby.exe not found` (`forkEnv` vide
   car `user.dir` du daemon ≠ repo). `sim_ddr.py` lance vvp avec
   `cwd=simulation/`. `.gitignore` couvre `simulation/*.err`.
-- Formal BMC300 nouveau RTL : run en cours (timeout 1200, verdict attendu PASS
-  propre). Dernier run (ancien RTL) : engine `passed`, wrapper TIMEOUT (bénin).
+- Formal BMC300 : PASS propre sur RTL double-burst + dé-rotation (706 s,
+  timeout 1200). Re-run en cours sur RTL final (poison + banner + gate
+  rcalib_done). Dernier run (ancien RTL) : engine `passed`, wrapper TIMEOUT.
+- HW (Tang Primer 20K) : **FAIL** `[DDR3-OK] W=0A P=2 S=0`, `[FAIL]` avec beats
+  de training rassis → faux verrou 8/8 sur auto-capture du training-write.
+  Fix : poison-write bloc 1 (`~trainPat`) avant sweep-2 + bannière `R=r C=c`.
+  `rcalib_done`/`init_done` maintenant après sweep-2 (ne plus démarrer le
+  trafic mid-calibration). En attente : resimu + formel + flash autre PC.
+- Tests unitaires Scala **verts** (`mill ddr3.test`, Verilator) : Core, Axi4
+  (bridge 64-bit), TesterTop (memtest+UART). Infra : `setup.bat` installe
+  w64devkit 2.9.1 (URL en dur, SFX + `robocopy` anti-imbrication) pour
+  sh/make/gcc ; `build.mill` préfère `tools/w64devkit/bin` au PATH.
 
 **`xxxx` restants dans les logs = normaux :** DRAM non-écrite avant le
 training-write (modèle Micron retourne X) + sweep-1 pré-training. Zéro X en

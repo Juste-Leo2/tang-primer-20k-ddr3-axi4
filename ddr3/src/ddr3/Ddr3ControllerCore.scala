@@ -73,6 +73,8 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     val wstep       = out Bits(8 bits)
     val rclkpos     = out Bits(2 bits)
     val rclksel     = out Bits(3 bits)
+    val best_rot    = out UInt(3 bits)
+    val best_score  = out UInt(4 bits)
 
     // Direct interface to GowinDdr3Phy
     val phy = new Bundle {
@@ -162,8 +164,15 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   // NOTE: training clobbers block 0 (undefined at power-up per JEDEC; on a
   // re-reset previous contents of block 0 are lost — documented tradeoff).
   val trainPat  = B"128'h10071006100510041003100210011000" // 8 distinct beats
+  // Poison pattern (bitwise complement): written once to block 1 right after
+  // the training write, so the sweep's first iteration cannot score on stale
+  // self-captured training data (the always-open window self-captures every
+  // write via DQSIN loopback). A missed window then latches poison (score 0,
+  // correctly rejected) instead of stale training (score 8, false lock).
+  val poisonPat = ~trainPat
   val training  = RegInit(True)
   val trainDone = RegInit(False)
+  val needPoison = RegInit(False)
   // Latched copy of the 128-bit assembly, captured at the exact
   // functional data_ready cycle (RCD/4+10). The IDES read pointer
   // free-runs on FCLK, so a live compare one cycle later would sample a
@@ -472,7 +481,13 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
               }
               rclkpos := bestPos
               rclksel := bestSel
-              rcalib_done := True
+              // rcalib_done (hence init_done) only after the post-training
+              // sweep. Sweep-1 ends with training still pending: firing done
+              // there would let user traffic start mid-calibration (it would
+              // stall on !ready at best). Sweep-2 (training done) locks real.
+              when(!training) {
+                rcalib_done := True
+              }
               setCmd(0, CMD_PreCharge, B"3'b0", B"0".resized)
             } otherwise {
               cycle := config.RCD / 4 // loop back
@@ -491,9 +506,26 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
           // path (with auto-precharge: row closed after, re-ACTed by calib).
           training := False
           trainDone := True
+          needPoison := True
           reqReg.write := True
           reqReg.addr := 0
           reqReg.wdata := trainPat
+          reqReg.wstrb := B"16'hFFFF"
+          setCmd(0, CMD_BankActivate, B"3'b0", B"0".resized)
+          state := Ddr3State.WRITE
+          cycle := 1
+          busy := True
+        } elsewhen(needPoison) {
+          // Poison write: block-1 complement pattern, same WRITE path.
+          // Self-captures poison into the FIFO (window open) and raises
+          // dqs_en cleanly (defined strobe, no 0->X pre-arm), so sweep-2
+          // iteration 0 latches poison on a missed window (score 0) instead
+          // of stale training (false 8). After: straight to the sweep.
+          needPoison := False
+          trainDone := True
+          reqReg.write := True
+          reqReg.addr := 1
+          reqReg.wdata := poisonPat
           reqReg.wstrb := B"16'hFFFF"
           setCmd(0, CMD_BankActivate, B"3'b0", B"0".resized)
           state := Ddr3State.WRITE
@@ -615,10 +647,16 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
 
         when(cycle === 28 / 4) {
           when(trainDone) {
-            // Training write done: back to calib (re-ACTs the row).
+            // Calib write done: training write -> back to IDLE for the
+            // poison write; poison write -> to the sweep (re-ACTs the row).
             trainDone := False
-            state := Ddr3State.READ_CALIB
-            cycle := 0
+            when(needPoison) {
+              state := Ddr3State.IDLE
+              cycle := 0
+            } otherwise {
+              state := Ddr3State.READ_CALIB
+              cycle := 0
+            }
           } otherwise {
             busy  := False
             state := Ddr3State.IDLE
@@ -667,6 +705,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     bestRot := 0
     training := True
     trainDone := False
+    needPoison := False
     trainLatch := 0
     rclkpos := (if (config.isSimulation) B"2'd0" else B"2'd0")
     rclksel := (if (config.isSimulation) B"3'd0" else B"3'd0")
@@ -720,6 +759,8 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   io.wstep            := wstep
   io.rclkpos          := rclkpos
   io.rclksel          := rclksel
+  io.best_rot         := bestRot
+  io.best_score       := bestCnt
 
   // Formal properties (SymbiYosys). Only elaborated under the formal
   // backend: zero impact on Ddr3Gen Verilog output.

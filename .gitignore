@@ -18,7 +18,12 @@ build_eda/
 simulation/*.vvp
 simulation/*.log
 simulation/*.err
+simulation/_vcd_probe.py
 *.vcd
+
+# Mill unit-test driver logs (repo root)
+unit_tests.log
+unit_tests.err
 
 # Python cache
 __pycache__/

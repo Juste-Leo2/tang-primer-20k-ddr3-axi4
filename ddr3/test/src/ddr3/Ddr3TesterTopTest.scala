@@ -32,6 +32,8 @@ class Ddr3TesterSimHarness(val axiConfig: Axi4Config, val config: Ddr3Config, va
   engine.io.wstep            := core.io.wstep
   engine.io.rclkpos          := core.io.rclkpos
   engine.io.rclksel          := core.io.rclksel
+  engine.io.best_rot         := core.io.best_rot
+  engine.io.best_score       := core.io.best_score
 
   io.uart_tx   := engine.io.uart_tx
   io.test_pass := engine.io.test_pass

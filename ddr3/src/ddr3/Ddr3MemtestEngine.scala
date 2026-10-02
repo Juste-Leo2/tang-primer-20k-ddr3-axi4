@@ -32,6 +32,8 @@ class Ddr3MemtestEngine(
     val wstep            = in Bits(8 bits)
     val rclkpos          = in Bits(2 bits)
     val rclksel          = in Bits(3 bits)
+    val best_rot         = in UInt(3 bits)
+    val best_score       = in UInt(4 bits)
 
     // User outputs
     val uart_tx          = out Bool()
@@ -219,7 +221,7 @@ class Ddr3MemtestEngine(
       }
     }
 
-    // Banner message: "\r\n[DDR3-OK] W=" + wstep + " P=" + rclkpos + " S=" + rclksel + "\r\n"
+    // Banner message: "\r\n[DDR3-OK] W=" + wstep + " P=" + rclkpos + " S=" + rclksel + " R=" + best_rot + " C=" + best_score + "\r\n"
     sPrintBanner.whenIsActive {
       when(!printValid) {
         switch(msgIndex) {
@@ -247,8 +249,16 @@ class Ddr3MemtestEngine(
           is(21) { printChar := 0x53; printValid := True; msgIndex := msgIndex + 1 } // S
           is(22) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
           is(23) { printChar := nibbleToAscii(io.rclksel.asBits.resized); printValid := True; msgIndex := msgIndex + 1 }
-          is(24) { printChar := 0x0D; printValid := True; msgIndex := msgIndex + 1 } // \r
-          is(25) { printChar := 0x0A; printValid := True; msgIndex := msgIndex + 1 } // \n
+          is(24) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(25) { printChar := 0x52; printValid := True; msgIndex := msgIndex + 1 } // R
+          is(26) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
+          is(27) { printChar := nibbleToAscii(io.best_rot.asBits.resized); printValid := True; msgIndex := msgIndex + 1 }
+          is(28) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(29) { printChar := 0x43; printValid := True; msgIndex := msgIndex + 1 } // C
+          is(30) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
+          is(31) { printChar := nibbleToAscii(io.best_score.asBits.resized); printValid := True; msgIndex := msgIndex + 1 }
+          is(32) { printChar := 0x0D; printValid := True; msgIndex := msgIndex + 1 } // \r
+          is(33) { printChar := 0x0A; printValid := True; msgIndex := msgIndex + 1 } // \n
           default {
             goto(sSingleWriteAW)
           }
