@@ -10,6 +10,9 @@ object ddr3 extends ScalaModule {
   // mill daemon's cwd (user.dir) or inherited env, so this candidate
   // always resolves the in-tree oss-cad-suite from setup.bat.
   val repoToolsDir = (moduleDir / os.up / "tools" / "oss-cad-suite").toString.replace('\\', '/')
+  // Same for w64devkit (sh/make/gcc used by Verilator C++ builds in unit
+  // tests). setup.bat installs it into tools/w64devkit.
+  val repoW64BinDir = (moduleDir / os.up / "tools" / "w64devkit" / "bin").toString.replace('\\', '/')
 
   override def mvnDeps = Seq(
     mvn"com.github.spinalhdl::spinalhdl-core:1.15.0",
@@ -47,7 +50,14 @@ object ddr3 extends ScalaModule {
           // otherwise yosys/sby/solvers crash with 0xC0000135 (missing
           // libstdc++/libwinpthread/libffi/libpython DLLs).
           val ossLib = s"$oss/lib"
-          val w64Bin = s"$userHome/.spinalml_tools/w64devkit/bin"
+          // sh/make/gcc for Verilator: in-tree w64devkit first (setup.bat),
+          // then legacy user location. Non-existent entries are harmless in
+          // PATH; the first existing one wins for sh.exe resolution.
+          val w64Candidates = Seq(
+            ddr3.repoW64BinDir,
+            s"$userHome/.spinalml_tools/w64devkit/bin"
+          ).filter(p => new File(p, "sh.exe").exists())
+          val w64Bin = w64Candidates.headOption.getOrElse(s"$userHome/.spinalml_tools/w64devkit/bin")
           val currentPath = sys.env.getOrElse("PATH", "")
           val newPath = s"$ossBin;$ossLib;$w64Bin;$currentPath"
           Map("VERILATOR_ROOT" -> verilatorRoot, "PATH" -> newPath)

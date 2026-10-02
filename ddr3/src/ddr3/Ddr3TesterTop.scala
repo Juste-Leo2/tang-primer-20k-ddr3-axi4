@@ -117,6 +117,8 @@ class Ddr3TesterTop(
     engine.io.wstep            := ddr3.io.wstep
     engine.io.rclkpos          := ddr3.io.rclkpos
     engine.io.rclksel          := ddr3.io.rclksel
+    engine.io.best_rot         := ddr3.io.best_rot
+    engine.io.best_score       := ddr3.io.best_score
 
     io.uart_txp := engine.io.uart_tx
 

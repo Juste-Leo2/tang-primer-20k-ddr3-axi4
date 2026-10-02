@@ -30,6 +30,8 @@ class Ddr3Axi4(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Config())
     val wstep            = out Bits(8 bits)
     val rclkpos          = out Bits(2 bits)
     val rclksel          = out Bits(3 bits)
+    val best_rot         = out UInt(3 bits)
+    val best_score       = out UInt(4 bits)
 
     // Physical DDR3 memory pads (tang20k.cst constraints)
     val pad     = master(Ddr3Pins(config.rowWidth, config.bankWidth))
@@ -69,5 +71,7 @@ class Ddr3Axi4(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Config())
     io.wstep            := ctrl.io.wstep
     io.rclkpos          := ctrl.io.rclkpos
     io.rclksel          := ctrl.io.rclksel
+    io.best_rot         := ctrl.io.best_rot
+    io.best_score       := ctrl.io.best_score
   }
 }

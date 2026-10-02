@@ -93,8 +93,9 @@ class Ddr3Axi4Test extends AnyFunSuite {
         println("[SIM] Calibration complete! Ddr3Axi4 ready for AXI transactions.")
       }
 
-      // Wait for init_done with timeout
-      dut.clockDomain.waitSamplingWhere(500)(dut.io.init_done.toBoolean)
+      // Wait for init_done with timeout. Full calib is long: 2 sweeps
+      // x 41 iters x ~13 pclk + training/poison writes.
+      dut.clockDomain.waitSamplingWhere(3000)(dut.io.init_done.toBoolean)
       assert(dut.io.init_done.toBoolean, "Ddr3Axi4 failed to initialize")
 
       dut.clockDomain.waitSampling(5)
@@ -171,7 +172,9 @@ class Ddr3Axi4Test extends AnyFunSuite {
       // TEST 2: AXI4 Read (2 beats of 64-bit = 128-bit burst)
       // -------------------------------------------------------------
       println("[SIM] Sending AXI4 AR request...")
-      // Feed read data on dq_in when read is executed
+      // Feed read data on dq_in when read is executed. Direct beat order
+      // matches the written data because calib locked rot=0 here (dq_in
+      // held at 0 during the sweep -> all rotation scores 0 -> identity).
       dut.io.corePhy.dq_in(0) #= 0x7788
       dut.io.corePhy.dq_in(1) #= 0x5566
       dut.io.corePhy.dq_in(2) #= 0x3344
