@@ -169,8 +169,11 @@ module tb_spinal;
             if (!rsp_valid) begin
                 $display("ERROR: timeout waiting for rsp_valid at blk %h at %t", blk, $time);
             end
-            $display("DEBUG_READ t=%t to_cnt=%d rsp_valid=%b [0]=%h [1]=%h [2]=%h [3]=%h [4]=%h [5]=%h [6]=%h [7]=%h",
-                $time, to_cnt, rsp_valid,
+            $display("DEBUG_READ t=%t to_cnt=%d rsp_valid=%b pos=%d sel=%d rburst=%b dqsrd=%h hold=%b wpt=%h/%h rpt=%h/%h [0]=%h [1]=%h [2]=%h [3]=%h [4]=%h [5]=%h [6]=%h [7]=%h",
+                $time, to_cnt, rsp_valid, rclkpos, rclksel, u_dut.phy_io_rburst,
+                u_dut.coreArea_core_io_phy_dqs_read, u_dut.coreArea_core_io_phy_dqs_hold,
+                u_dut.phy.dqs_waddr_0, u_dut.phy.dqs_waddr_1,
+                u_dut.phy.dqs_raddr_0, u_dut.phy.dqs_raddr_1,
                 u_dut.phy_io_dq_in_0, u_dut.phy_io_dq_in_1, u_dut.phy_io_dq_in_2, u_dut.phy_io_dq_in_3,
                 u_dut.phy_io_dq_in_4, u_dut.phy_io_dq_in_5, u_dut.phy_io_dq_in_6, u_dut.phy_io_dq_in_7);
             $display("READ  blk=%h got=%h expected=%h %s", blk, rsp_rdata, expected,
@@ -190,6 +193,8 @@ module tb_spinal;
     localparam [127:0] PAT2 = 128'hDEADBEEFCAFEBABE12345678ABCDEF01;
 
     initial begin : test
+        $dumpfile("tb_spinal.vcd");
+        $dumpvars(0, tb_spinal);
         errors = 0;
         $display("Powering up and reset the controller");
         $fflush();
