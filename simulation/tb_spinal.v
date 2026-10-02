@@ -119,13 +119,22 @@ module tb_spinal;
         end
     end
 
-    // Cycle-accurate debug monitor (remove once calib understood)
+    // Cycle-accurate debug monitor
     always @(posedge pclk) begin
         if (!init_done && $time > 100000) begin
-            $display("DBG t=%t st=%d cyc=%d dqsrd=%h rburst=%b wstep=%h pos=%d sel=%d",
+            $display("DBG t=%t st=%d cyc=%d dqsrd=%h rburst=%b wstep=%h pos=%d sel=%d dqs_en=%b dqsin=%b rd_en=%b",
                 $time, u_dut.coreArea_core.state, u_dut.coreArea_core.cycle,
                 u_dut.coreArea_core_io_phy_dqs_read, u_dut.phy_io_rburst,
-                wstep, rclkpos, rclksel);
+                wstep, rclkpos, rclksel,
+                u_dut.phy.dQS_1.dqs_en, u_dut.phy.dQS_1.DQSIN, u_dut.phy.dQS_1.rd_en);
+            $fflush();
+        end
+    end
+
+    always @(dqs) begin
+        if (u_dut.coreArea_core.state == 5) begin
+            $display("DBG_PAD t=%t DQS=%b dqs_en=%b DQSIN=%b rd_en=%b RBURST=%b",
+                $time, dqs, u_dut.phy.dQS_1.dqs_en, u_dut.phy.dQS_1.DQSIN, u_dut.phy.dQS_1.rd_en, u_dut.phy.dQS_1.RBURST);
             $fflush();
         end
     end

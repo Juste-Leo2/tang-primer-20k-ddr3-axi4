@@ -35,7 +35,7 @@ case class Ddr3Config(
 
   // Iteration counts for calibration
   val wlevelCount = if (isSimulation) 2 else 1
-  val rcalibCount = if (isSimulation) 2 else 8
+  val rcalibCount = if (isSimulation) 1 else 8
 }
 
 object Ddr3State extends SpinalEnum {

@@ -1,7 +1,7 @@
 // Generator : SpinalHDL v1.15.0    git head : 05a01af3d3345aa0afcaad8e0186dde13a359db2
 // Component : Ddr3ControllerSim
-// Git hash  : a6d866d2369eb27e99cedee6c0cb8a09f311fa57
-// Date      : 01/10/2026, 22:22:59
+// Git hash  : 48a3e7e4a1b32bff40c4e5842ab73076f57fd2f6
+// Date      : 01/10/2026, 23:45:15
 
 `timescale 1ns/1ps
 
@@ -3435,7 +3435,7 @@ module Ddr3ControllerCore (
   assign when_Ddr3ControllerCore_l307 = (wlevel_cnt == 4'b0001);
   assign when_Ddr3ControllerCore_l338 = (rburst_seen != 2'b11);
   assign when_Ddr3ControllerCore_l340 = (rclksel == 3'b111);
-  assign when_Ddr3ControllerCore_l347 = (rcalib_cnt == 4'b0001);
+  assign when_Ddr3ControllerCore_l347 = (rcalib_cnt == 4'b0000);
   assign _zz_state = (io_req_payload_write ? Ddr3State_WRITE : Ddr3State_READ);
   assign when_Ddr3ControllerCore_l381 = (! io_req_payload_write);
   assign when_Ddr3ControllerCore_l393 = (cycle == 5'h01);
