@@ -225,6 +225,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     dm_out  := B"8'b1111_1111"
     dqs_oen := B"4'b1111"
     dq_oen  := B"4'b1111"
+    dqs_out := 0
     dqs_hold := False
 
     switch(state) {
@@ -417,40 +418,49 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
           setCmd(config.RCD % 4, CMD_Write, bank, writeA)
         }
 
-        // Preamble at (RCD + CWL) / 4 = cycle 2:
-        // Drive DQS low for 1 full tCK preamble (Phases 6 and 7)
+        // Cycle 2: Subcycle 2 (CK 10) = Preamble; Subcycle 3 (CK 11) = Beat 0
         when(cycle === (config.RCD + config.CWL) / 4) {
-          dqs_out := B"8'b0011_1111" // D6=0, D7=0 (preamble low), D0..D5=1
-          dqs_oen := B"4'b0111"      // TX3=0 (enabled), TX0..2=1 (disabled)
-          dq_oen  := B"4'b1111"      // high-Z during preamble
-          dm_out  := B"8'b0000_0000" // unmasked
+          dqs_out := B"8'b0100_0000" // D4=0, D5=0 (preamble low); D6=1, D7=0 (Beat 0)
+          dqs_oen := B"4'b0011"      // TX2=0, TX3=0 enabled; TX0=1, TX1=1 disabled
+          dq_oen  := B"4'b0111"      // TX3=0 enabled; TX0..2=1 disabled
+
+          dq_out(6) := 0
+          dq_out(7) := reqReg.wdata(15 downto 0)   // Beat 0
+
+          dm_out(6) := True
+          dm_out(7) := !reqReg.wstrb(1 downto 0).orR
         }
 
-        // Full 8 beats of BL8 write toggling across Cycle 3:
-        // All TX enabled (0000)
+        // Cycle 3: Subcycles 0..2 (CK 12..14) = Beats 1..6; Subcycle 3 (CK 15) = Beat 7 + Postamble
         when(cycle === (config.RCD + config.CWL) / 4 + 1) {
-          dqs_out := B"8'b0101_0101" // D0=1, D1=0, D2=1, D3=0, D4=1, D5=0, D6=1, D7=0
-          dqs_oen := B"4'b0000"
-          dq_oen  := B"4'b0000"
+          dqs_out := B"8'b0101_0101" // D0..D6 toggle for Beats 1..7; D7=0 postamble
+          dqs_oen := B"4'b0000"      // All TX enabled
+          dq_oen  := B"4'b0000"      // All TX enabled
 
-          dq_out(0) := reqReg.wdata(15 downto 0)   // Beat 0
-          dq_out(1) := reqReg.wdata(31 downto 16)  // Beat 1
-          dq_out(2) := reqReg.wdata(47 downto 32)  // Beat 2
-          dq_out(3) := reqReg.wdata(63 downto 48)  // Beat 3
-          dq_out(4) := reqReg.wdata(79 downto 64)  // Beat 4
-          dq_out(5) := reqReg.wdata(95 downto 80)  // Beat 5
-          dq_out(6) := reqReg.wdata(111 downto 96) // Beat 6
-          dq_out(7) := reqReg.wdata(127 downto 112)// Beat 7
+          dq_out(0) := reqReg.wdata(31 downto 16)  // Beat 1
+          dq_out(1) := reqReg.wdata(47 downto 32)  // Beat 2
+          dq_out(2) := reqReg.wdata(63 downto 48)  // Beat 3
+          dq_out(3) := reqReg.wdata(79 downto 64)  // Beat 4
+          dq_out(4) := reqReg.wdata(95 downto 80)  // Beat 5
+          dq_out(5) := reqReg.wdata(111 downto 96) // Beat 6
+          dq_out(6) := reqReg.wdata(127 downto 112)// Beat 7
+          dq_out(7) := 0
 
-          dm_out  := B"8'b0000_0000" // unmask all 8 beats
+          dm_out(0) := !reqReg.wstrb(3 downto 2).orR
+          dm_out(1) := !reqReg.wstrb(5 downto 4).orR
+          dm_out(2) := !reqReg.wstrb(7 downto 6).orR
+          dm_out(3) := !reqReg.wstrb(9 downto 8).orR
+          dm_out(4) := !reqReg.wstrb(11 downto 10).orR
+          dm_out(5) := !reqReg.wstrb(13 downto 12).orR
+          dm_out(6) := !reqReg.wstrb(15 downto 14).orR
+          dm_out(7) := True
         }
 
-        // Postamble at Cycle 4:
+        // Cycle 4: Postamble completion (held low) then all return to high-Z
         when(cycle === (config.RCD + config.CWL) / 4 + 2) {
-          dqs_out := 0               // DQS held low
-          dqs_oen := B"4'b1110"      // TX0=0 (enabled for postamble), TX1..3=1 (disabled)
-          dq_oen  := B"4'b1111"      // DQ high-Z
-          dm_out  := B"8'b0000_0000"
+          dqs_out := 0
+          dqs_oen := B"4'b1110"      // TX0=0 held low for 1/2 CK postamble
+          dq_oen  := B"4'b1111"
         }
 
         when(cycle === 28 / 4) {
@@ -516,7 +526,11 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   io.phy.resetn_delay := resetn_delay
 
   // Status outputs
-  io.init_done        := !busy && (state === Ddr3State.IDLE) && wlevel_done && rcalib_done
+  val init_done_latched = RegInit(False)
+  when(!busy && (state === Ddr3State.IDLE) && wlevel_done && rcalib_done) {
+    init_done_latched := True
+  }
+  io.init_done        := init_done_latched
   io.write_level_done := wlevel_done
   io.read_calib_done  := rcalib_done
   io.wstep            := wstep
