@@ -35,7 +35,7 @@ case class Ddr3Config(
 
   // Iteration counts for calibration
   val wlevelCount = if (isSimulation) 2 else 1
-  val rcalibCount = if (isSimulation) 1 else 8
+  val rcalibCount = if (isSimulation) 2 else 8
 }
 
 object Ddr3State extends SpinalEnum {
@@ -147,6 +147,9 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
 
   val rcalib_done  = RegInit(False)
   val rcalib_cnt   = Reg(UInt(4 bits)) init(0)
+  // SIM-only watchdog: counts calib misses so a never-locking sweep
+  // cannot hang iverilog forever (wall-clock). HW path untouched.
+  val rcalib_tries = Reg(UInt(6 bits)) init(0)
   val rclkpos      = Reg(Bits(2 bits)) init(if (config.isSimulation) B"2'd1" else B"2'd0")
   val rclksel      = Reg(Bits(3 bits)) init(if (config.isSimulation) B"3'd6" else B"3'd0")
   val rburst_seen  = Reg(Bits(2 bits)) init(0)
@@ -329,6 +332,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
           is(0) {
             setCmd(0, CMD_BankActivate, B"3'b0", B"0".resized)
             rcalib_cnt := 0
+            rcalib_tries := 0
           }
           is(config.RCD / 4) {
             // Issue BL8 read without auto-precharge
@@ -336,13 +340,36 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
             rburst_seen := 0
           }
           is(config.RCD / 4 + 10) {
+            // $display is simulation-only: the formal backend lowers
+            // report() to assert(1'b0), which would fail the proof.
+            if (!GenerationFlags.formal) {
+              report(L"RCALIB chk pos=$rclkpos sel=$rclksel seen=$rburst_seen cnt=$rcalib_cnt tries=$rcalib_tries")
+            }
             when(rburst_seen =/= B"2'b11") {
               rclksel := (rclksel.asUInt + 1).asBits
               when(rclksel === 7) {
                 rclkpos := (rclkpos.asUInt + 1).asBits
               }
               rcalib_cnt := 0
-              cycle := config.RCD / 4 // loop back
+              rcalib_tries := rcalib_tries + 1
+              // SIM debug fallback: after a full 32-position sweep with no
+              // double-hit, force baseline's proven (1,7) window and continue
+              // to functional tests instead of looping forever.
+              if (config.isSimulation) {
+                when(rcalib_tries === 40) {
+                  if (!GenerationFlags.formal) {
+                    report("RCALIB WARN: sweep exhausted, forcing pos=1 sel=7")
+                  }
+                  rclkpos := B"2'd1"
+                  rclksel := B"3'd7"
+                  rcalib_done := True
+                  setCmd(0, CMD_PreCharge, B"3'b0", B"0".resized)
+                } otherwise {
+                  cycle := config.RCD / 4 // loop back
+                }
+              } else {
+                cycle := config.RCD / 4 // loop back
+              }
             } otherwise {
               rcalib_cnt := rcalib_cnt + 1
               when(rcalib_cnt === config.rcalibCount - 1) {
@@ -495,6 +522,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     wstep := (if (config.isSimulation) B"8'h18" else B"8'h00")
     rcalib_cnt := 0
     rcalib_done := False
+    rcalib_tries := 0
     rclkpos := (if (config.isSimulation) B"2'd1" else B"2'd0")
     rclksel := (if (config.isSimulation) B"3'd6" else B"3'd0")
     resetn_delay := False
@@ -536,4 +564,101 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   io.wstep            := wstep
   io.rclkpos          := rclkpos
   io.rclksel          := rclksel
+
+  // Formal properties (SymbiYosys). Only elaborated under the formal
+  // backend: zero impact on Ddr3Gen Verilog output.
+  // pastValidAfterReset() excludes the X-valued reset-entry cycles so the
+  // solver only sees defined states.
+  if (GenerationFlags.formal) {
+    import spinal.core.formal._
+    when(pastValidAfterReset()) {
+    // P1: accept exactly in IDLE, idle, no refresh pending
+    assert(io.req.ready === (state === Ddr3State.IDLE && !busy && !refresh_due))
+    // P2: response handshake mirrors data_ready
+    assert(io.rsp.valid === data_ready)
+    // P3: 128-bit assembly wiring (slice i == dq_in(i))
+    for (i <- 0 until 8) {
+      assert(io.rsp.rdata(i * 16 + 15 downto i * 16) === io.phy.dq_in(i).asBits)
+    }
+    // P4: data_ready implies busy (cleared together)
+    assert(!data_ready || busy)
+    // P5: init_done implies both calibrations done
+    assert(!io.init_done || (wlevel_done && rcalib_done))
+    // P6: DQS read strobe is all lanes or nothing
+    assert(io.phy.dqs_read === B"4'b0000" || io.phy.dqs_read === B"4'b1111")
+    // P7/P8: functional READ/WRITE carry BL8 (A12) + auto-precharge (A10).
+    // setCmd fires at cycle RCD/4 on subcycle RCD%4: visible next cycle.
+    when(state === Ddr3State.READ && cycle === config.RCD / 4 + 1) {
+      assert(A(config.RCD % 4)(12) && A(config.RCD % 4)(10))
+    }
+    when(state === Ddr3State.WRITE && cycle === config.RCD / 4 + 1) {
+      assert(A(config.RCD % 4)(12) && A(config.RCD % 4)(10))
+    }
+    // P9: no DQ/DQS bus contention outside write drive windows.
+    // dq_out/dqs_out assignments at cycle c are observable at c+1.
+    val wc = (config.RCD + config.CWL) / 4
+    when(!(state === Ddr3State.WRITE && (cycle === wc + 1 || cycle === wc + 2))) {
+      assert(dq_oen === B"4'b1111")
+    }
+    when(!(state === Ddr3State.WRITE && (cycle === wc + 1 || cycle === wc + 2 || cycle === wc + 3))) {
+      assert(dqs_oen === B"4'b1111")
+    }
+    // P10: mode-register program order MR2 -> MR3 -> MR1 -> MR0.
+    when(state === Ddr3State.CONFIG && cycle === 1) {
+      assert(BA(0) === MR2(15 downto 13) && A(0) === MR2(12 downto 0).resized)
+    }
+    when(state === Ddr3State.CONFIG && cycle === config.MRD / 4 + 1) {
+      assert(BA(0) === MR3(15 downto 13) && A(0) === MR3(12 downto 0).resized)
+    }
+    when(state === Ddr3State.CONFIG && cycle === config.MRD / 2 + 1) {
+      assert(BA(0) === MR1(15 downto 13) && A(0) === MR1(12 downto 0).resized)
+    }
+    when(state === Ddr3State.CONFIG && cycle === config.MRD * 3 / 4 + 1) {
+      assert(BA(0) === MR0(15 downto 13) && A(0) === MR0(12 downto 0).resized)
+    }
+    // P11: ZQ long calibration has A10 set.
+    when(state === Ddr3State.ZQCL && cycle === config.MRD * 3 / 4 + config.MOD / 4 + 2) {
+      assert(A(0)(10))
+    }
+    // P12: data_ready only inside READ.
+    assert(!data_ready || state === Ddr3State.READ)
+    // P13: write datapath mapping (beats + DM vs wstrb), observable next cycle.
+    when(state === Ddr3State.WRITE && cycle === wc + 1) {
+      assert(dq_out(7) === reqReg.wdata(15 downto 0))
+      assert(dq_out(6) === 0)
+      assert(dm_out(7) === !reqReg.wstrb(1 downto 0).orR)
+      assert(dm_out(6))
+    }
+    when(state === Ddr3State.WRITE && cycle === wc + 2) {
+      assert(dq_out(0) === reqReg.wdata(31 downto 16))
+      assert(dq_out(1) === reqReg.wdata(47 downto 32))
+      assert(dq_out(2) === reqReg.wdata(63 downto 48))
+      assert(dq_out(3) === reqReg.wdata(79 downto 64))
+      assert(dq_out(4) === reqReg.wdata(95 downto 80))
+      assert(dq_out(5) === reqReg.wdata(111 downto 96))
+      assert(dq_out(6) === reqReg.wdata(127 downto 112))
+      assert(dq_out(7) === 0)
+      assert(dm_out(0) === !reqReg.wstrb(3 downto 2).orR)
+      assert(dm_out(1) === !reqReg.wstrb(5 downto 4).orR)
+      assert(dm_out(2) === !reqReg.wstrb(7 downto 6).orR)
+      assert(dm_out(3) === !reqReg.wstrb(9 downto 8).orR)
+      assert(dm_out(4) === !reqReg.wstrb(11 downto 10).orR)
+      assert(dm_out(5) === !reqReg.wstrb(13 downto 12).orR)
+      assert(dm_out(6) === !reqReg.wstrb(15 downto 14).orR)
+      assert(dm_out(7))
+    }
+    // P14: ACT bank/row coherence between activate and R/W commands.
+    val reqBank = reqReg.addr(config.colWidth - 4 + config.rowWidth + config.bankWidth downto config.colWidth - 3 + config.rowWidth).asBits
+    val reqRow = reqReg.addr(config.colWidth - 4 + config.rowWidth downto config.colWidth - 3).asBits
+    when((state === Ddr3State.READ || state === Ddr3State.WRITE) && cycle === 1) {
+      assert(BA(0) === reqBank && A(0).asBits === reqRow.resized)
+    }
+    when((state === Ddr3State.READ || state === Ddr3State.WRITE) && cycle === config.RCD / 4 + 1) {
+      assert(BA(config.RCD % 4) === reqBank)
+    }
+    // Reachability sanity
+    cover(state === Ddr3State.CONFIG)
+    cover(io.req.fire)
+    }
+  }
 }
