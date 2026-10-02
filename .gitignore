@@ -24,3 +24,5 @@ __pycache__/
 *.py[cod]
 
 /formal/
+formal_*.log
+formal_*.err

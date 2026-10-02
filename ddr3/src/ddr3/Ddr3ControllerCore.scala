@@ -505,7 +505,9 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
       }
     }
   } otherwise {
-    // Reset condition
+    // Reset condition: park ALL bus-driving regs (OEN high = Hi-Z) so no
+    // stale drive persists across a reset. Same values as the per-cycle
+    // defaults: zero functional change, but provably clean.
     busy := True
     data_ready := False
     CKE := False
@@ -514,6 +516,15 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
       nCAS(i) := True
       nWE(i)  := True
     }
+    dq_oen := B"4'b1111"
+    dqs_oen := B"4'b1111"
+    dqs_out := 0
+    dm_out := B"8'b1111_1111"
+    for (i <- 0 until 8) {
+      dq_out(i) := 0
+    }
+    dqs_read := 0
+    dqs_hold := False
     tick_counter := (if (config.isSimulation) U(1, 17 bits) else U(60000, 17 bits))
     tick := False
     cycle := 0
@@ -600,7 +611,8 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     when(!(state === Ddr3State.WRITE && (cycle === wc + 1 || cycle === wc + 2))) {
       assert(dq_oen === B"4'b1111")
     }
-    when(!(state === Ddr3State.WRITE && (cycle === wc + 1 || cycle === wc + 2 || cycle === wc + 3))) {
+    // NB: WRITE_LEVELING drives DQS (test strobe) by design: excluded.
+    when(!(state === Ddr3State.WRITE_LEVELING) && !(state === Ddr3State.WRITE && (cycle === wc + 1 || cycle === wc + 2 || cycle === wc + 3))) {
       assert(dqs_oen === B"4'b1111")
     }
     // P10: mode-register program order MR2 -> MR3 -> MR1 -> MR0.
