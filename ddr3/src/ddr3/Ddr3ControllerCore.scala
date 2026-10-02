@@ -260,11 +260,28 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   // 8 FIFO slots. A 2-cycle pulse covered burst 1 only (VCD-proven:
   // rd_en drained at burst-1 end, dqs_en closed on its trailing edge,
   // burst 2 arrived with the window shut). Same start, longer tail.
+  //
+  // The pulse is ALSO asserted during WRITE: this keeps dqs_en permanently
+  // open after init, which kills the history-dependent pre-arm edge.
+  // dqs_en rising while DQSIN is Hi-Z makes DQSR90 go 0->X (a Verilog
+  // posedge) that pre-loads wpt_q, so the preamble latches a bonus WPOINT
+  // step (rotation 4); with dqs_en already open the preamble is consumed
+  // silently (rotation 2). Whether dqs_en had decayed since the previous
+  // access decided the rotation - VCD proven: reads 1-2 rot 4, reads 3+
+  // rot 2. With the window held open across writes, dqs_en only ever rises
+  // while DQSIN is driven (write strobe / read bursts), never 0->X, so
+  // every capture runs un-pre-armed (rot 2), from calib to functional reads.
+  // Side effect (harmless): the write strobe self-captures write data into
+  // the FIFO via DQSIN loopback; the next read's HOLD reset + full double
+  // burst overwrite every slot.
   val rdCyc = rclkpos.asUInt.resize(5) + config.RCD / 4 + 1
   val dqs_read = Reg(Bits(4 bits)) init(0)
   dqs_read := 0
   when((state === Ddr3State.READ || state === Ddr3State.READ_CALIB) &&
        (cycle === rdCyc || cycle === rdCyc + 1 || cycle === rdCyc + 2 || cycle === rdCyc + 3)) {
+    dqs_read := B"4'b1111"
+  }
+  when(state === Ddr3State.WRITE) {
     dqs_read := B"4'b1111"
   }
 
