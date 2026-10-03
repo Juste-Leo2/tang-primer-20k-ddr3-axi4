@@ -193,8 +193,10 @@ module tb_spinal;
     localparam [127:0] PAT2 = 128'hDEADBEEFCAFEBABE12345678ABCDEF01;
 
     initial begin : test
+`ifndef NO_VCD
         $dumpfile("tb_spinal.vcd");
         $dumpvars(0, tb_spinal);
+`endif
         errors = 0;
         $display("Powering up and reset the controller");
         $fflush();

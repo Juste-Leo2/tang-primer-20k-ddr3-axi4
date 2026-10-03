@@ -127,6 +127,7 @@ def main():
     ap.add_argument("--spinal", action="store_true", help="SpinalHDL Ddr3ControllerSim")
     ap.add_argument("--run", action="store_true", help="also execute vvp after build")
     ap.add_argument("--fastdll", action="store_true", help="spinal sim: force DLL lock")
+    ap.add_argument("--no-vcd", action="store_true", help="skip VCD dump (much faster sim)")
     args = ap.parse_args()
 
     if not shutil.which(IVERILOG) and not Path(IVERILOG).exists():
@@ -146,6 +147,9 @@ def main():
     elif args.spinal:
         out = SIM / "tb_spinal.vvp"
         extra = ["FASTDLL"] if args.fastdll else []
+        if args.no_vcd:
+            extra.append("NO_VCD")
+            out = SIM / "tb_spinal_fast.vvp"
         rc = build([SIM / "tb_spinal.v",
                     SIM / "ddr3_vanilla.v",
                     REPO / "hw" / "gen" / "Ddr3ControllerSim.v",
