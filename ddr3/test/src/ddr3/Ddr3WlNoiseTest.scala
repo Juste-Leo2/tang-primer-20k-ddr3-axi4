@@ -72,6 +72,7 @@ class Ddr3WlNoiseHarness(val axiConfig: Axi4Config, val config: Ddr3Config,
   engine.io.wlFirst          := core.io.wlFirst
   engine.io.wlLast           := core.io.wlLast
   engine.io.wlMatchN         := core.io.wlMatchN
+  engine.io.brkScores        := core.io.brkScores
 
   io.uart_tx    := engine.io.uart_tx
   io.test_pass  := engine.io.test_pass

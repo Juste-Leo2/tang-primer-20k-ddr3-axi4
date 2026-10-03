@@ -124,6 +124,7 @@ class Ddr3TesterTop(
     engine.io.wlFirst          := ddr3.io.wlFirst
     engine.io.wlLast           := ddr3.io.wlLast
     engine.io.wlMatchN         := ddr3.io.wlMatchN
+    engine.io.brkScores        := ddr3.io.brkScores
 
     io.uart_txp := engine.io.uart_tx
 

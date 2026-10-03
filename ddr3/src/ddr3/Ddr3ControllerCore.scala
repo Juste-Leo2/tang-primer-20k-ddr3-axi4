@@ -49,6 +49,16 @@ case class Ddr3Config(
   // few steps away (sim: good-write below echo start; HW: C=6 at -1
   // vs C=4 at 0). -1 = current best working point.
   val WL_LOCK_OFF = -1
+  // Bracket search half-width around the WL lock: candidates are measured
+  // at lock-HALF..lock+HALF (center first, then alternating sides), each
+  // with a full training + poison + sweep-2, and the best write score wins.
+  // Strictly-greater wins, so ties keep the echo-locked center (sim
+  // verdicts stay identical) and nearer candidates beat farther ones.
+  // TEMPORARY ±1 (was ±2): saves 2 rounds of TB wall-clock while the
+  // capture-drift root fix is pending. The drift is traffic-dependent, NOT
+  // candidate-count-dependent — this is iteration speed, not a fix.
+  // ([BRK] nibbles 3-4 read 0 while HALF=1.)
+  val WL_BRK_HALF = 1
   val rcalibCount = if (isSimulation) 2 else 8
 }
 
@@ -97,6 +107,10 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     val wlFirst     = out Bits(8 bits)
     val wlLast      = out Bits(8 bits)
     val wlMatchN    = out Bits(8 bits)
+    // Bracket scores: one write-score nibble per candidate, idx order
+    // (0=center, 1=-1, 2=+1, 3=-2, 4=+2). Latched during calibration,
+    // reported on UART as [BRK s=HHHHH].
+    val brkScores   = out Bits(20 bits)
 
     // Direct interface to GowinDdr3Phy
     val phy = new Bundle {
@@ -177,6 +191,23 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   val wlMatchNR = Reg(UInt(8 bits)) init(0)
   val wlVoteN  = Reg(UInt(3 bits)) init(0)
   val wlVoteCnt = Reg(UInt(3 bits)) init(0)
+  // Write-bracketing search state: after the WL echo lock, re-measure the
+  // write score at neighboring delays and keep the best. The read side
+  // re-locks on every candidate (full sweep-2), so bestCnt purely reflects
+  // write quality at that delay.
+  val brk_active  = RegInit(False)
+  val brk_idx     = Reg(UInt(3 bits)) init(0)
+  val brk_lockW   = Reg(Bits(8 bits)) init(0)
+  val brk_bestW   = Reg(Bits(8 bits)) init(0)
+  val brk_bestC   = Reg(UInt(4 bits)) init(0)
+  val brk_bestPos = Reg(Bits(2 bits)) init(0)
+  val brk_bestSel = Reg(Bits(3 bits)) init(0)
+  val brk_bestRot = Reg(UInt(3 bits)) init(0)
+  val brkScores   = Reg(Bits(20 bits)) init(0)
+  // Candidate offsets in visit order: center, -1, +1, -2, +2.
+  val brkOffLut = Vec(S(0, 4 bits), S(-1, 4 bits), S(1, 4 bits), S(-2, 4 bits), S(2, 4 bits))
+  def brkCandW(i: UInt): Bits =
+    (brk_lockW.asUInt.resize(9).asSInt + brkOffLut(i).resize(9))(7 downto 0).asBits
   val wstep        = Reg(Bits(8 bits)) init(if (config.isSimulation) B"8'h18" else B"8'h00")
 
   val rcalib_done  = RegInit(False)
@@ -322,6 +353,17 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     dqs_read := B"4'b1111"
   }
   when(state === Ddr3State.WRITE) {
+    dqs_read := B"4'b1111"
+  }
+  // Drift fix: also hold the window open across calibration IDLE/REFRESH
+  // gaps (wlevel done, read side not locked yet). dqs_en is never reset per
+  // sweep: letting rd_en drain in a gap makes its level at the next burst-1
+  // a function of gap-edge history (float/Hi-Z DQS edges with rd_en=0 close
+  // it), so every sweep-2 measured a different window. Held open, every
+  // round meets identical gating (preamble consumed silently, WPOINT from
+  // the cycle-0 HOLD reset) and rounds differ only by W/knobs/content.
+  // Functional traffic (rcalib_done) keeps the proven regime untouched.
+  when(!rcalib_done && wlevel_done && (state === Ddr3State.IDLE || state === Ddr3State.REFRESH)) {
     dqs_read := B"4'b1111"
   }
 
@@ -475,8 +517,18 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
               // cannot lock there.
               when(wlevel_cnt === config.wlevelCount - 1 && wstep.asUInt >= 8) {
                 wlevel_done := True
-                // Apply the lock offset (default 0 = lock where counted).
-                wstep := (wstep.asUInt.resize(9).asSInt + S(config.WL_LOCK_OFF, 9 bits))(7 downto 0).asBits
+                // Bracket center = today's lock point (echo + OFF): the
+                // search measures around it, ties keep it.
+                val lockW = (wstep.asUInt.resize(9).asSInt + S(config.WL_LOCK_OFF, 9 bits))(7 downto 0).asBits
+                wstep := lockW
+                // Arm the bracket search (the FF-sentinel watchdog path
+                // below leaves it disarmed and finishes as before).
+                brk_lockW := lockW
+                brk_bestW := lockW
+                brk_bestC := 0
+                brk_idx := 0
+                brkScores := 0
+                brk_active := True
                 setCmd(0, CMD_SetModeReg, MR1(15 downto 13), MR1(12 downto 0)) // exit write leveling
               } otherwise {
                 cycle := config.WLMRD / 4 - 1
@@ -572,9 +624,64 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
               // rcalib_done (hence init_done) only after the post-training
               // sweep. Sweep-1 ends with training still pending: firing done
               // there would let user traffic start mid-calibration (it would
-              // stall on !ready at best). Sweep-2 (training done) locks real.
+              // stall on !ready at best). Sweep-2 (training done) locks real,
+              // or advances the bracket search when armed.
               when(!training) {
-                rcalib_done := True
+                when(brk_active) {
+                  // Confirmation pass (idx 2*HALF+1) at the winner's W: the
+                  // extra bracket traffic shifts the capture-rotation history
+                  // (TB showed stale-beat/X mixes with a correctly restored
+                  // setting), so the read side is re-locked here, in the
+                  // post-search context the functional traffic will see.
+                  // W is untouched; bestCnt already holds this run's score.
+                  when(brk_idx === config.WL_BRK_HALF * 2 + 1) {
+                    brk_active := False
+                    rcalib_done := True
+                  } otherwise {
+                  // Latch this candidate's write score (idx order in comment
+                  // on brkScores). Static slices: dynamic part-select
+                  // assignment is not supported.
+                  switch(brk_idx) {
+                    is(0) { brkScores(3 downto 0) := bestCnt.asBits }
+                    is(1) { brkScores(7 downto 4) := bestCnt.asBits }
+                    is(2) { brkScores(11 downto 8) := bestCnt.asBits }
+                    is(3) { brkScores(15 downto 12) := bestCnt.asBits }
+                    default { brkScores(19 downto 16) := bestCnt.asBits }
+                  }
+                  // Winner so far: the center (idx 0) is the reference and
+                  // sticks on ties; later candidates replace it only on a
+                  // strictly better write score. Mux form (no combinational
+                  // read-after-write on the saved regs).
+                  val newBest = (brk_idx === 0) || (bestCnt > brk_bestC)
+                  val winW   = newBest ? wstep   | brk_bestW
+                  val winC   = newBest ? bestCnt | brk_bestC
+                  val winPos = newBest ? bestPos | brk_bestPos
+                  val winSel = newBest ? bestSel | brk_bestSel
+                  val winRot = newBest ? bestRot | brk_bestRot
+                  brk_bestW := winW
+                  brk_bestC := winC
+                  brk_bestPos := winPos
+                  brk_bestSel := winSel
+                  brk_bestRot := winRot
+                  when(brk_idx === config.WL_BRK_HALF * 2) {
+                    // Search complete: move to the winner's W and run the
+                    // confirmation pass (same training + poison + sweep-2).
+                    // The read side is NOT restored here: the confirm run
+                    // re-locks it in the current context (see above).
+                    wstep := winW
+                    brk_idx := brk_idx + 1
+                    training := True
+                  } otherwise {
+                    // Next candidate: re-run the proven training + poison
+                    // + sweep-2 path (training flag drives it via IDLE).
+                    brk_idx := brk_idx + 1
+                    wstep := brkCandW(brk_idx + 1)
+                    training := True
+                  }
+                  }
+                } otherwise {
+                  rcalib_done := True
+                }
               }
               setCmd(0, CMD_PreCharge, B"3'b0", B"0".resized)
             } otherwise {
@@ -793,6 +900,15 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     wlMatchNR := 0
     wlVoteN := 0
     wlVoteCnt := 0
+    brk_active := False
+    brk_idx := 0
+    brk_lockW := 0
+    brk_bestW := 0
+    brk_bestC := 0
+    brk_bestPos := 0
+    brk_bestSel := 0
+    brk_bestRot := 0
+    brkScores := 0
     wlevel_done := False
     wstep := (if (config.isSimulation) B"8'h18" else B"8'h00")
     rcalib_cnt := 0
@@ -862,6 +978,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   io.wlFirst          := wlFirstR
   io.wlLast           := wlLastR
   io.wlMatchN         := wlMatchNR.asBits
+  io.brkScores        := brkScores
 
   // Formal properties (SymbiYosys). Only elaborated under the formal
   // backend: zero impact on Ddr3Gen Verilog output.

@@ -35,6 +35,7 @@ class Ddr3Controller(val config: Ddr3Config = Ddr3Config()) extends Component {
     val wlFirst          = out Bits(8 bits)
     val wlLast           = out Bits(8 bits)
     val wlMatchN         = out Bits(8 bits)
+    val brkScores        = out Bits(20 bits)
 
     // Physical DDR3 memory pads (matches tang20k.cst constraints)
     val pad = master(Ddr3Pins(config.rowWidth, config.bankWidth))
@@ -106,4 +107,5 @@ class Ddr3Controller(val config: Ddr3Config = Ddr3Config()) extends Component {
   io.wlFirst          := coreArea.core.io.wlFirst
   io.wlLast           := coreArea.core.io.wlLast
   io.wlMatchN         := coreArea.core.io.wlMatchN
+  io.brkScores        := coreArea.core.io.brkScores
 }
