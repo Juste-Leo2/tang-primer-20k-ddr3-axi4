@@ -34,7 +34,21 @@ case class Ddr3Config(
   val usec = 100 // 1 microsecond in 100 MHz pclk cycles
 
   // Iteration counts for calibration
-  val wlevelCount = if (isSimulation) 2 else 1
+  // HW also requires 2 consecutive WL matches now: a single-hit lock
+  // proved marginal on silicon (W=0A, n=01 glitch, sweep C=4).
+  val wlevelCount = 2
+  // Majority vote: strobes per wstep and hits needed for a verdict.
+  // TH=2/4: with a flickering echo (~50% hits in-window) P(verdict)
+  // is ~69% (vs ~31% at 3/4, which filtered everything on HW).
+  // Consecutive-verdict lock + warmup still reject isolated glitches.
+  val WL_VOTES = 4
+  val WL_VOTE_TH = 2
+  // Lock offset added to the count-complete wstep at lock time.
+  // Verdict-true rounds restrobe the same wstep (HEAD-like confirm),
+  // so the lock lands on the first verdict; the write eye may sit a
+  // few steps away (sim: good-write below echo start; HW: C=6 at -1
+  // vs C=4 at 0). -1 = current best working point.
+  val WL_LOCK_OFF = -1
   val rcalibCount = if (isSimulation) 2 else 8
 }
 
@@ -161,6 +175,8 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   val wlLastR  = Reg(Bits(8 bits)) init(0)
   val wlSeenR  = RegInit(False)
   val wlMatchNR = Reg(UInt(8 bits)) init(0)
+  val wlVoteN  = Reg(UInt(3 bits)) init(0)
+  val wlVoteCnt = Reg(UInt(3 bits)) init(0)
   val wstep        = Reg(Bits(8 bits)) init(if (config.isSimulation) B"8'h18" else B"8'h00")
 
   val rcalib_done  = RegInit(False)
@@ -396,6 +412,8 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
             wlLastR := 0
             wlSeenR := False
             wlMatchNR := 0
+            wlVoteN := 0
+            wlVoteCnt := 0
           }
           is(config.WLMRD / 4 - 1, config.WLMRD / 4 + 1, config.WLMRD / 4 + 2,
              config.WLMRD / 4 + 3, config.WLMRD / 4 + 4, config.WLMRD / 4 + 5) {
@@ -409,23 +427,32 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
           is(config.WLMRD / 4 + 6) {
             dqs_out := 0
             dqs_oen := 0
-            wlevel_tries := wlevel_tries + 1
             // WL echo sample shared by the lock logic and the passive
             // instrumentation below (same node, no timing change).
             val wlMatch = io.phy.dq_raw(0) && io.phy.dq_raw(8)
-            // Passive WL match-map capture for HW debug (UART [WLMAP]).
-            // Records every visited wstep; never touches lock/flow.
-            wlMapR(wstep.asUInt) := wlMatch
-            when(wlMatch) {
-              when(!wlSeenR) {
-                wlSeenR := True
-                wlFirstR := wstep
+            // Majority vote over WL_VOTES strobes per wstep: on silicon a
+            // ~1ns echo sampled by a 10ns clock is jitter-dominated, so a
+            // single sample flickers (HW showed sporadic n=02 locks at
+            // varying W). Verdict needs WL_VOTE_TH hits out of WL_VOTES.
+            // In sim (deterministic) verdicts equal raw samples.
+            val wlVerdict = (wlVoteCnt + wlMatch.asUInt) >= config.WL_VOTE_TH
+            when(wlVoteN === (config.WL_VOTES - 1)) {
+              wlVoteN := 0
+              wlVoteCnt := 0
+              wlevel_tries := wlevel_tries + 1
+              // Passive WL match-map capture for HW debug (UART [WLMAP]).
+              // Records the verdict per visited wstep; never touches lock/flow.
+              wlMapR(wstep.asUInt) := wlVerdict
+              when(wlVerdict) {
+                when(!wlSeenR) {
+                  wlSeenR := True
+                  wlFirstR := wstep
+                }
+                wlLastR := wstep
+                when(wlMatchNR =/= 255) {
+                  wlMatchNR := wlMatchNR + 1
+                }
               }
-              wlLastR := wstep
-              when(wlMatchNR =/= 255) {
-                wlMatchNR := wlMatchNR + 1
-              }
-            }
             // Watchdog: after 2 full wstep turns with no lock, stop looping
             // and continue with a sentinel (W=FF on UART). A silent infinite
             // loop here bricks the board with zero diagnostics; the data-eye
@@ -435,18 +462,33 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
               wlevel_done := True
               wstep := B"8'hFF"
               setCmd(0, CMD_SetModeReg, MR1(15 downto 13), MR1(12 downto 0)) // exit write leveling
-            } elsewhen(!wlMatch) {
+            } elsewhen(!wlVerdict) {
               wstep := (wstep.asUInt + 1).asBits
               wlevel_cnt := 0
               cycle := config.WLMRD / 4 - 1 // loop back
             } otherwise {
               wlevel_cnt := wlevel_cnt + 1
-              when(wlevel_cnt === config.wlevelCount - 1) {
+              // Warmup: never lock below wstep 8. The first strobes after
+              // entering WL mode can sample stale DQ (HW locked W=00 with
+              // n=02 on what looks like a startup remnant, not a window).
+              // The scan still visits 0-7 (map stays complete), it just
+              // cannot lock there.
+              when(wlevel_cnt === config.wlevelCount - 1 && wstep.asUInt >= 8) {
                 wlevel_done := True
+                // Apply the lock offset (default 0 = lock where counted).
+                wstep := (wstep.asUInt.resize(9).asSInt + S(config.WL_LOCK_OFF, 9 bits))(7 downto 0).asBits
                 setCmd(0, CMD_SetModeReg, MR1(15 downto 13), MR1(12 downto 0)) // exit write leveling
               } otherwise {
                 cycle := config.WLMRD / 4 - 1
               }
+            }
+          } otherwise {
+              // Vote still open: accumulate this strobe, restrobe same wstep.
+              when(wlMatch) {
+                wlVoteCnt := wlVoteCnt + 1
+              }
+              wlVoteN := wlVoteN + 1
+              cycle := config.WLMRD / 4 - 1 // loop back, no step
             }
           }
           is((config.WLMRD + config.MRD) / 4 + 6) {
@@ -749,6 +791,8 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     wlLastR := 0
     wlSeenR := False
     wlMatchNR := 0
+    wlVoteN := 0
+    wlVoteCnt := 0
     wlevel_done := False
     wstep := (if (config.isSimulation) B"8'h18" else B"8'h00")
     rcalib_cnt := 0
