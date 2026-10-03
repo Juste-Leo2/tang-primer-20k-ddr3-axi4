@@ -16,19 +16,15 @@ build_eda/
 
 # Simulation artifacts & traces
 simulation/*.vvp
-simulation/*.log
-simulation/*.err
 simulation/_vcd_probe.py
 *.vcd
 
-# Mill unit-test driver logs (repo root)
-unit_tests.log
-unit_tests.err
+# All logs and error captures, anywhere in the repo
+*.log
+*.err
 
 # Python cache
 __pycache__/
 *.py[cod]
 
 /formal/
-formal_*.log
-formal_*.err

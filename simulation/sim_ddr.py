@@ -105,7 +105,7 @@ def build(top_files, out_vvp, extra_defines=()):
     return sh(cmd)
 
 
-def run(vvp_file, timeout=900):
+def run(vvp_file, timeout=1800):
     log = SIM / (Path(vvp_file).stem + ".log")
     print(f"vvp streaming -> {log}", flush=True)
     with open(log, "w") as f:
