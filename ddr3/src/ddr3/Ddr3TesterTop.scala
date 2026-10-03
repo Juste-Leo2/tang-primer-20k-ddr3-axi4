@@ -120,6 +120,10 @@ class Ddr3TesterTop(
     engine.io.best_rot         := ddr3.io.best_rot
     engine.io.best_score       := ddr3.io.best_score
     engine.io.dbg_state        := ddr3.io.dbg_state
+    engine.io.wlMap            := ddr3.io.wlMap
+    engine.io.wlFirst          := ddr3.io.wlFirst
+    engine.io.wlLast           := ddr3.io.wlLast
+    engine.io.wlMatchN         := ddr3.io.wlMatchN
 
     io.uart_txp := engine.io.uart_tx
 

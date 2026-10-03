@@ -35,6 +35,10 @@ class Ddr3MemtestEngine(
     val best_rot         = in UInt(3 bits)
     val best_score       = in UInt(4 bits)
     val dbg_state        = in Bits(4 bits)
+    val wlMap            = in Bits(256 bits)
+    val wlFirst          = in Bits(8 bits)
+    val wlLast           = in Bits(8 bits)
+    val wlMatchN         = in Bits(8 bits)
 
     // User outputs
     val uart_tx          = out Bool()
@@ -143,11 +147,16 @@ class Ddr3MemtestEngine(
   }
 
   // --- 3. Main Memtest FSM ---
+  // WL match-map as 64 printable nibbles (MSB first), latched statically.
+  val wlMapNib = Vec(Bits(4 bits), 64)
+  for (i <- 0 until 64) wlMapNib(i) := io.wlMap(i * 4 + 3 downto i * 4)
+
   val fsm = new StateMachine {
     val sBootBanner: State    = new State
     val sWaitCalib: State     = new State
     val sPrintCalib: State    = new State
     val sPrintBanner: State   = new State
+    val sPrintWlmap: State    = new State
     val sSingleWriteAW: State = new State
     val sSingleWriteW0: State = new State
     val sSingleWriteW1: State = new State
@@ -290,7 +299,50 @@ class Ddr3MemtestEngine(
           is(32) { printChar := 0x0D; printValid := True; msgIndex := msgIndex + 1 } // \r
           is(33) { printChar := 0x0A; printValid := True; msgIndex := msgIndex + 1 } // \n
           default {
-            goto(sSingleWriteAW)
+            msgIndex := 0
+            goto(sPrintWlmap)
+          }
+        }
+      }
+    }
+
+    // WL match-map dump for HW debug: "\r\n[WLMAP f=HH l=HH n=HH
+    // m=<64 hex>]\r\n" (map bit k = echo match at wstep k, MSB first).
+    // Printed once after the banner, before the memtest starts.
+    sPrintWlmap.whenIsActive {
+      when(!printValid) {
+        switch(msgIndex) {
+          is(0)  { printChar := 0x0D; printValid := True; msgIndex := msgIndex + 1 } // \r
+          is(1)  { printChar := 0x0A; printValid := True; msgIndex := msgIndex + 1 } // \n
+          is(2)  { printChar := 0x5B; printValid := True; msgIndex := msgIndex + 1 } // [
+          is(3)  { printChar := 0x57; printValid := True; msgIndex := msgIndex + 1 } // W
+          is(4)  { printChar := 0x4C; printValid := True; msgIndex := msgIndex + 1 } // L
+          is(5)  { printChar := 0x4D; printValid := True; msgIndex := msgIndex + 1 } // M
+          is(6)  { printChar := 0x41; printValid := True; msgIndex := msgIndex + 1 } // A
+          is(7)  { printChar := 0x50; printValid := True; msgIndex := msgIndex + 1 } // P
+          is(8)  { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(9)  { printChar := 0x66; printValid := True; msgIndex := msgIndex + 1 } // f
+          is(10) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
+          is(11) { printChar := nibbleToAscii(io.wlFirst(7 downto 4)); printValid := True; msgIndex := msgIndex + 1 }
+          is(12) { printChar := nibbleToAscii(io.wlFirst(3 downto 0)); printValid := True; msgIndex := msgIndex + 1 }
+          is(13) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(14) { printChar := 0x6C; printValid := True; msgIndex := msgIndex + 1 } // l
+          is(15) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
+          is(16) { printChar := nibbleToAscii(io.wlLast(7 downto 4)); printValid := True; msgIndex := msgIndex + 1 }
+          is(17) { printChar := nibbleToAscii(io.wlLast(3 downto 0)); printValid := True; msgIndex := msgIndex + 1 }
+          is(18) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(19) { printChar := 0x6E; printValid := True; msgIndex := msgIndex + 1 } // n
+          is(20) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
+          is(21) { printChar := nibbleToAscii(io.wlMatchN(7 downto 4)); printValid := True; msgIndex := msgIndex + 1 }
+          is(22) { printChar := nibbleToAscii(io.wlMatchN(3 downto 0)); printValid := True; msgIndex := msgIndex + 1 }
+          is(23) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(24) { printChar := 0x6D; printValid := True; msgIndex := msgIndex + 1 } // m
+          is(25) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
+          is(90) { printChar := 0x0D; printValid := True; msgIndex := msgIndex + 1 } // \r
+          is(91) { printChar := 0x0A; printValid := True; msgIndex := 0; goto(sSingleWriteAW) } // \n
+          default {
+            // Map nibbles MSB first: msgIndex 26 -> bits 255..252, ... 89 -> bits 3..0.
+            printChar := nibbleToAscii(wlMapNib(U(63, 6 bits) - (msgIndex - 26).resize(6))); printValid := True; msgIndex := msgIndex + 1
           }
         }
       }

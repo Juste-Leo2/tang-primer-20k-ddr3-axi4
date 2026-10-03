@@ -35,6 +35,10 @@ class Ddr3TesterSimHarness(val axiConfig: Axi4Config, val config: Ddr3Config, va
   engine.io.best_rot         := core.io.best_rot
   engine.io.best_score       := core.io.best_score
   engine.io.dbg_state        := core.io.dbg_state
+  engine.io.wlMap            := core.io.wlMap
+  engine.io.wlFirst          := core.io.wlFirst
+  engine.io.wlLast           := core.io.wlLast
+  engine.io.wlMatchN         := core.io.wlMatchN
 
   io.uart_tx   := engine.io.uart_tx
   io.test_pass := engine.io.test_pass
@@ -112,8 +116,9 @@ class Ddr3TesterTopTest extends AnyFunSuite {
         }
       }
 
-      // Wait for test_pass or test_err
-      dut.clockDomain.waitSamplingWhere(3000)(dut.io.test_pass.toBoolean || dut.io.test_err.toBoolean)
+      // Wait for test_pass or test_err (full boot incl. 256-step WL sweep
+      // takes ~7000+ cycles now).
+      dut.clockDomain.waitSamplingWhere(12000)(dut.io.test_pass.toBoolean || dut.io.test_err.toBoolean)
 
       println(s"\n[SIM] Console output received:\n${receivedChars.toString.trim}")
       assert(!dut.io.test_err.toBoolean, "Ddr3MemtestEngine reported an error!")

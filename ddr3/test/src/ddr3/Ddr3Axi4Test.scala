@@ -93,9 +93,9 @@ class Ddr3Axi4Test extends AnyFunSuite {
         println("[SIM] Calibration complete! Ddr3Axi4 ready for AXI transactions.")
       }
 
-      // Wait for init_done with timeout. Full calib is long: 2 sweeps
-      // x 41 iters x ~13 pclk + training/poison writes.
-      dut.clockDomain.waitSamplingWhere(3000)(dut.io.init_done.toBoolean)
+      // Wait for init_done with timeout. Full calib is long: 256-step WL
+      // eye sweep + 2 read sweeps x 41 iters x ~13 pclk + training/poison.
+      dut.clockDomain.waitSamplingWhere(12000)(dut.io.init_done.toBoolean)
       assert(dut.io.init_done.toBoolean, "Ddr3Axi4 failed to initialize")
 
       dut.clockDomain.waitSampling(5)

@@ -76,6 +76,13 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     val best_rot    = out UInt(3 bits)
     val best_score  = out UInt(4 bits)
     val dbg_state   = out Bits(4 bits)
+    // WL instrumentation (passive capture for HW debug via UART):
+    // match map (1 bit per wstep), first/last matching wstep, saturating
+    // match count. No effect on lock logic or cycle timing.
+    val wlMap       = out Bits(256 bits)
+    val wlFirst     = out Bits(8 bits)
+    val wlLast      = out Bits(8 bits)
+    val wlMatchN    = out Bits(8 bits)
 
     // Direct interface to GowinDdr3Phy
     val phy = new Bundle {
@@ -148,6 +155,12 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   val wlevel_done  = RegInit(False)
   val wlevel_cnt   = Reg(UInt(4 bits)) init(0)
   val wlevel_tries = Reg(UInt(9 bits)) init(0)
+  // WL instrumentation capture (passive, see io above).
+  val wlMapR   = Reg(Bits(256 bits)) init(0)
+  val wlFirstR = Reg(Bits(8 bits)) init(0)
+  val wlLastR  = Reg(Bits(8 bits)) init(0)
+  val wlSeenR  = RegInit(False)
+  val wlMatchNR = Reg(UInt(8 bits)) init(0)
   val wstep        = Reg(Bits(8 bits)) init(if (config.isSimulation) B"8'h18" else B"8'h00")
 
   val rcalib_done  = RegInit(False)
@@ -378,6 +391,11 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
             val mr1_wlevel = MR1 | B"16'h0084"
             setCmd(0, CMD_SetModeReg, mr1_wlevel(15 downto 13), mr1_wlevel(12 downto 0))
             wlevel_cnt := 0
+            wlMapR := 0
+            wlFirstR := 0
+            wlLastR := 0
+            wlSeenR := False
+            wlMatchNR := 0
           }
           is(config.WLMRD / 4 - 1, config.WLMRD / 4 + 1, config.WLMRD / 4 + 2,
              config.WLMRD / 4 + 3, config.WLMRD / 4 + 4, config.WLMRD / 4 + 5) {
@@ -392,6 +410,22 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
             dqs_out := 0
             dqs_oen := 0
             wlevel_tries := wlevel_tries + 1
+            // WL echo sample shared by the lock logic and the passive
+            // instrumentation below (same node, no timing change).
+            val wlMatch = io.phy.dq_raw(0) && io.phy.dq_raw(8)
+            // Passive WL match-map capture for HW debug (UART [WLMAP]).
+            // Records every visited wstep; never touches lock/flow.
+            wlMapR(wstep.asUInt) := wlMatch
+            when(wlMatch) {
+              when(!wlSeenR) {
+                wlSeenR := True
+                wlFirstR := wstep
+              }
+              wlLastR := wstep
+              when(wlMatchNR =/= 255) {
+                wlMatchNR := wlMatchNR + 1
+              }
+            }
             // Watchdog: after 2 full wstep turns with no lock, stop looping
             // and continue with a sentinel (W=FF on UART). A silent infinite
             // loop here bricks the board with zero diagnostics; the data-eye
@@ -401,7 +435,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
               wlevel_done := True
               wstep := B"8'hFF"
               setCmd(0, CMD_SetModeReg, MR1(15 downto 13), MR1(12 downto 0)) // exit write leveling
-            } elsewhen(!io.phy.dq_raw(0) || !io.phy.dq_raw(8)) {
+            } elsewhen(!wlMatch) {
               wstep := (wstep.asUInt + 1).asBits
               wlevel_cnt := 0
               cycle := config.WLMRD / 4 - 1 // loop back
@@ -710,6 +744,11 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     cycle := 0
     wlevel_cnt := 0
     wlevel_tries := 0
+    wlMapR := 0
+    wlFirstR := 0
+    wlLastR := 0
+    wlSeenR := False
+    wlMatchNR := 0
     wlevel_done := False
     wstep := (if (config.isSimulation) B"8'h18" else B"8'h00")
     rcalib_cnt := 0
@@ -775,6 +814,10 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   io.best_rot         := bestRot
   io.best_score       := bestCnt
   io.dbg_state        := state.asBits
+  io.wlMap            := wlMapR
+  io.wlFirst          := wlFirstR
+  io.wlLast           := wlLastR
+  io.wlMatchN         := wlMatchNR.asBits
 
   // Formal properties (SymbiYosys). Only elaborated under the formal
   // backend: zero impact on Ddr3Gen Verilog output.
