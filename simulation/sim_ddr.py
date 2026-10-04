@@ -105,13 +105,13 @@ def build(top_files, out_vvp, extra_defines=()):
     return sh(cmd)
 
 
-def run(vvp_file, timeout=1800):
-    log = SIM / (Path(vvp_file).stem + ".log")
+def run(vvp_file, timeout=1800, plusargs=(), log_name=None):
+    log = SIM / ((log_name or Path(vvp_file).stem) + ".log")
     print(f"vvp streaming -> {log}", flush=True)
     with open(log, "w") as f:
-        print("$", " ".join([VVP, str(vvp_file)]), flush=True)
+        print("$", " ".join([VVP, str(vvp_file)] + list(plusargs)), flush=True)
         env = get_env()
-        p = subprocess.Popen([VVP, str(vvp_file)], stdout=f,
+        p = subprocess.Popen([VVP, str(vvp_file)] + list(plusargs), stdout=f,
                              stderr=subprocess.STDOUT, env=env, cwd=str(SIM))
         try:
             return p.wait(timeout=timeout)
@@ -125,6 +125,20 @@ def main():
     ap = argparse.ArgumentParser(description="Run DDR3 iverilog simulations")
     ap.add_argument("--baseline", action="store_true", help="original nand2mario ddr3 controller")
     ap.add_argument("--spinal", action="store_true", help="SpinalHDL Ddr3ControllerSim")
+    ap.add_argument("--fast-tb", action="store_true",
+                    help="tb_fast.v: same physics, Micron DEBUG=0, STEP/phase injectable")
+    ap.add_argument("--step", type=int, default=25,
+                    help="fast-tb only: DLL STEP (read delay tap), 0..255")
+    ap.add_argument("--phase", type=int, default=0,
+                    help="fast-tb only: permanent pclk offset vs ck/fclk, in ps")
+    ap.add_argument("--wl", type=int, default=-1,
+                    help="fast-tb only: force WSTEP to this value after write "
+                         "leveling (-1 = leave the echo-locked value)")
+    ap.add_argument("--k", type=int, default=0,
+                    help="fast-tb only: offset added to the DLL STEP before it "
+                         "reaches the DQS primitives (the RTL fix under test)")
+    ap.add_argument("--map-only", action="store_true",
+                    help="fast-tb only: calibration only, skip the functional memtest")
     ap.add_argument("--run", action="store_true", help="also execute vvp after build")
     ap.add_argument("--fastdll", action="store_true", help="spinal sim: force DLL lock")
     ap.add_argument("--no-vcd", action="store_true", help="skip VCD dump (much faster sim)")
@@ -157,6 +171,24 @@ def main():
         print("BUILD rc =", rc)
         if rc == 0 and args.run:
             run(out)
+    elif args.fast_tb:
+        # STEP and phase are runtime plusargs: one build serves the whole map.
+        # ZERO_STALE_SLOTS hardens the IDES model (X on the DQ pad stores 0
+        # instead of poisoning the slot) so near-miss captures stay visible
+        # to the calibration score; tb_spinal/baseline builds are unaffected.
+        extra = ["NO_VCD", "ZERO_STALE_SLOTS"]
+        if args.map_only:
+            extra.append("MAP_ONLY")
+        out = SIM / "tb_fast.vvp"
+        rc = build([SIM / "tb_fast.v",
+                    SIM / "ddr3_vanilla.v",
+                    REPO / "hw" / "gen" / "Ddr3ControllerSim.v",
+                    GOWIN_SIM], out, extra_defines=extra)
+        print("BUILD rc =", rc)
+        if rc == 0 and args.run:
+            run(out, plusargs=[f"+step={args.step}", f"+phase={args.phase}",
+                               f"+wl={args.wl}", f"+k={args.k}"],
+                log_name=f"tb_fast_s{args.step}_p{args.phase}_w{args.wl}_k{args.k}")
     else:
         ap.print_help()
         return 1

@@ -2452,8 +2452,27 @@ always @(posedge ICLK or negedge grstn or negedge lrstn)
       Dd0 <= 0;
    else if (!lrstn)
       Dd0 <= 0;
+`ifdef ZERO_STALE_SLOTS
+   // X-GUARD FOR STALE FIFO SLOTS (sim-only hardening, fast TB only).
+   // When the DQ pad carries X (Hi-Z bus between bursts, unwritten DRAM,
+   // setup/hold-violated bits), sampling it would poison the whole IDES
+   // slot to X, and one X slot vetoes the entire 128-bit score downstream
+   // (7 fresh beats + 1 stale slot scores X instead of 7, hence invisible
+   // to the best-tracking). Real silicon has no X (resolves to 0/1) and the
+   // Scala unit harness has none either, so X here is strictly more
+   // pessimistic than both worlds it stands for. Forcing X->0 keeps the
+   // miss visible as a plain mismatch. Safety: every pattern used for
+   // scoring (trainPat, poisonPat, PAT0/1/2) is nonzero on all 16-bit beats,
+   // so a forced-0 beat can never match -> no false positives, and the 8/8
+   // early-exit still requires true perfection. Unwritten DRAM rows still
+   // read back X elsewhere, so pre-training surveys stay unmeasurable
+   // (score 0, never wins). Vendor default (no define) is untouched.
+   else
+      Dd0 <= (D === 1'b1);
+`else
    else
       Dd0 <= D;
+`endif
 
 always @(negedge ICLK or negedge grstn or negedge lrstn)
    if (!grstn)
@@ -2468,8 +2487,14 @@ always @(negedge ICLK or negedge grstn or negedge lrstn)
       Dd1_mem <= 0;
    else if (!lrstn)
       Dd1_mem <= 0;
+`ifdef ZERO_STALE_SLOTS
+   // Same X-guard as Dd0 above (raw D input here): X->0, see comment there.
+   else
+      Dd1_mem[WADDR] <= (D === 1'b1);
+`else
    else
       Dd1_mem[WADDR] <= D;
+`endif
 
 always @(posedge FCLK or negedge grstn or negedge lrstn) begin
     if (!grstn) begin
