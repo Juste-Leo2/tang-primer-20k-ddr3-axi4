@@ -24,6 +24,10 @@ class GowinDdr3Phy(rowWidth: Int = 14, bankWidth: Int = 3) extends Component {
     // Controller inputs
     val dqs_hold    = in Bool()
     val wstep       = in Bits(8 bits)
+    // Offset added to the DLL STEP before it reaches the DQS blocks. Swept by
+    // read calibration: the DLL aligns DQS to FCLK, but the IDES FIFO needs a
+    // slightly different phase and the difference is not predictable a priori.
+    val dll_step_off = in Bits(8 bits)
     val rclkpos     = in Bits(2 bits)
     val rclksel     = in Bits(3 bits)
     val dqs_read    = in Bits(4 bits)
@@ -58,7 +62,10 @@ class GowinDdr3Phy(rowWidth: Int = 14, bankWidth: Int = 3) extends Component {
   dll.io.RESET    := !io.resetn
   dll.io.STOP     := False
   dll.io.UPDNCNTL := False
-  val dllstep     = dll.io.STEP
+  val dllstep = dll.io.STEP
+  // 9-bit sum truncated to 8: the offset is a signed displacement applied to a
+  // wrapping delay tap, so 0xFF + 1 must land back on 0x00.
+  val dllstepOff = (dllstep.asUInt.resize(9) + io.dll_step_off.asUInt.resize(9))(7 downto 0).asBits
   val dlllock     = dll.io.LOCK
   io.dlllock      := dlllock
 
@@ -95,7 +102,7 @@ class GowinDdr3Phy(rowWidth: Int = 14, bankWidth: Int = 3) extends Component {
     u_dqs.io.WLOADN  := False
     u_dqs.io.RMOVE   := False
     u_dqs.io.WMOVE   := False
-    u_dqs.io.DLLSTEP := dllstep
+    u_dqs.io.DLLSTEP := dllstepOff
     u_dqs.io.WSTEP   := io.wstep
     u_dqs.io.RCLKSEL := io.rclksel
     u_dqs.io.READ    := io.dqs_read

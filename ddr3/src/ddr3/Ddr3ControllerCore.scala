@@ -49,6 +49,11 @@ case class Ddr3Config(
   // few steps away (sim: good-write below echo start; HW: C=6 at -1
   // vs C=4 at 0). -1 = current best working point.
   val WL_LOCK_OFF = -1
+  // Number of DLL STEP offsets tried by the read calibration (8-bit wrap, so
+  // the whole delay-line range is covered). The sweep walks (pos, offset)
+  // pairs, hence 4 x this. One iteration = one double-burst read, i.e.
+  // ~1024 x 14 pclk per sweep pass, and it exits early on a perfect 8/8.
+  val dllSweepCount = 256
   val rcalibCount = if (isSimulation) 2 else 8
 }
 
@@ -108,6 +113,12 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
 
       val dqs_hold    = out Bool()
       val wstep       = out Bits(8 bits)
+      // Offset added to the DLL STEP before it reaches the DQS primitives.
+      // Swept by read calibration (see below): the DLL aligns DQS to FCLK, but
+      // the IDES FIFO needs a slightly different phase, and the difference is
+      // not something we can predict (it depends on the DRAM, the board and
+      // the DLL's own tracking), so it is measured.
+      val dll_step_off = out Bits(8 bits)
       val rclkpos     = out Bits(2 bits)
       val rclksel     = out Bits(3 bits)
       val dqs_read    = out Bits(4 bits)
@@ -248,6 +259,33 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   val bestPos = Reg(Bits(2 bits)) init(B"2'd0")
   val bestSel = Reg(Bits(3 bits)) init(B"3'd0")
   val bestRot = Reg(UInt(3 bits)) init(0)
+
+  // DLL STEP offset sweep. Measured facts (doc/capture-map-observations.md):
+  // the read capture only works for ~2 taps of STEP out of 256, WSTEP has no
+  // influence at all, and the pclk/FCLK phase has none either. So the phase
+  // the DLL provides is not the phase the IDES FIFO wants, and the difference
+  // is unknowable a priori -> sweep it like rclkpos/rclksel and keep the best.
+  //
+  // The sweep covers (pos, offset) JOINTLY, not the offset alone: the best
+  // `pos` moves with the effective STEP (measured: pos=0 when the capture is
+  // aligned, pos=2 when it is not), so sweeping the offset at the pos chosen
+  // by the previous phase would stay on the shoulder and top out at 6. A single
+  // counter enumerates every (pos, offset) pair.
+  //
+  // Runs after the POST-TRAINING (pos, sel) survey (pass 2): the sweep needs
+  // trained DRAM contents to score against, and pass 1 runs pre-training
+  // (all X by design). After the sweep, pass 3 re-surveys (pos, sel, rot)
+  // under the winning offset and locks. The training data does not depend on
+  // either axis (writes use WSTEP), so no re-write is needed between iterations.
+  val dllOff        = Reg(UInt(8 bits)) init(0)
+  val dllSweepOn    = RegInit(False)
+  val dllSweepDone  = RegInit(False)
+  val dllTries      = Reg(UInt(10 bits)) init(0)
+  val bestOff       = Reg(UInt(8 bits)) init(0)
+  val bestCntDll    = Reg(UInt(4 bits)) init(0)
+  // Set at sweep end: IDLE re-enters READ_CALIB for the confirming pass-3
+  // survey under the winning offset, then locks.
+  val needFinalSurvey = RegInit(False)
 
   // Autonomous Refresh timer (every 7.8 us = 781 cycles @ 100MHz)
   // Sim uses a shorter period so iverilog runs cover several refreshes.
@@ -523,7 +561,11 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
             bestCnt := 0
             bestPos := rclkpos
             bestSel := rclksel
-            bestRot := 0
+bestRot := 0
+            dllSweepOn := False
+            dllTries := 0
+            bestOff := 0
+            bestCntDll := 0
           }
           is(config.RCD / 4) {
             // Burst 1 of 2, BL8 without auto-precharge.
@@ -546,39 +588,114 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
             if (!GenerationFlags.formal) {
               report(L"RCALIB chk pos=$rclkpos sel=$rclksel seen=$rburst_seen score=$sweepScore rot=$sweepRot latch=$trainLatch best=$bestCnt tries=$rcalib_tries")
             }
-            // Best-of-sweep eye search: strictly better rotation-corrected
-            // beat score (0..8). No early stop: one full survey, then lock
-            // the best setting AND its rotation.
-            when(sweepScore > bestCnt) {
-              bestCnt := sweepScore
-              bestPos := rclkpos
-              bestSel := rclksel
-              bestRot := sweepRot
-            }
-            rclksel := (rclksel.asUInt + 1).asBits
-            when(rclksel === 7) {
-              rclkpos := (rclkpos.asUInt + 1).asBits
-            }
             rcalib_cnt := 0
             rcalib_tries := rcalib_tries + 1
-            // Survey length covers the full 32-setting grid (plus margin):
-            // lock best, precharge, continue to functional tests.
-            when(rcalib_tries === 40) {
-              if (!GenerationFlags.formal) {
-                report(L"RCALIB lock best pos=$bestPos sel=$bestSel rot=$bestRot score=$bestCnt")
+            // Two phases on the same iteration slot. Phase 1 surveys the
+            // 32-setting (pos, sel) read-window grid; phase 2 sweeps the DLL
+            // STEP offset at the best setting found. Same proven per-iteration
+            // flow (ACT / double burst / latch / score) for both, only the
+            // axis that moves differs.
+            when(dllSweepOn) {
+              when(sweepScore > bestCntDll) {
+                bestCntDll := sweepScore
+                bestOff := dllOff
+                bestPos := rclkpos
+                bestSel := rclksel
+                bestRot := sweepRot
               }
-              rclkpos := bestPos
-              rclksel := bestSel
-              // rcalib_done (hence init_done) only after the post-training
-              // sweep. Sweep-1 ends with training still pending: firing done
-              // there would let user traffic start mid-calibration (it would
-              // stall on !ready at best). Sweep-2 (training done) locks real.
-              when(!training) {
-                rcalib_done := True
+              dllTries := dllTries + 1
+              // 8/8 beats is the best physically possible: stop there instead
+              // of grinding through the rest of the grid.
+              when((dllTries === (config.dllSweepCount * 4 - 1)) || (bestCntDll === 8)) {
+                dllOff := bestOff
+                rclkpos := bestPos
+                bestCnt := bestCntDll
+                dllSweepDone := True
+                dllSweepOn := False
+                // Pass 3 next: IDLE re-enters READ_CALIB for the confirming
+                // survey under the winning offset (it re-ACTs the row, so the
+                // PRECHARGE below is still required before leaving).
+                needFinalSurvey := True
+                if (!GenerationFlags.formal) {
+                  report(L"RCALIB dll off=$bestOff pos=$bestPos score=$bestCntDll tries=$dllTries")
+                }
+                // Exit to IDLE (cycle falls through to RCD/4+11+RP/4): the row
+                // is open and a refresh may be pending (it fires from IDLE), so
+                // PRECHARGE first or the Micron model refuses the REFRESH.
+                setCmd(0, CMD_PreCharge, B"3'b0", B"0".resized)
+              } otherwise {
+                // next (pos, offset) pair: pos in the low bits, offset above
+                dllOff := (dllTries + 1).resize(10)(9 downto 2)
+                rclkpos := (dllTries + 1).resize(10)(1 downto 0).asBits
+                cycle := config.RCD / 4
               }
-              setCmd(0, CMD_PreCharge, B"3'b0", B"0".resized)
             } otherwise {
-              cycle := config.RCD / 4 // loop back
+              // Best-of-sweep eye search: strictly better rotation-corrected
+              // beat score (0..8). No early stop: one full survey, then lock
+              // the best setting AND its rotation.
+              when(sweepScore > bestCnt) {
+                bestCnt := sweepScore
+                bestPos := rclkpos
+                bestSel := rclksel
+                bestRot := sweepRot
+              }
+              rclksel := (rclksel.asUInt + 1).asBits
+              when(rclksel === 7) {
+                rclkpos := (rclkpos.asUInt + 1).asBits
+              }
+              // Survey length covers the full 32-setting grid (plus margin).
+              when(rcalib_tries === 40) {
+                rclkpos := bestPos
+                rclksel := bestSel
+                // Grid done. Pass 1 (pre-training, all X by design): never sweep,
+                // fall through to IDLE for the training/poison writes exactly
+                // like the proven flow. Pass 2 (trained data): start the DLL
+                // offset sweep. Pass 3 (offset already measured): finish.
+                when(!training && !dllSweepDone) {
+                  dllSweepOn := True
+                  dllTries := 0
+                  dllOff := 0
+                  bestOff := 0
+                  bestCntDll := 0
+                  rcalib_tries := 0
+                  // Force an EVEN sel during the sweep: with rclksel[0]=1 the
+                  // capture clock (DQSW90) is delayed by DLLSTEP itself, so it
+                  // moves together with the DQS being swept and the relative
+                  // alignment never changes (sweep provably futile). With an
+                  // even sel the clock (DQSW0, WSTEP-based) stays fixed while
+                  // the DQS scans. Pass 3 re-surveys ALL sel afterwards, so
+                  // the final lock stays free to pick an odd sel if best.
+                  rclksel(0) := False
+                  // Loop back into the sweep. Falling through to cycle 13
+                  // would exit to IDLE (the historical hand-off to the
+                  // training write), and the sweep would never run: the next
+                  // READ_CALIB pass resets dllSweepOn and rcalib_done would
+                  // stay low forever.
+                  cycle := config.RCD / 4
+                } otherwise {
+                  dllSweepOn := False
+                  if (!GenerationFlags.formal) {
+                    report(L"RCALIB lock best pos=$bestPos sel=$bestSel rot=$bestRot score=$bestCnt")
+                  }
+                  // rcalib_done (hence init_done) only after the post-training
+                  // sweep. Sweep-1 ends with training still pending: firing done
+                  // there would let user traffic start mid-calibration (it
+                  // would stall on !ready at best). Sweep-2 (training done)
+                  // locks real.
+                  when(!training) {
+                    rcalib_done := True
+                  }
+                  // Precharge on the finish path only (exit to IDLE). The
+                  // sweep-start path keeps the row open on purpose: the sweep
+                  // loop never re-activates (is(0) runs once per pass) and its
+                  // READs need the row left open by the survey — exactly like
+                  // the survey iterations themselves. Refreshes only fire from
+                  // IDLE, so no PRECHARGE is needed across the hand-off.
+                  setCmd(0, CMD_PreCharge, B"3'b0", B"0".resized)
+                }
+              } otherwise {
+                cycle := config.RCD / 4 // loop back
+              }
             }
           }
           is(config.RCD / 4 + 11 + config.RP / 4) {
@@ -626,6 +743,12 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
           cycle := 1
           busy  := True
           refresh_due := False
+        } elsewhen(needFinalSurvey) {
+          // DLL sweep done: confirming pass-3 survey under the winning
+          // offset. Re-ACTs the row at is(0), like every pass entry.
+          needFinalSurvey := False
+          state := Ddr3State.READ_CALIB
+          cycle := 0
         } elsewhen(io.req.valid) {
           reqReg := io.req.payload
           val blockIdx = io.req.addr
@@ -798,6 +921,13 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     rcalib_cnt := 0
     rcalib_done := False
     rcalib_tries := 0
+    dllOff := 0
+    dllSweepOn := False
+    dllSweepDone := False
+    dllTries := 0
+    bestOff := 0
+    bestCntDll := 0
+    needFinalSurvey := False
     bestRot := 0
     training := True
     trainDone := False
@@ -827,6 +957,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   // Connect control ports to PHY
   io.phy.dqs_hold     := dqs_hold
   io.phy.wstep        := wstep
+  io.phy.dll_step_off := dllOff.asBits
   io.phy.rclkpos      := rclkpos
   io.phy.rclksel      := rclksel
   io.phy.dqs_read     := dqs_read

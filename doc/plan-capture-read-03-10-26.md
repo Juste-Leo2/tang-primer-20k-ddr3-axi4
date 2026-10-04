@@ -44,43 +44,80 @@ les balayages passent de ~40 min à ~1-2 min. Coût ~200 lignes, et on perd la
 fidélité des modèles fournisseur. À garder comme option si la carte demande
 beaucoup d'itérations.
 
-## 3. Étape 1 — Paramétrer le TB
+## 3. Étape 1 — Paramétrer le TB — **FAIT**
 
-**`simulation/tb_spinal.v`**
+**`simulation/tb_fast.v`** (copie de `tb_spinal.v`, 3 changements)
 
-- `force u_dut.phy.dll_1.STEP = 8'd25` → constante `STEP_VAL` (défaut 25).
-- Décalage de phase : offset permanent appliqué avant le toggle de `pclk` dans la
-  boucle d'horloges (3 lignes, périodes nominales inchangées). `PHASE_OFF` en ps,
-  défaut 0. Premier incrément suggéré : 312 ps (tck/8).
-- `$display` unique en tête de log : `MAP step=<n> phase=<n>`.
+- `ddr3 #(.DEBUG(0))` : le modèle vendor documente « Set DEBUG = 0 to disable
+  $display messages ». Les logs par beat disparaissent, la physique ne change pas.
+- `+step=<0..255>` (plusarg) : tap de délai côté read, normalement forcé à 25.
+  Le forçage devient une variable runtime → un seul build sert à toute la carte.
+- `+phase=<ps>` (plusarg) : décalage permanent de pclk par rapport à ck/fclk,
+  injecté par un offset one-shot dans la boucle d'horloges (pclk garde sa
+  période nominale, seule sa phase bouge). Vérifié : 312 ps → +0.3 ns sur les
+  timestamps DBG.
+- `-DMAP_ONLY` : saute le memtest fonctionnel (C vient du sweep de calibration).
+- Ligne de verdict `RESULT step=.. phase_ps=.. W=.. P=.. S=.. errors=..`.
 
-**`simulation/sim_ddr.py`**
+**`simulation/sim_ddr.py`** : mode `--fast-tb` avec `--step`, `--phase`,
+`--map-only`. `run()` accepte des plusargs et un nom de log.
 
-- Flags `--step <n>` et `--phase <ps>` vers `extra_defines`, plus un nom de
-  sortie par run (`tb_spinal_s<n>_p<n>.vvp`) pour ne rien écraser.
+### Porte de fidélité : **PASSÉE**
 
-## 4. Étape 2 — Rendre la carte affordable
+TB rapide (STEP=25, phase=0) contre TB Micron de référence :
 
-Un run complet = ~40 min, donc une matrice est hors de portée. Deux voies, à
-trancher :
+- **82 lignes de mesure identiques** (les deux sweeps, `(pos, sel, score, rot)`)
+- sweep-2 : `pos=0 sel=0 rot=6 score=8` des deux côtés
+- memtest : 8 lectures identiques, `ALL TESTS PASSED`
 
-**Voie A — mode carte dans le RTL (recommandée)**
-`Ddr3Config(mapMode = true)`, `isSimulation` uniquement : sauter sweep-1
-(il ne mesure rien — score X partout, vérifié) et limiter la grille à `pos=0`,
-`sel=0..7`. Calibration ~4× plus courte, ~1-2 min par point.
-*Contre-vérification obligatoire* : ce mode change le trafic, donc la phase. Un
-point doit être re-mesuré en boot complet et son `C` doit correspondre, sinon la
-carte est fausse.
+Donc le chemin de capture vendor est intact : la carte peut être produite avec
+le TB rapide.
 
-**Voie B — runs complets**
-Aucune modification RTL, fidélité maximale, mais ~40 min/point : 8 points ≈ 5h et
-seulement 6-8 valeurs de `STEP` couvertes.
+## 4. Vitesse mesurée
 
-## 5. Étape 3 — Matrice et lecture
+| | durée |
+|---|---|
+| TB rapide (complet, calibration + memtest) | **721 s** (12 min) |
+| TB Micron de référence | 13065 s mesurés, mais sur machine chargée ; ~15 min en conditions propres |
 
-Grille grossière d'abord : `STEP ∈ {0, 25, 64, 128, 192, 255}` ×
-`phase ∈ {0, 312, 625} ps` (18 points), puis densifier autour des transitions.
-Un script boucle les runs, parse `RCALIB lock ... score=N`, sort `C(step, phase)`.
+`DEBUG=0` ne gagne que ~1.2× par rapport à un TB lent non chargé : le coût est
+dans les checks JEDEC du modèle, pas dans sa verbosité. Deux conséquences :
+
+- **Pas besoin d'un DRAM léger** (le plan initial) ni d'un modèle de capture
+  Scala : la piste « paralléliser au lieu d'optimiser » est meilleure — un
+  processuOS par point, 20 cœurs disponibles.
+- La carte se fait en 2 vagues d'environ 12 min pour 18 points.
+
+**`simulation/map_capture.py`** : lance les points en parallèle (un `vvp` par
+point, `+step`/`+phase` en plusargs), collecte C / rot / W et affiche une table.
+
+## 4 bis. Ce que le modèle vendor dit de l'axe `STEP`
+
+Lecture de `prim_sim_tb.v` (primitive `DQS`) :
+
+```
+dqsw0_dly_in[0]  = fclk_in;          // chaîne write/read = horloge interne
+dqsr90_dly_in[0] = dqs_r_clean;      // chaîne read  = DQS venant de la DRAM
+DQSW0  = dqsw0_dly_in[WSTEP];        // clk_rd si rclksel[0]=0
+DQSW90 = dqsw270_dly_in[wstep_reg];  // clk_rd si rclksel[0]=1, wstep_reg=DLLSTEP
+wpt_q  avance sur posedge DQSR90     // WPOINT suit le DQS retardé de DLLSTEP
+```
+
+Donc, avec des taps de 25 ps :
+
+- le DQS vu par le FIFO est retardé de `STEP` taps ;
+- l'horloge de capture est retardée de `WSTEP` taps (`sel[0]=0`) ou de `STEP`
+  taps (`sel[0]=1`) ;
+- **le délai relatif vaut `(WSTEP − STEP) × 25 ps`**, soit jusqu'à ~6.4 ns en
+  balayant STEP de 0 à 255 avec `WSTEP=25` — plus de deux périodes CK.
+
+Deux conséquences utiles :
+
+1. `STEP` est bien l'axe de phase fin que la grille actuelle n'atteint pas.
+2. **`sel[0]=1` annule le délai relatif** (clock et DQS retardés du même
+   `STEP`) : cette configuration serait invariante à `STEP`. Si la carte le
+   confirme, c'est une piste de correctif triviale — choisir la source d'horloge
+   de capture alignée sur le DQS.
 
 ## 6. Étape 4 — Décision, dictée par la carte
 
