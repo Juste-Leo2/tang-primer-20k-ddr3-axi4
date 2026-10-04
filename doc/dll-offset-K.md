@@ -200,3 +200,21 @@ Consequences :
 - `capture-map-observations.md` — carte STEP x phase, tables de reglage.
 - `tb-cartographie.md` — structure du TB, ce que mesurent `C`, `rot`, `W`.
 - `plan-capture-read-03-10-26.md` — plan d'origine, porte de fidelite, outillage.
+
+## 9. Lecon WPOINT-guard : ne pas durcir le compteur du modele (04-10-26)
+
+Experience (commit `5743900`, revertée, code retiré de `prim_sim_tb.v`,
+macro `ZERO_STALE_SLOTS_AND_WPOINT` jamais définie) : durcir le compteur
+WPOINT (v1 rise-propre-only + `prev` stockant X, v2 + gate `rd_en` +
+`prev` sticky-clean) laissait la calibration s25 bit-identique (lock 8)
+mais cassait TOUS les reads fonctionnels (beats repetes, RPOINT gele a
+0/0). Suspect : `prev` poisoning / stall WPOINT -> flag FIFO full ->
+stalls -> comptes de cycles divergents (rpt 2/2 vs 0/0) -> fenetres
+manquees. Le comptage d'origine (fronts X->1 fantomes inclus) est
+restaure : c'est le modele vendor, la sim doit rester fidele, pas
+"amelioree".
+Regle apprise : Spinal `===` descend en Verilog `==` (X-poisoning, verifie
+en `Ddr3ControllerSim.v:3735`) : un score X-tolerant cote RTL demanderait
+un autre construit + un emetteur X-immune. En attendant, seul le D-guard
+(`X->0` au store, no-op sur entrees definies, `-D ZERO_STALE_SLOTS`, patch
+1) reste actif.
