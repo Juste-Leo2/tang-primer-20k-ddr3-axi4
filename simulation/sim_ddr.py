@@ -105,7 +105,10 @@ def build(top_files, out_vvp, extra_defines=()):
     return sh(cmd)
 
 
-def run(vvp_file, timeout=1800, plusargs=(), log_name=None):
+def run(vvp_file, timeout=None, plusargs=(), log_name=None):
+    # No watchdog by default: long-but-healthy sims (full sweep under CPU
+    # contention) were killed at 1800s with a bare [TIMEOUT]. Pass an
+    # explicit timeout to re-arm.
     log = SIM / ((log_name or Path(vvp_file).stem) + ".log")
     print(f"vvp streaming -> {log}", flush=True)
     with open(log, "w") as f:

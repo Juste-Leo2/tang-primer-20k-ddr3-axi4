@@ -200,6 +200,21 @@ module tb_spinal;
         end
     end
 
+    // TEMP-PROBE-REMOVE-AFTER-DIAG: pointer movie (S23: rstep climbs but
+    // latches frozen -> do WPOINT/RPOINT advance?). Per-pclk, both DQS.
+    always @(posedge pclk) begin
+        if ($time > 100000) begin
+            $display("PROBE t=%t RLOADN=%b RMOVE=%b RDIR=%b rstep1=%h rstep2=%h RPOINT1=%d WPOINT1=%d RPOINT2=%d WPOINT2=%d rd_en1=%b dqs_en1=%b HOLD=%b",
+                $time, u_dut.phy.dQS_1.RLOADN, u_dut.phy.dQS_1.RMOVE,
+                u_dut.phy.dQS_1.RDIR, u_dut.phy.dQS_1.rstep_reg,
+                u_dut.phy.dQS_2.rstep_reg, u_dut.phy.dQS_1.RPOINT,
+                u_dut.phy.dQS_1.WPOINT, u_dut.phy.dQS_2.RPOINT,
+                u_dut.phy.dQS_2.WPOINT, u_dut.phy.dQS_1.rd_en,
+                u_dut.phy.dQS_1.dqs_en, u_dut.phy.dQS_1.HOLD);
+            $fflush();
+        end
+    end
+
     integer errors;
     time start_time;
 
