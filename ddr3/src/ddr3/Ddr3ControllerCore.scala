@@ -49,11 +49,15 @@ case class Ddr3Config(
   // few steps away (sim: good-write below echo start; HW: C=6 at -1
   // vs C=4 at 0). -1 = current best working point.
   val WL_LOCK_OFF = -1
-  // Number of DLL STEP offsets tried by the read calibration (8-bit wrap, so
-  // the whole delay-line range is covered). The sweep walks (pos, offset)
-  // pairs, hence 4 x this. One iteration = one double-burst read, i.e.
-  // ~1024 x 14 pclk per sweep pass, and it exits early on a perfect 8/8.
-  val dllSweepCount = 256
+  // Read-delay sweep range, RELATIVE taps around the DLL lock: plus side mag
+  // 0..RANGE, then minus side mag 1..RANGE (mag 0 measured once), pos
+  // innermost. The DLL already lands near the window (HW locks at C=6, not
+  // 0), so a relative sweep beats an absolute scan and stays clear of the
+  // tap rails. Stepped with the DQS dynamic steppers (RLOADN/RMOVE/RDIR,
+  // placer-legal where a fabric adder on DLLSTEP is not (PR0015)). Early
+  // exit on a perfect 8/8. Predicted exits: STEP=25 -> +0, STEP=20 -> +5,
+  // STEP=40 -> -15, STEP=60 -> -4 (sign = side).
+  val dllSweepRange = 64
   val rcalibCount = if (isSimulation) 2 else 8
 }
 
@@ -113,12 +117,14 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
 
       val dqs_hold    = out Bool()
       val wstep       = out Bits(8 bits)
-      // Offset added to the DLL STEP before it reaches the DQS primitives.
-      // Swept by read calibration (see below): the DLL aligns DQS to FCLK, but
-      // the IDES FIFO needs a slightly different phase, and the difference is
-      // not something we can predict (it depends on the DRAM, the board and
-      // the DLL's own tracking), so it is measured.
-      val dll_step_off = out Bits(8 bits)
+      // Dynamic read-delay steppers to the PHY (sweep below). RLOADN=0
+      // reloads rstep from the live DLL (anchor); RLOADN=1 holds the swept
+      // value -- asserted from the first anchor through functional traffic,
+      // because re-tracking would silently drop the winner. RMOVE pulses
+      // step +-1 tap (RDIR selects the side).
+      val rloadn      = out Bool()
+      val rmove       = out Bool()
+      val rdir        = out Bool()
       val rclkpos     = out Bits(2 bits)
       val rclksel     = out Bits(3 bits)
       val dqs_read    = out Bits(4 bits)
@@ -260,32 +266,72 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   val bestSel = Reg(Bits(3 bits)) init(B"3'd0")
   val bestRot = Reg(UInt(3 bits)) init(0)
 
-  // DLL STEP offset sweep. Measured facts (doc/capture-map-observations.md):
-  // the read capture only works for ~2 taps of STEP out of 256, WSTEP has no
-  // influence at all, and the pclk/FCLK phase has none either. So the phase
-  // the DLL provides is not the phase the IDES FIFO wants, and the difference
-  // is unknowable a priori -> sweep it like rclkpos/rclksel and keep the best.
+  // DLL read-delay sweep, RELATIVE to the DLL lock, via the DQS dynamic
+  // steppers (RLOADN/RMOVE/RDIR). Measured facts
+  // (doc/capture-map-observations.md): the read capture only works for ~2
+  // taps of STEP out of 256, WSTEP has no influence at all, and the
+  // pclk/FCLK phase has none either. So the phase the DLL provides is not
+  // the phase the IDES FIFO wants, and the difference is unknowable a
+  // priori -> sweep around the lock and keep the best. A fabric adder on
+  // DLLSTEP would do the same job in sim, but the placer forbids it
+  // (PR0015): the steppers are the vendor-intended dynamic path.
   //
-  // The sweep covers (pos, offset) JOINTLY, not the offset alone: the best
-  // `pos` moves with the effective STEP (measured: pos=0 when the capture is
-  // aligned, pos=2 when it is not), so sweeping the offset at the pos chosen
-  // by the previous phase would stay on the shoulder and top out at 6. A single
-  // counter enumerates every (pos, offset) pair.
+  // The sweep covers (pos, side, mag) JOINTLY: the best `pos` moves with the
+  // effective STEP, so sweeping steps at a frozen pos would stay on the
+  // shoulder and top out at 6. Plus side mag 0..RANGE, then minus side mag
+  // 1..RANGE (mag 0 measured once), pos innermost.
+  //
+  // Hardware pipeline warning (load-bearing): RMOVE steps register a fixed
+  // 2 iterations later (fall-detect at the next case-12 + settle), so the
+  // hardware permanently trails the enumeration by 2. The s0/s1/s2 shift
+  // registers below mirror that lag: the SAVED triple is always the
+  // CURRENTLY MEASURED one, never the programmed-next. Saving the
+  // programmed value would lock the wrong offset silently -- do not
+  // "simplify" this. RLOADN rule (also load-bearing): asserted (hold) from
+  // the first anchor through functional traffic; re-tracking would silently
+  // drop the winner.
   //
   // Runs after the POST-TRAINING (pos, sel) survey (pass 2): the sweep needs
   // trained DRAM contents to score against, and pass 1 runs pre-training
   // (all X by design). After the sweep, pass 3 re-surveys (pos, sel, rot)
-  // under the winning offset and locks. The training data does not depend on
-  // either axis (writes use WSTEP), so no re-write is needed between iterations.
-  val dllOff        = Reg(UInt(8 bits)) init(0)
+  // at the winner and locks. The training data does not depend on either
+  // axis (writes use WSTEP), so no re-write is needed between iterations.
   val dllSweepOn    = RegInit(False)
   val dllSweepDone  = RegInit(False)
-  val dllTries      = Reg(UInt(10 bits)) init(0)
-  val bestOff       = Reg(UInt(8 bits)) init(0)
   val bestCntDll    = Reg(UInt(4 bits)) init(0)
   // Set at sweep end: IDLE re-enters READ_CALIB for the confirming pass-3
-  // survey under the winning offset, then locks.
+  // survey at the winner, then locks.
   val needFinalSurvey = RegInit(False)
+  // Sweep enumeration = programmed-next (s0side/s0mag). s1/s2 mirror it
+  // with the hardware lag, so s2 always equals what is settled right now.
+  // pos needs no pipeline (window applies next-iter, exactly-once, like the
+  // survey): only (side, mag) ride the pipeline. Side False=plus (RDIR=0).
+  val s0Side = RegInit(False)
+  val s0Mag  = Reg(UInt(7 bits)) init(0)
+  val s1Side = RegInit(False)
+  val s1Mag  = Reg(UInt(7 bits)) init(0)
+  val s2Side = RegInit(False)
+  val s2Mag  = Reg(UInt(7 bits)) init(0)
+  val bestSide      = RegInit(False)
+  val bestMag       = Reg(UInt(7 bits)) init(0)
+  // Align machinery: anchorLeft counts RLOADN pulse slots (reload rstep
+  // from the live DLL, then navigate); navigateLeft counts pulses to the
+  // frozen target (from anchored 0, exact). Scoring (and exit/exhaust
+  // checks) happen ONLY when anchorLeft==0 and not aligning -- transient
+  // hardware would mislabel measurements. Uniform rule, no exceptions.
+  // (No settle counter: the s-pipeline overwrite at align-start (below)
+  // re-primes the lag invariant, so s2 == hardware again by construction.)
+  val anchorLeft = Reg(UInt(2 bits)) init(0)
+  val aligning   = RegInit(False)
+  val settleLeft = Reg(UInt(2 bits)) init(0)
+  val applyArmed = RegInit(False)
+  val navigateLeft = Reg(UInt(7 bits)) init(0)
+  // Stepper outputs. rloadn has no reg: combinational rule at the io drive
+  // (track pre-sweep, hold from first anchor, reload during anchorLeft).
+  // rmove pulses single slots (cleared at every case-12 top); rdir stable
+  // per side (set explicitly, redundantly, for reviewability).
+  val rmove  = RegInit(False)
+  val rdir   = RegInit(False)
 
   // Autonomous Refresh timer (every 7.8 us = 781 cycles @ 100MHz)
   // Sim uses a shorter period so iverilog runs cover several refreshes.
@@ -563,9 +609,25 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
             bestSel := rclksel
 bestRot := 0
             dllSweepOn := False
-            dllTries := 0
-            bestOff := 0
             bestCntDll := 0
+            s0Side := False
+            s0Mag := 0
+            s1Side := False
+            s1Mag := 0
+            s2Side := False
+            s2Mag := 0
+            bestSide := False
+            bestMag := 0
+            anchorLeft := 0
+            aligning := False
+            settleLeft := 0
+            applyArmed := False
+            navigateLeft := 0
+            // NOTE: rmove/rdir/rloadn deliberately NOT touched here. is(0)
+            // runs at pass-3 entry too, where rstep must STAY at the winner
+            // (RLOADN held). rloadn is combinational (auto-correct); rmove
+            // idles low and rdir is stable -- leaving them alone is correct
+            // in all passes.
           }
           is(config.RCD / 4) {
             // Burst 1 of 2, BL8 without auto-precharge.
@@ -595,39 +657,190 @@ bestRot := 0
             // STEP offset at the best setting found. Same proven per-iteration
             // flow (ACT / double burst / latch / score) for both, only the
             // axis that moves differs.
+            // Phase 2 sweeps the read delay RELATIVE to the DLL lock with the
+            // DQS dynamic steppers (see declarations). Same proven
+            // per-iteration flow (ACT / double burst / latch / score) as the
+            // survey; only the axis that moves differs. RLOADN/RMOVE/RDIR are
+            // driven here (RLOADN combinationally at the io drive).
             when(dllSweepOn) {
-              when(sweepScore > bestCntDll) {
-                bestCntDll := sweepScore
-                bestOff := dllOff
-                bestPos := rclkpos
-                bestSel := rclksel
-                bestRot := sweepRot
-              }
-              dllTries := dllTries + 1
-              // 8/8 beats is the best physically possible: stop there instead
-              // of grinding through the rest of the grid.
-              when((dllTries === (config.dllSweepCount * 4 - 1)) || (bestCntDll === 8)) {
-                dllOff := bestOff
-                rclkpos := bestPos
-                bestCnt := bestCntDll
-                dllSweepDone := True
-                dllSweepOn := False
-                // Pass 3 next: IDLE re-enters READ_CALIB for the confirming
-                // survey under the winning offset (it re-ACTs the row, so the
-                // PRECHARGE below is still required before leaving).
-                needFinalSurvey := True
-                if (!GenerationFlags.formal) {
-                  report(L"RCALIB dll off=$bestOff pos=$bestPos score=$bestCntDll tries=$dllTries")
+              rmove := False // default; pulses set below (single-slot high)
+              // busyMoving = transient hardware (anchor/navigate/settle):
+              // pause enumeration, freeze the s-pipeline, skip scoring. The
+              // s-pipeline would otherwise label measurements with the wrong
+              // (pos, side, mag). Uniform rule, no exceptions.
+              when(aligning || (anchorLeft =/= 0) || (settleLeft =/= 0)) {
+                when(anchorLeft =/= 0) {
+                  // Anchor window: RLOADN low (combinational) reloads rstep
+                  // from the live DLL. Nothing else moves. Loops like every
+                  // sweep slot: falling through would exit to IDLE with no
+                  // re-entry path (needFinalSurvey is clear) and stall
+                  // calibration forever.
+                  anchorLeft := anchorLeft - 1
+                  cycle := config.RCD / 4
+                } otherwise {
+                  // Anchor done: navigating (aligning) or settling.
+                  when(aligning) {
+                    // Navigate: one pulse per slot toward the frozen target
+                    // (s0 at side-switch, best at apply). RDIR set explicitly
+                    // below (stable by construction, redundant on purpose).
+                    when(navigateLeft =/= 0) {
+                      rdir := Mux(applyArmed, bestSide, s0Side)
+                      rmove := True
+                      navigateLeft := navigateLeft - 1
+                      cycle := config.RCD / 4
+                    } otherwise {
+                      // Arrived: hand off to settle (2 slots = the lag,
+                      // exact). Guarded by aligning so it runs exactly once;
+                      // the settle branch below owns the state afterwards.
+                      settleLeft := 2
+                      aligning := False
+                      cycle := config.RCD / 4
+                    }
+                  } otherwise {
+                    // Settle: countdown + flush s-pipeline toward frozen s0
+                    // (s0 holds, s1/s2 shift): after 2 shifts s2 == s0 ==
+                    // hardware, aligned. Loops; only the applyArmed finish
+                    // falls through to 13 -> IDLE (the proven exit).
+                    settleLeft := settleLeft - 1
+                    s1Side := s0Side
+                    s1Mag := s0Mag
+                    s2Side := s1Side
+                    s2Mag := s1Mag
+                    when(settleLeft === 1 && applyArmed) {
+                      // FINISH: seed pass-3, flag, precharge, exit (falls to
+                      // 13 -> IDLE, like the proven path). RLOADN untouched
+                      // (HOLD rule): re-tracking would drop the winner.
+                      rclkpos := bestPos
+                      needFinalSurvey := True
+                      dllSweepDone := True
+                      dllSweepOn := False
+                      applyArmed := False
+                      if (!GenerationFlags.formal) {
+                        report(L"RCALIB dll side=$bestSide mag=$bestMag pos=$bestPos score=$bestCntDll")
+                      }
+                      setCmd(0, CMD_PreCharge, B"3'b0", B"0".resized)
+                    } otherwise {
+                      cycle := config.RCD / 4
+                    }
+                    // Non-apply settle end: resume ENUM next slot (s2
+                    // aligned, lockstep restored) via the loop-back above.
+                  }
                 }
-                // Exit to IDLE (cycle falls through to RCD/4+11+RP/4): the row
-                // is open and a refresh may be pending (it fires from IDLE), so
-                // PRECHARGE first or the Micron model refuses the REFRESH.
-                setCmd(0, CMD_PreCharge, B"3'b0", B"0".resized)
               } otherwise {
-                // next (pos, offset) pair: pos in the low bits, offset above
-                dllOff := (dllTries + 1).resize(10)(9 downto 2)
-                rclkpos := (dllTries + 1).resize(10)(1 downto 0).asBits
-                cycle := config.RCD / 4
+                // Settle lives in the busyMoving branch above (it owns every
+                // transient slot); here settleLeft === 0 by construction, so
+                // the guard below is purely documentary and this is ENUM.
+                when(settleLeft === 0) {
+                  // ENUM: score + save the MEASURED triple (s2 side/mag +
+                  // current pos). s2 = programmed-2-ago = hardware-settled
+                  // now, by construction. pos needs no pipeline (window
+                  // applies next-iter, exactly-once -- same as the survey).
+                  when(sweepScore > bestCntDll) {
+                    bestCntDll := sweepScore
+                    bestMag := s2Mag
+                    bestSide := s2Side
+                    bestPos := rclkpos
+                    bestSel := rclksel
+                    bestRot := sweepRot
+                  }
+                  // EXIT on true perfection (measured, aligned, valid). The
+                  // APPLY path below is shared with exhaustion (uniform).
+                  when(bestCntDll === 8) {
+                    aligning := True
+                    anchorLeft := 2
+                    navigateLeft := bestMag
+                    applyArmed := True
+                    // Overwrite s-pipeline with best (uniform with the
+                    // side-switch below): s2 == hardware again by
+                    // construction once navigated.
+                    s0Side := bestSide
+                    s0Mag := bestMag
+                    s1Side := bestSide
+                    s1Mag := bestMag
+                    s2Side := bestSide
+                    s2Mag := bestMag
+                    if (!GenerationFlags.formal) {
+                      report(L"RCALIB dll side=$bestSide mag=$bestMag pos=$bestPos score=$bestCntDll")
+                    }
+                    // Loop into the anchor (same precedent as the sweep-start
+                    // loop-back below): falling through would exit to IDLE
+                    // with needFinalSurvey clear and stall calibration.
+                    cycle := config.RCD / 4
+                  } otherwise {
+                    // EXHAUST when measured-complete: minus side, mag RANGE,
+                    // pos 3. s0 may run 2 ahead (unmeasured tail, harmless,
+                    // abandoned -- the trigger is on MEASURED, correct).
+                    when(s2Side && (s2Mag === config.dllSweepRange) && (rclkpos === 3)) {
+                      aligning := True
+                      anchorLeft := 2
+                      navigateLeft := bestMag
+                      applyArmed := True
+                      // Same s-overwrite as exit (uniform single path).
+                      s0Side := bestSide
+                      s0Mag := bestMag
+                      s1Side := bestSide
+                      s1Mag := bestMag
+                      s2Side := bestSide
+                      s2Mag := bestMag
+                      if (!GenerationFlags.formal) {
+                        report(L"RCALIB dll side=$bestSide mag=$bestMag pos=$bestPos score=$bestCntDll")
+                      }
+                      // Loop into the anchor, like the exit path above.
+                      cycle := config.RCD / 4
+                    } otherwise {
+                      // ADVANCE enumeration (s0 = programmed-next): pos+1
+                      // (wraps naturally on 2 bits, same idiom as survey);
+                      // on wrap, mag+1 same side (capped at RANGE: the s2
+                      // trigger switches first, overrun self-corrects).
+                      // RDIR follows s0side every slot (stable, explicit).
+                      // Pulse rule (self-regulating, lag-bounded): step iff
+                      // s0 differs from settled s2 -- exactly the mag-step
+                      // iters, one pulse each, never runs away.
+                      // ADVANCE enumeration: s-pipeline shifts FIRST (all reads
+                      // below see pre-advance values -- registers, no
+                      // forwarding, so order is free but grouped for clarity).
+                      // s2 always equals what is settled right now.
+                      s1Side := s0Side
+                      s1Mag := s0Mag
+                      s2Side := s1Side
+                      s2Mag := s1Mag
+                      rclkpos := (rclkpos.asUInt + 1).asBits
+                      rdir := s0Side
+                      when(rclkpos === 3) {
+                        // Side-switch when measured-complete on plus (s2 +
+                        // current pos, both pre-advance): fresh start at
+                        // minus mag 1 (mag 0 measured once already).
+                        // s-pipeline overwritten with the target (uniform
+                        // with apply).
+                        when(!s2Side && (s2Mag === config.dllSweepRange)) {
+                          s0Side := True
+                          s0Mag := 1
+                          s1Side := True
+                          s1Mag := 1
+                          s2Side := True
+                          s2Mag := 1
+                          aligning := True
+                          anchorLeft := 2
+                          navigateLeft := 1
+                          applyArmed := False
+                          if (!GenerationFlags.formal) {
+                            report(L"RCALIB dll side switch to minus")
+                          }
+                        } otherwise {
+                          // Mag-step (capped at RANGE) + THE step pulse,
+                          // atomic in this slot: exactly one pulse per step,
+                          // never feedback-driven, so it cannot run away or
+                          // double-fire.
+                          when(s0Mag =/= config.dllSweepRange) {
+                            s0Mag := s0Mag + 1
+                            rmove := True
+                          }
+                        }
+                      }
+                      cycle := config.RCD / 4
+                    }
+                  }
+                }
               }
             } otherwise {
               // Best-of-sweep eye search: strictly better rotation-corrected
@@ -653,10 +866,9 @@ bestRot := 0
                 // offset sweep. Pass 3 (offset already measured): finish.
                 when(!training && !dllSweepDone) {
                   dllSweepOn := True
-                  dllTries := 0
-                  dllOff := 0
-                  bestOff := 0
                   bestCntDll := 0
+                  bestSide := False
+                  bestMag := 0
                   rcalib_tries := 0
                   // Force an EVEN sel during the sweep: with rclksel[0]=1 the
                   // capture clock (DQSW90) is delayed by DLLSTEP itself, so it
@@ -921,13 +1133,25 @@ bestRot := 0
     rcalib_cnt := 0
     rcalib_done := False
     rcalib_tries := 0
-    dllOff := 0
     dllSweepOn := False
     dllSweepDone := False
-    dllTries := 0
-    bestOff := 0
     bestCntDll := 0
     needFinalSurvey := False
+    s0Side := False
+    s0Mag := 0
+    s1Side := False
+    s1Mag := 0
+    s2Side := False
+    s2Mag := 0
+    bestSide := False
+    bestMag := 0
+    anchorLeft := 0
+    aligning := False
+    settleLeft := 0
+    applyArmed := False
+    navigateLeft := 0
+    rmove := False
+    rdir := False
     bestRot := 0
     training := True
     trainDone := False
@@ -957,7 +1181,12 @@ bestRot := 0
   // Connect control ports to PHY
   io.phy.dqs_hold     := dqs_hold
   io.phy.wstep        := wstep
-  io.phy.dll_step_off := dllOff.asBits
+  // RLOADN rule (load-bearing, see sweep): track (low) before the sweep and
+  // during anchor windows, hold (high) everywhere else -- from the first
+  // anchor through functional traffic, so the winner is never dropped.
+  io.phy.rloadn := (dllSweepOn || dllSweepDone) && (anchorLeft === 0)
+  io.phy.rmove        := rmove
+  io.phy.rdir         := rdir
   io.phy.rclkpos      := rclkpos
   io.phy.rclksel      := rclksel
   io.phy.dqs_read     := dqs_read

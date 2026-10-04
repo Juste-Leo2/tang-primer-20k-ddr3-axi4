@@ -14223,38 +14223,6 @@ end
 assign reset_wpt = (FIFO_MODE_SEL == 1'b0) ? reset_f : reset_wfq;
 
 assign wpt_d_0 = wpt_q_1 ~^ wpt_q_2;
-`ifdef ZERO_STALE_SLOTS_AND_WPOINT
-// (04-10-26) WPOINT-GUARD CURRENTLY REVERTED, SEE NOTE BELOW. TO RE-ENABLE,
-// DEFINE ZERO_STALE_SLOTS_AND_WPOINT (E.G. -D) -- BUT READ THIS FIRST:
-// V1 (CLEAN-RISE-ONLY + X-STORING PREV) AND V2 (+rd_en GATE + STICKY-CLEAN
-// PREV) BOTH LEFT s25 CALIBRATION BIT-IDENTICAL (LOCK 8) YET BROKE ALL
-// FUNCTIONAL READS (REPEATED BEATS, RPOINT FROZEN AT 0/0). PRIME SUSPECT:
-// prev POISONING/WPOINT STALL -> FIFO FULL FLAG -> STALLS -> DIVERGENT
-// CYCLE COUNTS (rpt 2/2 VS 0/0) -> MISSED WINDOWS. THE D-GUARD ABOVE
-// (X->0 ON STORE) IS PROVABLY A NO-OP ON DEFINED INPUTS AND STAYS ACTIVE.
-// ORIGINAL COUNTING (PHANTOM X->1 EDGES INCLUDED) RESTORED BELOW UNTIL A
-// V3 DESIGN (E.G. RTL-LEVEL X-TOLERANT SCORE *WITH* AN X-IMMUNE EMITTER --
-// NOTE: SPINAL === LOWERS TO VERILOG == (X-POISONING, VERIFIED IN
-// Ddr3ControllerSim.v:3735), SO A TOLERANT SCORE NEEDS A DIFFERENT
-// CONSTRUCT) IS VALIDATED.
-reg dqsr90_prev;
-always @(DQSR90 or reset_wpt) begin
-    if (reset_wpt == 1'b1) begin
-        wpt_q_0 <= 1'b0;
-        wpt_q_1 <= 1'b0;
-        wpt_q_2 <= 1'b0;
-        dqsr90_prev <= 1'b0;
-    end else if ((rd_en == 1'b1) && (DQSR90 === 1'b1) && (dqsr90_prev === 1'b0)) begin
-        wpt_q_0 <= wpt_d_0;
-        wpt_q_1 <= wpt_d_1;
-        wpt_q_2 <= wpt_d_2;
-        dqsr90_prev <= 1'b1;
-    end else if (DQSR90 === 1'b0) begin
-        dqsr90_prev <= 1'b0;
-    end
-    // ELSE: HOLD EVERYTHING. X IS NEVER STORED, NOTHING IS COUNTED.
-end
-`else
 always @ (posedge DQSR90 or posedge reset_wpt)
 begin
     if(reset_wpt==1'b1) begin
@@ -14267,7 +14235,6 @@ begin
         wpt_q_2 <= wpt_d_2;
     end
 end
-`endif
 assign wpt_q = {wpt_q_2,wpt_q_1,wpt_q_0};
 assign wpt_d_1 = ((~wpt_q_2) & wpt_q_0) | (wpt_q_1 & (~wpt_q_0));
 assign wpt_d_2 = (wpt_q_1 & (~wpt_q_0)) | (wpt_q_2 & wpt_q_0);
