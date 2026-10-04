@@ -28,3 +28,5 @@ __pycache__/
 *.py[cod]
 
 /formal/
+tb_fast_s23_p0_w-1_k0.bak
+compare_runs.py
