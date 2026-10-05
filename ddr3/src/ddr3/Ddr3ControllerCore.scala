@@ -632,7 +632,12 @@ bestRot := 0
           is(config.RCD / 4) {
             // Burst 1 of 2, BL8 without auto-precharge.
             setCmd(2, CMD_Read, B"3'b0", B"1'b1".resize(config.rowWidth) |<< 12)
-            dqs_hold := True // deterministic W/R start each iteration
+            // NOTE: no dqs_hold here on purpose. Pinning HOLD every burst
+            // resets WPOINT/RPOINT (reset_f) each iteration, so every
+            // measurement reads the same stale (W-R) frame (training
+            // residue) and the sweep scores history, not delay. Pin once
+            // per pass at is(0) for a deterministic start, then free-run
+            // (like functional reads): pointers track live bursts.
             rburst_seen := 0
           }
           is(config.RCD / 4 + 1) {

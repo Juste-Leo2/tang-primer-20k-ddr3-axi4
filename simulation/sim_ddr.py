@@ -145,6 +145,9 @@ def main():
     ap.add_argument("--run", action="store_true", help="also execute vvp after build")
     ap.add_argument("--fastdll", action="store_true", help="spinal sim: force DLL lock")
     ap.add_argument("--no-vcd", action="store_true", help="skip VCD dump (much faster sim)")
+    ap.add_argument("--vcd", action="store_true",
+                    help="fast-tb only: enable VCD dump (default off: huge files, "
+                         "slower sim; map runs must NOT use it)")
     args = ap.parse_args()
 
     if not shutil.which(IVERILOG) and not Path(IVERILOG).exists():
@@ -179,7 +182,9 @@ def main():
         # ZERO_STALE_SLOTS hardens the IDES model (X on the DQ pad stores 0
         # instead of poisoning the slot) so near-miss captures stay visible
         # to the calibration score; tb_spinal/baseline builds are unaffected.
-        extra = ["NO_VCD", "ZERO_STALE_SLOTS"]
+        extra = ["ZERO_STALE_SLOTS"]
+        if not args.vcd:
+            extra.append("NO_VCD")
         if args.map_only:
             extra.append("MAP_ONLY")
         out = SIM / "tb_fast.vvp"
