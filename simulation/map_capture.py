@@ -24,6 +24,7 @@ OSS_DIR = SIM.parent / "tools" / "oss-cad-suite"
 VVP = OSS_DIR / "bin" / "vvp.exe"
 LOCK_RX = re.compile(r"RCALIB lock best pos=(\d) sel=(\d) rot=(\d+) score=(\w+)")
 CHK_RX = re.compile(r"NOTE RCALIB chk pos=\d sel=\d side=(\d) mag=(\w+) k=(\d).*?score=(\d)")
+CHK_RX_PLAIN = re.compile(r"NOTE RCALIB chk pos=\d sel=\d .*?score=(\d)")
 RESULT_RX = re.compile(
     r"RESULT step=(\d+) phase_ps=(\d+) wl=(-?\d+) W=(\w+) P=(\d+) S=(\d+) errors=(\d+) (\w+)")
 
@@ -49,6 +50,12 @@ def collect(step, phase):
         sc = int(m.group(4))
         if sc > best[0]:
             best = (sc, f"{m.group(1)}/{m.group(2)}/{m.group(3)}")
+    if best[0] < 0:
+        # Pre-K logs (no side/mag/k fields): max score without location.
+        for m in CHK_RX_PLAIN.finditer(text):
+            sc = int(m.group(1))
+            if sc > best[0]:
+                best = (sc, "-")
     # The LAST lock line is sweep-2 (written after the training pattern): that
     # is the real measurement. The first one is sweep-1 (score 0 by design).
     c = locks[-1][3] if locks else "?"
