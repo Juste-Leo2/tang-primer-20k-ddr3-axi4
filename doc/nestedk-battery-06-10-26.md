@@ -63,11 +63,13 @@ Scripts : `simulation/analyze_nestedk.py` (résumé + max par (side,K)),
   le temps sim par ~8 pour zéro bénéfice. Restaure des sims rapides.
 - Le settle-par-palier reste reverté (décision antérieure confirmée).
 
-**NE PAS coder de fix aveugle ensuite.** L'étape décisive est une
-micro-analyse **VCD** (1 run, zéro RTL) : compter les fronts DQSR90 par
-burst + relever WPOINT/RPOINT au latch, S23-post-pin vs S25. Ça tranche
-entre contamination préambule (nb fronts > 8) et violation
-setup/hold (rstep), et désigne le vrai fix (qui n'est ni rstep ni K).
+**REVERT APPLIQUE (post-batterie)** : tout le nested-K est sorti
+(`kSkip`/`bestK`/`kreplayLeft`, cadence 32, `tries` 13→10). Gardés : pin,
+free-run, hygiène logs, watchdogs 60k, `maxsw` map_capture (avec fallback
+sans-K). Unitaires verts post-revert. Prochaine étape : micro-VCD
+(comptage fronts DQSR90/burst + pointeurs au latch, S23-post-pin vs S25 ;
+1 run, zéro RTL) qui tranchera entre contamination préambule (nb fronts
+> 8) et violation setup/hold (rstep).
 
 ## 5. Leçons méthodo (batterie)
 
@@ -80,3 +82,40 @@ setup/hold (rstep), et désigne le vrai fix (qui n'est ni rstep ni K).
   côté minus, jamais visité avant le full run).
 - VCD = build-time (`NO_VCD` par défaut) : la batterie ne dumpe rien,
   reste légère. Ne builder `--vcd` que pour la micro-analyse §4.
+
+## 6. Hypothèses sans VCD (rangées, en attente de tranchement)
+
+- **H1 — contamination préambule (gap-phase), favorite.** Bursts > 8 fronts
+  DQSR90, FIFO = data + Hi-Z en roulement, phase RPOINT choisit la fenêtre :
+  gap-0 sale (2 zéros), gap-évolué-S25 propre. Pour : zéros = X→0 (Hi-Z),
+  S25-8 prouve la fenêtre propre, 52/52 déterministe. Contre : rien.
+- **H2 — violation setup/hold (rstep), insuffisante seule.** Pour : slots
+  fixes, STEP-dépendance. Contre : 88 taps sans 8 + mag+2≠S25-8.
+  Combinée à H1, possible.
+- **H3 — mem stale, intriquée à H1.** Pin reset pointeurs, pas mem ;
+  contenu stale = f(historique) = f(STEP). Contre : WPOINT visite 0..7
+  (reads réécrivent tout)... sauf fronts Hi-Z → retombe sur H1.
+- **H4 — vrai knob gap jamais testé : la DURÉE de pin.** Nested-K variait
+  l'évolution post-release, jamais la phase de release. Pin 1/2/3 slots →
+  alignements releaseVs burst/FCLK différents → vraies phases de gap.
+  Expérience ET fix potentiel (un 8 = cause + fix d'un coup, ~2x pin-only).
+- **H5 — artefact modèle.** Faible : même signature HW (C≤6, résidu G).
+- **H6 — fenêtre trop courte.** Morte : S25-8 prouve la fenêtre à 8.
+- Tranchement : micro-VCD (fronts/burst + pointeurs au latch) décide
+  H1 vs H2 en un run ; H4 se teste sans VCD.
+
+## 7. Tri par l'observation S60 (1006 visible, 1 seul zéro)
+
+- K=1..7 **identiques** (mag00/pos0 : rot 2, zéros {4,5} à chaque K) : K
+  inerte confirmé au niveau frame, pas seulement score. (Note : à K=0 les
+  slots survey portent side=0/mag=00/k=0 — champs sans sens hors sweep,
+  contamination à filtrer dans les scripts : `tries` post-survey ou mag>0.)
+- L'observation "STEP 60 voit 1006" **ne colle pas avec toutes** :
+  - H1 pure / H4 pure : NON (gap-0 et release identiques → même dirt
+    attendue ; observé 2 vs 1 zéro). Exigent un supplément rstep
+    (perte/gain d'un front préambule selon le délai → H1+H2).
+  - H2 pure : explique la STEP-dépendance mais contredit mag+2≠S25-8.
+  - **H3 : explique directement** (contenu stale = f(historique) = f(STEP)).
+  - H5 : non (7s dès mag 0, loin du rail).
+- Bilan : l'observation favorise **H3 (ou H1+H2)**, défavorise H1/H4
+  pures et H5. La micro-VCD reste l'arbitre (contenu stale vs fronts).
