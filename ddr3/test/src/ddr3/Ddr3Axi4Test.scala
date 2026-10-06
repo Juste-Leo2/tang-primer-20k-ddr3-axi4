@@ -94,8 +94,9 @@ class Ddr3Axi4Test extends AnyFunSuite {
       }
 
       // Wait for init_done with timeout. Full calib is long: 256-step WL
-      // eye sweep + 2 read sweeps x 41 iters x ~13 pclk + training/poison.
-      dut.clockDomain.waitSamplingWhere(12000)(dut.io.init_done.toBoolean)
+      // eye sweep + nested-K read sweep (~65 mags x 8 K-groups x 4 pos x 2
+      // sides x ~13 pclk) + training/poison.
+      dut.clockDomain.waitSamplingWhere(60000)(dut.io.init_done.toBoolean)
       assert(dut.io.init_done.toBoolean, "Ddr3Axi4 failed to initialize")
 
       dut.clockDomain.waitSampling(5)

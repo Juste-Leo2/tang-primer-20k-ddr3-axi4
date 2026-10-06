@@ -42,7 +42,31 @@
   `ICLK=DQSR90` pilote bien la capture (phy:213) ; RDIR/edges conformes
   (apicula + UG).
 
-## 4. Fix propose (NON applique, en attente go)
+## 4. Fix applique (Patch 1, committe) + suites
+
+- HOLD libere pendant les bursts (free-run, miroir du fonctionnel) :
+  S25 vert, mesures qui evoluent (3 mots figes -> 20).
+- Settle-par-pallier (sans re-pin) essaye puis **reverte** : triplets
+  avance+settle sans convergence (60 triplets, 59/60 tout-a-6), cout
+  +50 % iters pour zero benefice mesure.
+- **Pin-par-palier** (`pinLeft`, 2 slots HOLD + shift s-pipeline, scoring
+  skippe) : post-pin pos0 52/52 deterministe a 6 (pas 8). Autopsie :
+  scorer innocent (8 rotations testees), 2 beats manquants = **zeros
+  adjacents** (`0000` x104/104, positions LSB {2}+{1ou3}). Mag +2
+  (= rstep 25) score 6 alors que S25-ancre fait 8 => variable = **gap
+  (W-R)**, pas rstep. Le pin explore un seul gap (gap-0, sale) ; le
+  free-run ne l'explore pas non plus (suivi elastique). Piste : axe-gap
+  (duree de pin) si le full-sweep ne trouve pas de 8.
+- Hygiene logs : `chk`/`tries` gates sur `!busyMoving`, `rcalib_tries`
+  6 -> 10 bits (wrap). Unitaires verts (`unit_pinleft2.log`).
+- **Nested-K** (axe-gap) : `kSkip` 8 groupes free-run par mag (32 iters),
+  `bestK` + replay `kreplayLeft` avant passe-3, `chk` enrichi
+  (`side/mag/k/bestK`), `tries` 13 bits, watchdogs tests 12k->60k,
+  `map_capture` reporte `maxsw@side/mag/k`. Unitaires verts.
+  Batterie : 7 STEPs en parallele via `map_capture.py --jobs`
+  (lancee par user, logs `tb_fast_s{step}_p{phase}.log`).
+- Preuve attendue : **full S23** (plus 0-64 + minus + passe-3, sans stop
+  premature) ; si max <= 6 partout -> redesign axe-gap.
 
 Miroir du fonctionnel : pinner **une fois par passe** (`is(0)`, garder
 604), **liberer pendant les bursts** (635/640 : premiere iteration
