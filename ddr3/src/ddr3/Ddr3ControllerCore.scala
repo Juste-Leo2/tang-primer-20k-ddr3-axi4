@@ -200,7 +200,9 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   val rcalib_cnt   = Reg(UInt(4 bits)) init(0)
   // SIM-only watchdog: counts calib misses so a never-locking sweep
   // cannot hang iverilog forever (wall-clock). HW path untouched.
-  val rcalib_tries = Reg(UInt(6 bits)) init(0)
+  // (13 bits: full nested-K sweeps run ~4300 settled iterations:
+  // 65 mags x 8 K-groups x 4 pos x 2 sides + surveys. 6 bits wrapped.)
+  val rcalib_tries = Reg(UInt(13 bits)) init(0)
   val rclkpos      = Reg(Bits(2 bits)) init(if (config.isSimulation) B"2'd0" else B"2'd0")
   val rclksel      = Reg(Bits(3 bits)) init(if (config.isSimulation) B"3'd0" else B"3'd0")
   val rburst_seen  = Reg(Bits(2 bits)) init(0)
@@ -324,6 +326,20 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   val anchorLeft = Reg(UInt(2 bits)) init(0)
   val aligning   = RegInit(False)
   val settleLeft = Reg(UInt(2 bits)) init(0)
+  // Pin-per-setting: pinLeft counts HOLD re-pin slots after each mag-step
+  // pulse (re-pin W/R pointers so every mag starts from the same gap;
+  // scoring the transient would label history, not delay). Shifts the
+  // s-pipeline like the arrival settle (s0 holds the post-step target).
+  val pinLeft = Reg(UInt(2 bits)) init(0)
+  // Gap axis (nested-K): kSkip counts post-pin free-run groups (0..7)
+  // per mag; the (W-R) gap evolves deterministically from each pin release,
+  // so every (mag, K) starts from a known gap phase. bestK records the
+  // winning group; kreplayLeft replays bestK free-run skips before pass-3
+  // so the lock sees the winning gap. WITHOUT this the sweep explores rstep
+  // only at a single gap (gap-0, dirty) and can never find the eye.
+  val kSkip = Reg(UInt(3 bits)) init(0)
+  val bestK = Reg(UInt(3 bits)) init(0)
+  val kreplayLeft = Reg(UInt(3 bits)) init(0)
   val applyArmed = RegInit(False)
   val navigateLeft = Reg(UInt(7 bits)) init(0)
   // Stepper outputs. rloadn has no reg: combinational rule at the io drive
@@ -621,6 +637,9 @@ bestRot := 0
             anchorLeft := 0
             aligning := False
             settleLeft := 0
+            pinLeft := 0
+            kSkip := 0
+            bestK := 0
             applyArmed := False
             navigateLeft := 0
             // NOTE: rmove/rdir/rloadn deliberately NOT touched here. is(0)
@@ -637,7 +656,10 @@ bestRot := 0
             // measurement reads the same stale (W-R) frame (training
             // residue) and the sweep scores history, not delay. Pin once
             // per pass at is(0) for a deterministic start, then free-run
-            // (like functional reads): pointers track live bursts.
+            // (like functional reads): pointers track live bursts. The
+            // per-mag-step re-pin lives in the ENUM pin branch (pinLeft),
+            // not here: this slot IS a burst, HOLD is driven per-slot from
+            // the measure case.
             rburst_seen := 0
           }
           is(config.RCD / 4 + 1) {
@@ -652,11 +674,20 @@ bestRot := 0
           is(config.RCD / 4 + 11) {
             // $display is simulation-only: the formal backend lowers
             // report() to assert(1'b0), which would fail the proof.
+            // Gated on settled (non-transient) slots only: anchor/navigate/
+            // settle/pin slots loop back without scoring, so printing and
+            // counting them would log unscored transients and inflate the
+            // tries progress. The survey never sets transients, so its
+            // tries===40 exit is unaffected.
             if (!GenerationFlags.formal) {
-              report(L"RCALIB chk pos=$rclkpos sel=$rclksel seen=$rburst_seen score=$sweepScore rot=$sweepRot latch=$trainLatch best=$bestCnt tries=$rcalib_tries")
+              when(!aligning && (anchorLeft === 0) && (settleLeft === 0) && (pinLeft === 0) && (kreplayLeft === 0)) {
+                report(L"RCALIB chk pos=$rclkpos sel=$rclksel side=$s2Side mag=$s2Mag k=$kSkip seen=$rburst_seen score=$sweepScore rot=$sweepRot latch=$trainLatch best=$bestCnt bestK=$bestK tries=$rcalib_tries")
+              }
             }
             rcalib_cnt := 0
-            rcalib_tries := rcalib_tries + 1
+            when(!aligning && (anchorLeft === 0) && (settleLeft === 0) && (pinLeft === 0) && (kreplayLeft === 0)) {
+              rcalib_tries := rcalib_tries + 1
+            }
             // Two phases on the same iteration slot. Phase 1 surveys the
             // 32-setting (pos, sel) read-window grid; phase 2 sweeps the DLL
             // STEP offset at the best setting found. Same proven per-iteration
@@ -669,11 +700,11 @@ bestRot := 0
             // driven here (RLOADN combinationally at the io drive).
             when(dllSweepOn) {
               rmove := False // default; pulses set below (single-slot high)
-              // busyMoving = transient hardware (anchor/navigate/settle):
-              // pause enumeration, freeze the s-pipeline, skip scoring. The
-              // s-pipeline would otherwise label measurements with the wrong
+              // busyMoving = transient hardware (anchor/navigate/settle/pin):
+              // pause enumeration, freeze pos, skip scoring. The s-pipeline
+              // would otherwise label measurements with the wrong
               // (pos, side, mag). Uniform rule, no exceptions.
-              when(aligning || (anchorLeft =/= 0) || (settleLeft =/= 0)) {
+              when(aligning || (anchorLeft =/= 0) || (settleLeft =/= 0) || (pinLeft =/= 0)) {
                 when(anchorLeft =/= 0) {
                   // Anchor window: RLOADN low (combinational) reloads rstep
                   // from the live DLL. Nothing else moves. Loops like every
@@ -702,6 +733,26 @@ bestRot := 0
                       cycle := config.RCD / 4
                     }
                   } otherwise {
+                    // Pin-per-setting: re-pin W/R pointers (HOLD) for 2
+                    // slots after a mag-step pulse, then resume ENUM. The
+                    // mag-step moved rstep; scoring the transient would
+                    // label history, not delay. Unlike a freeze, the
+                    // s-pipeline SHIFTS here (s0 holds the post-step
+                    // target): after 2 shifts s2 == hardware again on
+                    // resume, so the lag invariant survives the pin. pos
+                    // frozen (pos0 measured on resume), no pulse (rmove
+                    // idles False), RLOADN untouched (anchorLeft==0:
+                    // position kept, no reload). Loops like every transient
+                    // slot (same stall precedent as the anchor).
+                    when(pinLeft =/= 0) {
+                      dqs_hold := True
+                      s1Side := s0Side
+                      s1Mag := s0Mag
+                      s2Side := s1Side
+                      s2Mag := s1Mag
+                      pinLeft := pinLeft - 1
+                      cycle := config.RCD / 4
+                    } otherwise {
                     // Settle: countdown + flush s-pipeline toward frozen s0
                     // (s0 holds, s1/s2 shift): after 2 shifts s2 == s0 ==
                     // hardware, aligned. Loops; only the applyArmed finish
@@ -715,11 +766,16 @@ bestRot := 0
                       // FINISH: seed pass-3, flag, precharge, exit (falls to
                       // 13 -> IDLE, like the proven path). RLOADN untouched
                       // (HOLD rule): re-tracking would drop the winner.
+                      // Replay the winning K-group before pass-3: is(0)
+                      // re-pins at pass-3 entry, then kreplayLeft free-run
+                      // skips evolve the gap back to the winner's phase, so
+                      // the final survey sees the winning frames.
                       rclkpos := bestPos
                       needFinalSurvey := True
                       dllSweepDone := True
                       dllSweepOn := False
                       applyArmed := False
+                      kreplayLeft := bestK
                       if (!GenerationFlags.formal) {
                         report(L"RCALIB dll side=$bestSide mag=$bestMag pos=$bestPos score=$bestCntDll")
                       }
@@ -729,6 +785,7 @@ bestRot := 0
                     }
                     // Non-apply settle end: resume ENUM next slot (s2
                     // aligned, lockstep restored) via the loop-back above.
+                    }
                   }
                 }
               } otherwise {
@@ -747,6 +804,7 @@ bestRot := 0
                     bestPos := rclkpos
                     bestSel := rclksel
                     bestRot := sweepRot
+                    bestK := kSkip // gap group of the winner (replayed at apply)
                   }
                   // EXIT on true perfection (measured, aligned, valid). The
                   // APPLY path below is shared with exhaustion (uniform).
@@ -773,9 +831,10 @@ bestRot := 0
                     cycle := config.RCD / 4
                   } otherwise {
                     // EXHAUST when measured-complete: minus side, mag RANGE,
-                    // pos 3. s0 may run 2 ahead (unmeasured tail, harmless,
-                    // abandoned -- the trigger is on MEASURED, correct).
-                    when(s2Side && (s2Mag === config.dllSweepRange) && (rclkpos === 3)) {
+                    // K-group 7, pos 3. s0 may run 2 ahead (unmeasured tail,
+                    // harmless, abandoned -- the trigger is on MEASURED,
+                    // correct).
+                    when(s2Side && (s2Mag === config.dllSweepRange) && (rclkpos === 3) && (kSkip === 7)) {
                       aligning := True
                       anchorLeft := 2
                       navigateLeft := bestMag
@@ -812,8 +871,17 @@ bestRot := 0
                       rclkpos := (rclkpos.asUInt + 1).asBits
                       rdir := s0Side
                       when(rclkpos === 3) {
+                        // K-group advance: 8 post-pin free-run groups per mag
+                        // (gap evolves deterministically from the pin release;
+                        // no pulse, no pin, gap keeps evolving, s keeps
+                        // shifting -- lag invariant untouched, pulses stay 32
+                        // iters apart). Side-switch / mag-step only after
+                        // group 7: 32 measured iters per mag.
+                        when(kSkip =/= 7) {
+                          kSkip := kSkip + 1
+                        } otherwise {
                         // Side-switch when measured-complete on plus (s2 +
-                        // current pos, both pre-advance): fresh start at
+                        // current pos + K7, all pre-advance): fresh start at
                         // minus mag 1 (mag 0 measured once already).
                         // s-pipeline overwritten with the target (uniform
                         // with apply).
@@ -835,11 +903,17 @@ bestRot := 0
                           // Mag-step (capped at RANGE) + THE step pulse,
                           // atomic in this slot: exactly one pulse per step,
                           // never feedback-driven, so it cannot run away or
-                          // double-fire.
+                          // double-fire. Arms the per-setting re-pin (2 HOLD
+                          // slots, s shifts, scoring skipped): every mag
+                          // restarts from gap-0, then K-groups evolve it, so
+                          // frames stay comparable across the sweep.
                           when(s0Mag =/= config.dllSweepRange) {
                             s0Mag := s0Mag + 1
                             rmove := True
+                            pinLeft := 2
+                            kSkip := 0
                           }
+                        }
                         }
                       }
                       cycle := config.RCD / 4
@@ -848,6 +922,16 @@ bestRot := 0
                 }
               }
             } otherwise {
+              // K-replay (pass-3 only): the apply finish armed kreplayLeft
+              // := bestK; is(0) re-pinned at pass-3 entry, so counting down
+              // free-run iterations here evolves the gap back to the
+              // winner's phase before the final survey measures. Loops
+              // (transient idiom, same stall precedent as the anchor);
+              // grid advance, scoring and tries frozen meanwhile (gates).
+              when(kreplayLeft =/= 0) {
+                kreplayLeft := kreplayLeft - 1
+                cycle := config.RCD / 4
+              } otherwise {
               // Best-of-sweep eye search: strictly better rotation-corrected
               // beat score (0..8). No early stop: one full survey, then lock
               // the best setting AND its rotation.
@@ -874,6 +958,8 @@ bestRot := 0
                   bestCntDll := 0
                   bestSide := False
                   bestMag := 0
+                  kSkip := 0
+                  bestK := 0
                   rcalib_tries := 0
                   // Force an EVEN sel during the sweep: with rclksel[0]=1 the
                   // capture clock (DQSW90) is delayed by DLLSTEP itself, so it
@@ -913,6 +999,7 @@ bestRot := 0
               } otherwise {
                 cycle := config.RCD / 4 // loop back
               }
+              } // end K-replay otherwise (survey body above)
             }
           }
           is(config.RCD / 4 + 11 + config.RP / 4) {

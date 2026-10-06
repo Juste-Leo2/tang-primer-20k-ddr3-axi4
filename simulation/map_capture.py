@@ -23,6 +23,7 @@ SIM = Path(__file__).resolve().parent
 OSS_DIR = SIM.parent / "tools" / "oss-cad-suite"
 VVP = OSS_DIR / "bin" / "vvp.exe"
 LOCK_RX = re.compile(r"RCALIB lock best pos=(\d) sel=(\d) rot=(\d+) score=(\w+)")
+CHK_RX = re.compile(r"NOTE RCALIB chk pos=\d sel=\d side=(\d) mag=(\w+) k=(\d).*?score=(\d)")
 RESULT_RX = re.compile(
     r"RESULT step=(\d+) phase_ps=(\d+) wl=(-?\d+) W=(\w+) P=(\d+) S=(\d+) errors=(\d+) (\w+)")
 
@@ -41,6 +42,13 @@ def collect(step, phase):
     text = log.read_text(errors="replace")
     locks = LOCK_RX.findall(text)
     res = RESULT_RX.search(text)
+    # Max settled sweep score + where (side/mag/k): the gap-eye evidence.
+    # Nested-K chk lines carry side/mag/k; older logs without them yield -.
+    best = (-1, None)
+    for m in CHK_RX.finditer(text):
+        sc = int(m.group(4))
+        if sc > best[0]:
+            best = (sc, f"{m.group(1)}/{m.group(2)}/{m.group(3)}")
     # The LAST lock line is sweep-2 (written after the training pattern): that
     # is the real measurement. The first one is sweep-1 (score 0 by design).
     c = locks[-1][3] if locks else "?"
@@ -49,7 +57,8 @@ def collect(step, phase):
     sel = locks[-1][1] if locks else "?"
     w = res.group(4) if res else "?"
     return dict(step=step, phase=phase, c=c, rot=rot, pos=pos, sel=sel, w=w,
-                errors=res.group(7) if res else "?")
+                errors=res.group(7) if res else "?",
+                maxsw=best[0], at=best[1] or "-")
 
 
 def main():
@@ -102,7 +111,7 @@ def main():
                 done.append(r)
                 print(f"  done  step={r['step']:<4} phase={r['phase']:<5} "
                       f"C={r['c']} rot={r['rot']} P/S={r['pos']}/{r['sel']} "
-                      f"W={r['w']} err={r['errors']}  [{int(time.time()-t0)}s]",
+                      f"W={r['w']} err={r['errors']} maxsw={r['maxsw']}@{r['at']}  [{int(time.time()-t0)}s]",
                       flush=True)
         running = still
 
