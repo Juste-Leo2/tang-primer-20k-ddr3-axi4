@@ -121,17 +121,25 @@ module tb_spinal;
     // matrix: vvp tb_fast.vvp +step=64 +phase=312
     //   step  : DLL STEP = read-side delay tap (default 25, what tb_spinal pins)
     //   phase : permanent pclk offset vs ck/fclk in ps (default 0)
+    //   mag0/magN : window-scan (default 0/0 = classic full sweep). A nonzero
+    //     magN scans plus-side mags [mag0, mag0+magN) then reports WINDOW and
+    //     finishes (diag only). Requires a MAP_ONLY build (no memtest).
     integer step_val, phase_val, wl_val, k_val, eff_step;
+    integer mag0_val, magN_val;
     initial begin
         step_val = 25;
         phase_val = 0;
         wl_val = -1;
         k_val = 0;
         eff_step = 25;
+        mag0_val = 0;
+        magN_val = 0;
         void'($value$plusargs("step=%d", step_val));
         void'($value$plusargs("phase=%d", phase_val));
         void'($value$plusargs("wl=%d", wl_val));
         void'($value$plusargs("k=%d", k_val));
+        void'($value$plusargs("mag0=%d", mag0_val));
+        void'($value$plusargs("magN=%d", magN_val));
         eff_step = (step_val + k_val) & 255;
         force u_dut.phy.dll_1.LOCK = 1'b1;
         // K experiment: STEP + K is what actually reaches the DQS primitives.
@@ -140,8 +148,12 @@ module tb_spinal;
         // be measured before writing any RTL. Both are constant in time, so a
         // one-shot force is equivalent to a continuous one.
         force u_dut.phy.dll_1.STEP = eff_step[7:0];
-        $display("MAP step=%0d phase_ps=%0d wl=%0d k=%0d eff=%0d",
-                 step_val, phase_val, wl_val, k_val, eff_step);
+        // Window-scan regs (default 0 = full sweep). Forced like LOCK above:
+        // same hierarchical-force precedent, constant in time.
+        force u_dut.coreArea_core.sweepMag0 = mag0_val[6:0];
+        force u_dut.coreArea_core.sweepMagN = magN_val[6:0];
+        $display("MAP step=%0d phase_ps=%0d wl=%0d k=%0d eff=%0d mag0=%0d magN=%0d",
+                 step_val, phase_val, wl_val, k_val, eff_step, mag0_val, magN_val);
         $fflush();
     end
 

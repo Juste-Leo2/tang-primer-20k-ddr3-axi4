@@ -130,6 +130,20 @@ sans-K). Unitaires verts post-revert. Prochaine étape : micro-VCD
   et/ou cap de sweep par plusarg (`+sweepmax`, ~10 lignes RTL : runs
   diag 10-mags ≈ 15 min au lieu d'heures).
 
+## 10. Window-scan mag (implémenté incrémental, core-test vert 3/3)
+
+- Principe : le pin rend chaque mag indépendant → tranches [mag0,mag0+magN)
+  mesurables en parallèle, diag seulement (pas d'apply/passe-3).
+- Implémentation SANS réindent (leçon d'un wrap qui cassait le side-switch
+  et pendait la calib à 300k) : regs `sweepMag0/sweepMagN` + drivers
+  défaut explicites (unset = erreur d'élab des backends sim), prédicat
+  `winDoneNow` partagé, 3 touches (entrée/side-switch+mag-step/detour).
+- TB `force` hiérarchique (précédent LOCK), plusargs `+mag0/+magN`
+  (défaut 0 = full sweep), `mag_battery.py` : points (STEP,tranche),
+  collecte WINDOW+maxsw. Build MAP_ONLY requis pour les fenêtres.
+- Chaque morceau validé par `Ddr3ControllerCoreTest` seul (~20 s) avant
+  le suivant. Prochaine étape : matrice (23,25,40,60) x 7 tranches.
+
 ## 7. Tri par l'observation S60 (1006 visible, 1 seul zéro)
 
 - K=1..7 **identiques** (mag00/pos0 : rot 2, zéros {4,5} à chaque K) : K
