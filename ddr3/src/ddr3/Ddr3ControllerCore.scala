@@ -337,6 +337,21 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   // flags, s-pipeline, transients); only a fresh pass entry runs the full
   // reset block below.
   val bistReturn = RegInit(False)
+  // Window-scan (diag): TB-driven via hierarchical force (default 0 =
+  // classic full sweep). Nonzero magN scans plus-side mags [mag0,mag0+magN).
+  // Explicit default drivers: unset regs are elaboration ERRORS on some
+  // backends (lesson learned). The TB force overrides when nonzero.
+  val sweepMag0 = Reg(UInt(7 bits)) init(0)
+  val sweepMagN = Reg(UInt(7 bits)) init(0)
+  sweepMag0 := 0
+  sweepMagN := 0
+  val winEndRaw = sweepMag0 + sweepMagN // 8 bits
+  val winEnd = (sweepMagN === 0 || winEndRaw > config.dllSweepRange) ? U(config.dllSweepRange, 7 bits) | winEndRaw(6 downto 0)
+  // Window-done predicate (plus-side window fully measured). Shared by the
+  // three touches below so the side-switch, the mag-step and the BIST
+  // detour stay byte-identical apart from their gate: no reindent, no
+  // rewrap of the proven paths (lesson learned).
+  val winDoneNow = (sweepMagN =/= 0) && !s2Side && (s2Mag === winEnd)
   val applyArmed = RegInit(False)
   val navigateLeft = Reg(UInt(7 bits)) init(0)
   // Stepper outputs. rloadn has no reg: combinational rule at the io drive
@@ -873,7 +888,7 @@ bestRot := 0
                         // minus mag 1 (mag 0 measured once already).
                         // s-pipeline overwritten with the target (uniform
                         // with apply).
-                        when(!s2Side && (s2Mag === config.dllSweepRange)) {
+                        when(!s2Side && (s2Mag === config.dllSweepRange) && !winDoneNow) {
                           s0Side := True
                           s0Mag := 1
                           s1Side := True
@@ -888,20 +903,38 @@ bestRot := 0
                             report(L"RCALIB dll side switch to minus")
                           }
                         } otherwise {
-                          // Mag-step (capped at RANGE) + THE step pulse,
-                          // atomic in this slot: exactly one pulse per step,
-                          // never feedback-driven, so it cannot run away or
-                          // double-fire. Arms the per-setting re-pin (2 HOLD
-                          // slots, s shifts, scoring skipped): every mag
-                          // restarts from gap-0, so frames stay comparable
-                          // across the sweep.
-                          when(s0Mag =/= config.dllSweepRange) {
+                          // Mag-step (capped at RANGE, suppressed at window end)
+                          // + THE step pulse, atomic in this slot: exactly one
+                          // pulse per step, never feedback-driven, so it cannot
+                          // run away or double-fire. Arms the per-setting
+                          // re-pin (2 HOLD slots, s shifts, scoring skipped):
+                          // every mag restarts from gap-0, so frames stay
+                          // comparable across the sweep.
+                          when((s0Mag =/= config.dllSweepRange) && !winDoneNow) {
                             s0Mag := s0Mag + 1
                             rmove := True
                             pinLeft := 2
                           }
                         }
                       }
+                      // Window-scan end (diag): last mag fully measured.
+                      // Reports WINDOW and finishes like the survey lock (no
+                      // apply/pass-3). No cycle override: falls through to
+                      // 13 -> IDLE (MAP_ONLY build finishes, TB prints
+                      // RESULT). The BIST detour below is skipped via its own
+                      // gate; the side-switch and mag-step above suppressed
+                      // themselves via winDoneNow.
+                      when(winDoneNow) {
+                        dllSweepOn := False
+                        if (!GenerationFlags.formal) {
+                          report(L"RCALIB window side=$bestSide mag=$bestMag pos=$bestPos rot=$bestRot score=$bestCntDll")
+                        }
+                        when(!training) {
+                          rcalib_done := True
+                        }
+                        setCmd(0, CMD_PreCharge, B"3'b0", B"0".resized)
+                      }
+                      when(!winDoneNow) {
                       // BIST write-then-read: refresh block 0 through the
                       // proven WRITE path (auto-precharge closes the row;
                       // WRITE exit returns to is(0) which re-ACTs and, via
@@ -917,6 +950,7 @@ bestRot := 0
                       bistReturn := True
                       state := Ddr3State.WRITE
                       cycle := 0
+                      }
                     }
                   }
                 }
@@ -957,6 +991,28 @@ bestRot := 0
                   // the DQS scans. Pass 3 re-surveys ALL sel afterwards, so
                   // the final lock stays free to pick an odd sel if best.
                   rclksel(0) := False
+                  when(sweepMagN =/= 0) {
+                    // Window entry (clone of the side-switch): overwrite the
+                    // s-pipeline with mag0, restart pos, anchor + navigate
+                    // mag0 pulses from 0. Loops into the anchor (transient,
+                    // no BIST write here: positioning first; the ENUM
+                    // loop-back writes before each measurement).
+                    s0Side := False
+                    s0Mag := sweepMag0
+                    s1Side := False
+                    s1Mag := sweepMag0
+                    s2Side := False
+                    s2Mag := sweepMag0
+                    rclkpos := 0
+                    aligning := True
+                    anchorLeft := 2
+                    navigateLeft := sweepMag0
+                    applyArmed := False
+                    if (!GenerationFlags.formal) {
+                      report(L"RCALIB window start mag0=$sweepMag0 n=$sweepMagN")
+                    }
+                    cycle := config.RCD / 4
+                  } otherwise {
                   // Loop back into the sweep via a BIST refresh first (row is
                   // open from the survey; the WRITE returns through is(0)
                   // which re-ACTs after the auto-precharge). Falling through
@@ -971,6 +1027,7 @@ bestRot := 0
                   bistReturn := True
                   state := Ddr3State.WRITE
                   cycle := 0
+                  }
                 } otherwise {
                   dllSweepOn := False
                   if (!GenerationFlags.formal) {
