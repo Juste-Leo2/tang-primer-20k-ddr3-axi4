@@ -63,7 +63,10 @@ def main():
               file=sys.stderr)
         return 1
 
-    points = [(s, m) for s in steps for m in mags]
+    # Round-robin over mags (not steps) so every STEP starts immediately
+    # even with few jobs: with --jobs 2 the first two slots are S23-m0 +
+    # S25-m0 instead of two S23 windows.
+    points = [(s, m) for m in mags for s in steps]
     todo = []
     for s, m in points:
         log = SIM / f"tb_fast_s{s}_m{m}.log"
@@ -79,31 +82,43 @@ def main():
     queue = list(todo)
     t0 = time.time()
     env = get_env()
-    while queue or running:
-        while queue and len(running) < args.jobs:
-            s, m = queue.pop(0)
-            fh = open(SIM / f"tb_fast_s{s}_m{m}.log", "w")
-            cmd = [str(VVP), str(vvp), f"+step={s}", "+phase=0",
-                   f"+mag0={m}", f"+magN={args.magn}"]
-            fh.write("$ " + " ".join(cmd) + "\n")
-            fh.flush()
-            proc = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT,
-                                    cwd=str(SIM), env=env)
-            running.append((proc, fh, (s, m)))
-            print(f"  start step={s:<4} mag0={m:<3}", flush=True)
-        time.sleep(5)
-        still = []
+    try:
+        while queue or running:
+            while queue and len(running) < args.jobs:
+                s, m = queue.pop(0)
+                fh = open(SIM / f"tb_fast_s{s}_m{m}.log", "w")
+                cmd = [str(VVP), str(vvp), f"+step={s}", "+phase=0",
+                       f"+mag0={m}", f"+magN={args.magn}"]
+                fh.write("$ " + " ".join(cmd) + "\n")
+                fh.flush()
+                proc = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT,
+                                        cwd=str(SIM), env=env)
+                running.append((proc, fh, (s, m)))
+                print(f"  start step={s:<4} mag0={m:<3} "
+                      f"(queued={len(queue)})", flush=True)
+            time.sleep(5)
+            still = []
+            for proc, fh, pt in running:
+                if proc.poll() is None:
+                    still.append((proc, fh, pt))
+                else:
+                    fh.close()
+                    r = collect(*pt, args.magn)
+                    done.append(r)
+                    print(f"  done  step={r['step']:<4} mag0={r['mag0']:<3} "
+                          f"WINDOW score={r['wscore']} @mag={r['wmag']} "
+                          f"maxsw={r['maxsw']}  [{int(time.time()-t0)}s]",
+                          flush=True)
+            running = still
+    except KeyboardInterrupt:
+        print("\n  abort: killing running vvp...", flush=True)
         for proc, fh, pt in running:
-            if proc.poll() is None:
-                still.append((proc, fh, pt))
-            else:
-                fh.close()
-                r = collect(*pt, args.magn)
-                done.append(r)
-                print(f"  done  step={r['step']:<4} mag0={r['mag0']:<3} "
-                      f"WINDOW score={r['wscore']} @mag={r['wmag']} "
-                      f"maxsw={r['maxsw']}  [{int(time.time()-t0)}s]", flush=True)
-        running = still
+            try:
+                proc.kill()
+            except OSError:
+                pass
+            fh.close()
+        raise SystemExit(130)
 
     have = {(d["step"], d["mag0"]) for d in done}
     for s, m in points:
