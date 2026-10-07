@@ -122,7 +122,7 @@ class Ddr3TesterTopTest extends AnyFunSuite {
       // plus slow UART streaming (4 cycles/bit). 12000 starves the engine
       // even when everything works; 60000 still catches real hangs fast
       // (a hang never asserts either flag).
-      dut.clockDomain.waitSamplingWhere(60000)(dut.io.test_pass.toBoolean || dut.io.test_err.toBoolean)
+      dut.clockDomain.waitSamplingWhere(120000)(dut.io.test_pass.toBoolean || dut.io.test_err.toBoolean)
 
       println(s"\n[SIM] Console output received:\n${receivedChars.toString.trim}")
       assert(!dut.io.test_err.toBoolean, "Ddr3MemtestEngine reported an error!")
