@@ -172,6 +172,28 @@ module tb_spinal;
         end
     end
 
+    // VCD micro-window: trigger on sweep start (dllSweepOn rises at the
+    // survey->sweep hand-off), dump the anchor + first mags, stop. Covers
+    // the pin release + first post-pin measurements (the H1 zone).
+    // Usage: +vcdwinlen=<ps> (≈250000/iter at pclk 100MHz; 2500000 ≈ 10
+    // iters). 0 = off. Needs a --vcd build (read compiled out under NO_VCD).
+    integer vcdwin_len;
+    initial begin
+        vcdwin_len = 0;
+`ifndef NO_VCD
+        void'($value$plusargs("vcdwinlen=%d", vcdwin_len));
+`endif
+        if (vcdwin_len != 0) begin
+            wait (u_dut.coreArea_core.dllSweepOn === 1'b1);
+            $dumpfile($sformatf("tb_fast_win_s%0d_m%0d.vcd", step_val, mag0_val));
+            $dumpvars(0, tb_spinal);
+            #(vcdwin_len);
+            $display("VCDWIN done (%0d ns), finishing", vcdwin_len);
+            $fflush();
+            $finish(0);
+        end
+    end
+
     real tck;
     integer phase_done;
     initial begin
@@ -291,8 +313,19 @@ module tb_spinal;
 
     initial begin : test
 `ifndef NO_VCD
-        $dumpfile("tb_fast.vcd");
-        $dumpvars(0, tb_spinal);
+        // Full VCD (opt-in, huge): +vcdfull=1. Micro-window (diag default):
+        // +vcdwinlen=<ns> dumps only [sweep-start, +len] into a per-point
+        // file, then $finish: short run, MB-size VCD, no kill needed.
+        // Filenames carry step/mag so parallel runs never collide.
+        begin
+            integer vcdfull;
+            vcdfull = 0;
+            void'($value$plusargs("vcdfull=%d", vcdfull));
+            if (vcdfull != 0) begin
+                $dumpfile("tb_fast.vcd");
+                $dumpvars(0, tb_spinal);
+            end
+        end
 `endif
         errors = 0;
         $display("Powering up and reset the controller");
