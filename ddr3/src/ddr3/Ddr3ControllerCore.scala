@@ -331,6 +331,12 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   // scoring the transient would label history, not delay). Shifts the
   // s-pipeline like the arrival settle (s0 holds the post-step target).
   val pinLeft = Reg(UInt(2 bits)) init(0)
+  // BIST write-then-read: bistReturn marks the is(0) that follows a
+  // per-iteration refresh write (row closed by the write's auto-precharge).
+  // That is(0) re-ACTs but preserves ALL pass state (tries, bests, sweep
+  // flags, s-pipeline, transients); only a fresh pass entry runs the full
+  // reset block below.
+  val bistReturn = RegInit(False)
   val applyArmed = RegInit(False)
   val navigateLeft = Reg(UInt(7 bits)) init(0)
   // Stepper outputs. rloadn has no reg: combinational rule at the io drive
@@ -609,6 +615,14 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
           is(0) {
             setCmd(0, CMD_BankActivate, B"3'b0", B"0".resized)
             dqs_hold := True // deterministic W/R start for the sweep
+            when(bistReturn) {
+              // BIST-write return: the write's auto-precharge closed the row
+              // and the ACT above re-opens it. All pass state (tries, bests,
+              // sweep flags, s-pipeline, transients) SURVIVES -- the next
+              // slots measure freshly-written data. Loops into the bursts
+              // (no re-entry stall: this is not a pass entry).
+              bistReturn := False
+            } otherwise {
             rcalib_cnt := 0
             rcalib_tries := 0
             bestCnt := 0
@@ -636,6 +650,7 @@ bestRot := 0
             // (RLOADN held). rloadn is combinational (auto-correct); rmove
             // idles low and rdir is stable -- leaving them alone is correct
             // in all passes.
+            }
           }
           is(config.RCD / 4) {
             // Burst 1 of 2, BL8 without auto-precharge.
@@ -887,7 +902,21 @@ bestRot := 0
                           }
                         }
                       }
-                      cycle := config.RCD / 4
+                      // BIST write-then-read: refresh block 0 through the
+                      // proven WRITE path (auto-precharge closes the row;
+                      // WRITE exit returns to is(0) which re-ACTs and, via
+                      // bistReturn, preserves all pass state). Row is open
+                      // here (reads never precharge). The next slots measure
+                      // freshly-written data: immune to stale residue (H3).
+                      reqReg.write := True
+                      reqReg.addr := 0
+                      reqReg.wdata := trainPat
+                      reqReg.wstrb := B"16'hFFFF"
+                      trainDone := True
+                      needPoison := False
+                      bistReturn := True
+                      state := Ddr3State.WRITE
+                      cycle := 0
                     }
                   }
                 }
@@ -928,12 +957,20 @@ bestRot := 0
                   // the DQS scans. Pass 3 re-surveys ALL sel afterwards, so
                   // the final lock stays free to pick an odd sel if best.
                   rclksel(0) := False
-                  // Loop back into the sweep. Falling through to cycle 13
-                  // would exit to IDLE (the historical hand-off to the
-                  // training write), and the sweep would never run: the next
-                  // READ_CALIB pass resets dllSweepOn and rcalib_done would
-                  // stay low forever.
-                  cycle := config.RCD / 4
+                  // Loop back into the sweep via a BIST refresh first (row is
+                  // open from the survey; the WRITE returns through is(0)
+                  // which re-ACTs after the auto-precharge). Falling through
+                  // to cycle 13 would exit to IDLE (the historical hand-off
+                  // to the training write), and the sweep would never run.
+                  reqReg.write := True
+                  reqReg.addr := 0
+                  reqReg.wdata := trainPat
+                  reqReg.wstrb := B"16'hFFFF"
+                  trainDone := True
+                  needPoison := False
+                  bistReturn := True
+                  state := Ddr3State.WRITE
+                  cycle := 0
                 } otherwise {
                   dllSweepOn := False
                   if (!GenerationFlags.formal) {
@@ -948,15 +985,25 @@ bestRot := 0
                     rcalib_done := True
                   }
                   // Precharge on the finish path only (exit to IDLE). The
-                  // sweep-start path keeps the row open on purpose: the sweep
-                  // loop never re-activates (is(0) runs once per pass) and its
-                  // READs need the row left open by the survey — exactly like
-                  // the survey iterations themselves. Refreshes only fire from
-                  // IDLE, so no PRECHARGE is needed across the hand-off.
+                  // sweep-start path detours through a BIST write (row open
+                  // from the survey); the write's auto-precharge closes it
+                  // and the WRITE exit returns via is(0), which re-ACTs
+                  // (bistReturn preserves pass state). Refreshes only fire
+                  // from IDLE, so no PRECHARGE is needed across the hand-off.
                   setCmd(0, CMD_PreCharge, B"3'b0", B"0".resized)
                 }
               } otherwise {
-                cycle := config.RCD / 4 // loop back
+                // BIST refresh (survey grid points measure fresh data too,
+                // same detour as the sweep ADVANCE above).
+                reqReg.write := True
+                reqReg.addr := 0
+                reqReg.wdata := trainPat
+                reqReg.wstrb := B"16'hFFFF"
+                trainDone := True
+                needPoison := False
+                bistReturn := True
+                state := Ddr3State.WRITE
+                cycle := 0 // loop back via WRITE + is(0)
               }
             }
           }
@@ -1200,6 +1247,7 @@ bestRot := 0
     settleLeft := 0
     applyArmed := False
     navigateLeft := 0
+    bistReturn := False
     rmove := False
     rdir := False
     bestRot := 0

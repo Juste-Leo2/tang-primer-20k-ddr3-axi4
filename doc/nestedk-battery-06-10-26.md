@@ -104,6 +104,32 @@ sans-K). Unitaires verts post-revert. Prochaine étape : micro-VCD
 - Tranchement : micro-VCD (fronts/burst + pointeurs au latch) décide
   H1 vs H2 en un run ; H4 se teste sans VCD.
 
+## 9. Conclusion batterie BIST (S25/S26 PASS, S23 mag+2 toujours 6)
+
+- BIST mécaniquement OK (writes visibles : torn frames à données fraîches ;
+  S25/S26 montent à 70/77 slots à 8). Hygiène : classe H3-stale éliminée,
+  cadres déterministes et interprétables.
+- Mais S23 sweepé à mag+2 (= rstep 25) score toujours 6 alors que S25-ancre
+  fait 8 (même rstep absolu) : le frais ne suffit pas → **H3 seule est
+  morte comme cause unique**. H2 aussi (même rstep = même sampling).
+- Reste **H1 (préambule-dans-FIFO + gap choisit la fenêtre)** qui explique
+  tout : déterminisme gap-0, STEP-dépendance (alignement préambule au
+  release), impuissance du BIST (Hi-Z par burst, pas stale), chance S25
+  (gap évolué = fenêtre propre), torn (répétition pointeur, survey sel
+  impair uniquement — sweep en sel pair immunisé).
+- S60 : le beat manquant est toujours le slot-1007 (jamais vu) = 1 slot
+  préambule dans la fenêtre à cet alignement ; S40 : 2 lignes torn survey
+  sel=7 avec 1007 visible (transitoire, pas un œil).
+- Verdict modif : **BIST à GARDER comme socle** (finit la question stale,
+  rend les cadres lisibles, S25/S26 meilleurs) — pas comme cure. Petits
+  progrès validés, philosophie confirmée.
+- Next : (a) VCD comptage fronts/burst (arbitre roi, 1 run) ; (b) 3-4
+  bursts/itération (~10 lignes, glisse la fenêtre au-delà du préambule) ;
+  (c) H4 durée-de-pin (toujours non testée).
+- Vitesse d'itération (vrai goulot) : builds `--map-only` (sans memtest),
+  et/ou cap de sweep par plusarg (`+sweepmax`, ~10 lignes RTL : runs
+  diag 10-mags ≈ 15 min au lieu d'heures).
+
 ## 7. Tri par l'observation S60 (1006 visible, 1 seul zéro)
 
 - K=1..7 **identiques** (mag00/pos0 : rot 2, zéros {4,5} à chaque K) : K
@@ -119,3 +145,21 @@ sans-K). Unitaires verts post-revert. Prochaine étape : micro-VCD
   - H5 : non (7s dès mag 0, loin du rail).
 - Bilan : l'observation favorise **H3 (ou H1+H2)**, défavorise H1/H4
   pures et H5. La micro-VCD reste l'arbitre (contenu stale vs fronts).
+
+## 8. Fix H3 : mini-BIST write-then-read (implémenté, à valider S25)
+
+- Chaque itération mesurée = refresh block 0 (trainPat) via l'état WRITE
+  prouvé, puis reads : mem fraîche par construction, immunité H3 (et
+  agnostique H1/H2 tant que les fronts portent de la donnée).
+- Détour aux 3 sites : ADVANCE sweep, loop survey, sweep-start (row open).
+  Retour via is(0) + flag `bistReturn` (re-ACT après auto-precharge, état
+  de passe préservé). WRITE et transients intacts. tWTR couvert par
+  tRCD (ACT→reads). ~2.5x slots calib (ms en HW).
+- Transients (anchor/navigate/settle/pin) sans write : déterminisme gardé.
+  Pass-1 écrit aussi (sans danger : pas de done, training réécrit).
+- 1-iter-lag assumé : itération N lit le write de N-1 (uniforme,
+  comparable ; le lock S25 peut glisser pos0→pos1, fonctionnel OK via
+  bestPos/bestRot).
+- Timeouts tests 60k→120k (test-only). Unitaires verts (`unit_bist.log`).
+- Triomphe attendu : **tous les STEPs PASS**, chacun son œil (dépendance
+  delay physique conservée, dépendance historique supprimée).
