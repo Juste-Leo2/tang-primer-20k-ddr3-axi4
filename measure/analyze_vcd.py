@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """VCD micro-window analysis: DQSR90 edges per burst + WPOINT/RPOINT tracks.
-Usage: python3 simulation/analyze_vcd.py tb_fast_win_s23_m0.vcd [N6 ...]
+Usage: python3 measure/analyze_vcd.py <fichier.vcd> [N6 ...]
 Streams the file (never loads it)."""
 import re
 import sys

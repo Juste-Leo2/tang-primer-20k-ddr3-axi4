@@ -14,6 +14,8 @@ Then you can run
 ```bash
 make run.controller
 ```
+(original nand2mario baseline, kept as golden reference: `tb_controller.v` +
+`ddr3_controller_sim.v`; legacy `Makefile` archived in `archives/sim-legacy/`).
 
 It gives a detailed view of what's happening, including timing errors. This is essential for debugging the controller.
 
@@ -22,4 +24,17 @@ It gives a detailed view of what's happening, including timing errors. This is e
 With gtkwave, you can view the wavefrom:
 
 <img src="../doc/waveform.png" width=700>
+
+---
+
+## Active flow (refactoring 10/2026)
+
+- Driver unique : `python simulation/sim_ddr.py --fast-tb --map-only` (build),
+  puis `--spinal --run` / `--fast-tb --run` (voir `AGENTS.md`). Ne jamais
+  lancer `vvp.exe` brut en détaché (le driver met `bin+lib` au PATH).
+- TB actif : `tb_fast.v`. `tb_spinal.v` / `tb_controller.v` (+
+  `ddr3_controller_sim.v`, baseline nand2mario gardée) : autres TBs.
+- Batteries et analyses : voir `measure/README.md` (`measure/mag_battery.py`,
+  `measure/map_capture.py`, `measure/analyze_*.py` — logs lus ici même).
+- Anciens scripts d'analyse : `archives/sim-scripts/`.
 
