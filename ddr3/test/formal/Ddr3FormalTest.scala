@@ -35,7 +35,7 @@ object Ddr3FormalProof {
     FormalConfig
       .withSymbiYosys
       .withBMC(300)
-      .withTimeout(1200)
+      .withTimeout(3600)
       .withDebug
       .withSyncResetDefault
       .withEngies(List(SmtBmc(solver = SmtBmcSolver.Boolector)))

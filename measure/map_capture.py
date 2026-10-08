@@ -9,7 +9,7 @@ vvp is single-threaded, so parallelism is one OS process per point (20 logical
 cores available; --jobs should stay well below that to leave room for the host).
 
 Usage:
-  python map_capture.py --steps 0,25,64,128,192,255 --phases 0,312,625 --jobs 9
+  python measure/map_capture.py --steps 0,25,64,128,192,255 --phases 0,312,625 --jobs 9
 """
 import argparse
 import os
@@ -19,8 +19,10 @@ import sys
 import time
 from pathlib import Path
 
-SIM = Path(__file__).resolve().parent
-OSS_DIR = SIM.parent / "tools" / "oss-cad-suite"
+MEAS = Path(__file__).resolve().parent
+REPO = MEAS.parent
+SIM = REPO / "simulation"
+OSS_DIR = REPO / "tools" / "oss-cad-suite"
 VVP = OSS_DIR / "bin" / "vvp.exe"
 LOCK_RX = re.compile(r"RCALIB lock best pos=(\d) sel=(\d) rot=(\d+) score=(\w+)")
 CHK_RX = re.compile(r"NOTE RCALIB chk pos=\d sel=\d side=(\d) mag=(\w+) k=(\d).*?score=(\d)")
@@ -40,7 +42,12 @@ def get_env():
 
 def collect(step, phase):
     log = SIM / f"tb_fast_s{step}_p{phase}.log"
-    text = log.read_text(errors="replace")
+    try:
+        text = log.read_text(errors="replace")
+    except OSError:
+        # Point never run (aborted map): stay printable, don't crash.
+        return dict(step=step, phase=phase, c="?", rot="?", pos="?",
+                    sel="?", w="?", errors="?", maxsw=-1, at="-")
     locks = LOCK_RX.findall(text)
     res = RESULT_RX.search(text)
     # Max settled sweep score + where (side/mag/k): the gap-eye evidence.

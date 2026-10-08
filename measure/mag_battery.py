@@ -9,7 +9,7 @@ REQUIRES a MAP_ONLY build: python simulation/sim_ddr.py --fast-tb --map-only
 (without --run). Do NOT mix with full-sweep runs on the same tb_fast.vvp.
 
 Usage:
-  python mag_battery.py --steps 23,25,40,60 --mag0 0,10,20,30,40,50,60 --magn 10 --jobs 14
+  python measure/mag_battery.py --steps 23,25,40,60 --mag0 0,10,20,30,40,50,60 --magn 10 --jobs 14
 """
 import argparse
 import os
@@ -19,8 +19,10 @@ import sys
 import time
 from pathlib import Path
 
-SIM = Path(__file__).resolve().parent
-OSS_DIR = SIM.parent / "tools" / "oss-cad-suite"
+MEAS = Path(__file__).resolve().parent
+REPO = MEAS.parent
+SIM = REPO / "simulation"
+OSS_DIR = REPO / "tools" / "oss-cad-suite"
 VVP = OSS_DIR / "bin" / "vvp.exe"
 WIN_RX = re.compile(
     r"RCALIB window side=(\w+) mag=(\w+) pos=(\w+) rot=(\w+) score=(\w+)")
@@ -36,7 +38,11 @@ def get_env():
 
 def collect(step, mag0, magn):
     log = SIM / f"tb_fast_s{step}_m{mag0}.log"
-    text = log.read_text(errors="replace")
+    try:
+        text = log.read_text(errors="replace")
+    except OSError:
+        # Point never run (aborted battery): stay printable, don't crash.
+        return dict(step=step, mag0=mag0, wscore="?", wmag="?", maxsw=-1)
     w = WIN_RX.search(text)
     mx = -1
     for m in CHK_RX.finditer(text):

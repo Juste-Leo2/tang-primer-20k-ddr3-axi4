@@ -162,8 +162,11 @@ def main():
                     SIM / "ddr3_controller_sim.v",
                     GOWIN_SIM], out)
         print("BUILD rc =", rc)
-        if rc == 0 and args.run:
-            run(out)
+        if rc != 0:
+            return rc
+        if args.run:
+            return run(out)
+        return 0
     elif args.spinal:
         out = SIM / "tb_spinal.vvp"
         extra = ["FASTDLL"] if args.fastdll else []
@@ -175,8 +178,11 @@ def main():
                     REPO / "hw" / "gen" / "Ddr3ControllerSim.v",
                     GOWIN_SIM], out, extra_defines=extra)
         print("BUILD rc =", rc)
-        if rc == 0 and args.run:
-            run(out)
+        if rc != 0:
+            return rc
+        if args.run:
+            return run(out)
+        return 0
     elif args.fast_tb:
         # STEP and phase are runtime plusargs: one build serves the whole map.
         # ZERO_STALE_SLOTS hardens the IDES model (X on the DQ pad stores 0
@@ -193,10 +199,13 @@ def main():
                     REPO / "hw" / "gen" / "Ddr3ControllerSim.v",
                     GOWIN_SIM], out, extra_defines=extra)
         print("BUILD rc =", rc)
-        if rc == 0 and args.run:
-            run(out, plusargs=[f"+step={args.step}", f"+phase={args.phase}",
-                               f"+wl={args.wl}", f"+k={args.k}"],
-                log_name=f"tb_fast_s{args.step}_p{args.phase}_w{args.wl}_k{args.k}")
+        if rc != 0:
+            return rc
+        if args.run:
+            return run(out, plusargs=[f"+step={args.step}", f"+phase={args.phase}",
+                                       f"+wl={args.wl}", f"+k={args.k}"],
+                        log_name=f"tb_fast_s{args.step}_p{args.phase}_w{args.wl}_k{args.k}")
+        return 0
     else:
         ap.print_help()
         return 1

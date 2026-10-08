@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
-"""Partial window-battery analysis (safe to run while sims are going)."""
+"""Partial window-battery analysis (safe to run while sims are going).
+
+Usage:
+  python measure/analyze_window.py   (logs lus dans simulation/)
+"""
 import re
 import collections
 from pathlib import Path
 
-SIM = Path(__file__).resolve().parent
+MEAS = Path(__file__).resolve().parent
+SIM = MEAS.parent / "simulation"
 CHK = re.compile(r"NOTE RCALIB chk pos=(\d) sel=(\d).*?score=(\d) rot=(\d) latch=([0-9a-f]+)")
 WIN = re.compile(r"RCALIB window side=(\w+) mag=(\w+) pos=(\w+) rot=(\w+) score=(\w+)")
 WSTART = re.compile(r"RCALIB window start mag0=(\w+) n=(\w+)")
