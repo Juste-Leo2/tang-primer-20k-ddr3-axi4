@@ -61,6 +61,8 @@ identical to the ps over 200 ns.
 | — | Settle-per-step | Reverted (earlier decision, confirmed) |
 | — | 3–4 bursts/iteration | Ruled out (past failure + rolling-dirty model: more bursts = same dirty fraction) |
 | — | Misc | Ruled out by data: start gap, WSTEP, RNG (`RANDOM_OUT_DELAY=0`, deterministic), RPOINT, lanes, detectors, mux runt, BIST address, corrupted content (6/8 good + `xx`=Hi-Z, not wrong-data), binary skew, ODT, turnaround |
+| — | Navigate collapse (PRE-EXISTING bug, proven 09/10) | **Real, fixed in v2**: the DQS steps on RMOVE *falling* edges only (`prim_sim_tb.v:14194`), but every navigate drove `rmove=True` for N consecutive slots = one long pulse = always exactly ±1. PROBE-proven: scan goto +2 landed `rstep=0x18` (24), minus bases 22. Consequences: all window cells with `mag0 ≥ 1` measured `anchor+1` mislabeled as `anchor+mag0` (B's "mag 2" was really 24); apply with `bestMag > 1` locked 1 tap off (never observed: winner was ~always mag 0); fix-v1 scan could never reach 25/26. Unaffected: sweep mag-steps (isolated single-slot pulses) and side-switch (`navigateLeft=1`). Fix = slot doubling + pulse on odd counts (`navigateLeft` 8 bits) |
+| H7 | Write-phase + turn-on (anchor moves the write clock in X4) | **Open, constrained**: s25a23 scores 8 with post-switch BIST writes at phase 23 → the *current* write phase is not the lever; weight is in the training/write era or the pointer/dqs_en trajectory. Discriminant pending: `+wl` shift on S23 |
 
 Also noted (minor, not priority): M3 — only lane0 Hi-Z at the 1st edge
 (`first2D=x0`); M4 — RPOINT free-runs, sampling it at an arbitrary offset
@@ -137,3 +139,12 @@ rebuildé avec `+anchor_step`, `BUILD rc=0`, ne pas rebuild entre les runs) :
   survey empoisonne l'aval (cas B).
 Total ≈ 50 min mur. Ensuite seulement : edit Scala → regen → unitaires →
 formel BMC + TB S25 en fond (batterie anti-régression du 08/10).
+
+## 7. Batteries A+B 09/10 : FAIT, voir `doc/anchor-battery-09-10-26.md`
+
+Densité : zone bonne = {25, 26}, fronts raides (24/27 → 6). Hop : s23a25
+(survey@23, ancre 25, mesuré 25) → 6 ; s25a23 (survey@25, ancre 23, mesuré
+**23**) → 8, switch prouvé effectif par PROBE (`rstep` post-switch).
+Verdict : **le survey décide (cas B)**, `anchor-per-mag` seul insuffisant,
+fix = boucle externe **avec re-survey par base** (scan survey-only grossier
+puis sweep aux meilleures bases + early-exit).

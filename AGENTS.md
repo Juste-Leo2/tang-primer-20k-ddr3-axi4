@@ -77,6 +77,15 @@ Start-Process -FilePath 'cmd.exe' -ArgumentList '/c','python simulation\sim_ddr.
   `WPOINT` avance sur fronts `DQSR90` (DLLSTEP=25 = 0.625 ns), reset par
   `HOLD` ; `READ` échantillonné sur `PCLK` (pipeline sensible à la phase) ;
   `RCLKSEL[2]` +1 CK, `[0]/[1]` changent les horloges (pas de micro-pas).
+- Le DQS ne compte que les **fronts descendants** de `RMOVE`/`WMOVE`
+  (`prim_sim_tb.v:14194`) : N slots consécutifs à 1 = UN seul pas. Toujours
+  un slot de gap entre deux pulses (`navigateLeft` compte des slots, pulse
+  sur comptes impairs).
+- Jamais plusieurs `iverilog -o` concurrents vers le même `.vvp` (binaire
+  corrompu → `Assertion failed: use_island, vvp_island.cc:309` au load,
+  avant même la ligne MAP ; 09/10 : 3 rebuilds parallèles). Un seul build,
+  puis runs `vvp` parallèles — ou `sim_ddr.py --run` en séquentiel (`&&`,
+  rebuilds sérialisés OK : un `vvp` déjà chargé garde son image).
 - IDs VCD changent à chaque build → toujours re-`grep` le header d'abord.
 - `RPOINT` en roue libre : jamais de comparaison absolue.
 - En MAP_ONLY, `RESULT ... PASS` est vacueux : lire `WINDOW`/`maxsw`.
