@@ -140,6 +140,18 @@ def main():
     ap.add_argument("--k", type=int, default=0,
                     help="fast-tb only: offset added to the DLL STEP before it "
                          "reaches the DQS primitives (the RTL fix under test)")
+    ap.add_argument("--anchor-step", type=int, default=-1,
+                    help="fast-tb only: re-force DLL STEP to this value at sweep "
+                         "start (survey@step, anchor@sweep; -1 = no switch)")
+    ap.add_argument("--mag0", type=int, default=0,
+                    help="fast-tb only: window-scan start mag "
+                         "(0/0 = classic full sweep)")
+    ap.add_argument("--magN", type=int, default=0,
+                    help="fast-tb only: window-scan mag count "
+                         "(nonzero: measure [mag0, mag0+magN), report WINDOW)")
+    ap.add_argument("--vcdwin", type=int, default=0,
+                    help="fast-tb only: VCD micro-window length in ps "
+                         "(0 = off; e.g. 2500000; needs a --vcd build)")
     ap.add_argument("--map-only", action="store_true",
                     help="fast-tb only: calibration only, skip the functional memtest")
     ap.add_argument("--run", action="store_true", help="also execute vvp after build")
@@ -202,9 +214,21 @@ def main():
         if rc != 0:
             return rc
         if args.run:
-            return run(out, plusargs=[f"+step={args.step}", f"+phase={args.phase}",
-                                       f"+wl={args.wl}", f"+k={args.k}"],
-                        log_name=f"tb_fast_s{args.step}_p{args.phase}_w{args.wl}_k{args.k}")
+            plusargs = [f"+step={args.step}", f"+phase={args.phase}",
+                        f"+wl={args.wl}", f"+k={args.k}",
+                        f"+mag0={args.mag0}", f"+magN={args.magN}",
+                        f"+anchor_step={args.anchor_step}"]
+            if args.magN:
+                if args.anchor_step >= 0:
+                    log_name = f"tb_fast_s{args.step}a{args.anchor_step}_m{args.mag0}"
+                else:
+                    log_name = f"tb_fast_s{args.step}_m{args.mag0}"
+            else:
+                log_name = (f"tb_fast_s{args.step}_p{args.phase}_"
+                            f"w{args.wl}_k{args.k}")
+            if args.vcdwin:
+                plusargs.append(f"+vcdwinlen={args.vcdwin}")
+            return run(out, plusargs=plusargs, log_name=log_name)
         return 0
     else:
         ap.print_help()

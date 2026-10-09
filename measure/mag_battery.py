@@ -36,8 +36,14 @@ def get_env():
     return env
 
 
-def collect(step, mag0, magn):
-    log = SIM / f"tb_fast_s{step}_m{mag0}.log"
+def log_name(step, anchor, mag0):
+    if anchor >= 0 and anchor != step:
+        return SIM / f"tb_fast_s{step}a{anchor}_m{mag0}.log"
+    return SIM / f"tb_fast_s{step}_m{mag0}.log"
+
+
+def collect(step, anchor, mag0, magn):
+    log = log_name(step, anchor, mag0)
     try:
         text = log.read_text(errors="replace")
     except OSError:
@@ -47,7 +53,7 @@ def collect(step, mag0, magn):
     mx = -1
     for m in CHK_RX.finditer(text):
         mx = max(mx, int(m.group(1)))
-    return dict(step=step, mag0=mag0,
+    return dict(step=step, anchor=anchor, mag0=mag0,
                 wscore=w.group(5) if w else "?",
                 wmag=w.group(2) if w else "?",
                 maxsw=mx)
@@ -56,6 +62,9 @@ def collect(step, mag0, magn):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--steps", default="23,25,40,60")
+    ap.add_argument("--anchor-steps", default="",
+                    help="per-step sweep-start anchor (same length as --steps; "
+                         "empty = no switch, survey@step)")
     ap.add_argument("--mag0", default="0,10,20,30,40,50,60")
     ap.add_argument("--magn", type=int, default=10)
     ap.add_argument("--jobs", type=int, default=14)
@@ -63,6 +72,14 @@ def main():
 
     steps = [int(x) for x in args.steps.split(",") if x != ""]
     mags = [int(x) for x in args.mag0.split(",") if x != ""]
+    if args.anchor_steps.strip():
+        anchors = [int(x) for x in args.anchor_steps.split(",") if x != ""]
+        if len(anchors) != len(steps):
+            print("ERROR: --anchor-steps must match --steps in length",
+                  file=sys.stderr)
+            return 1
+    else:
+        anchors = [-1] * len(steps)
     vvp = SIM / "tb_fast.vvp"
     if not vvp.exists():
         print("ERROR: tb_fast.vvp missing, run sim_ddr.py --fast-tb --map-only first",
@@ -72,13 +89,13 @@ def main():
     # Round-robin over mags (not steps) so every STEP starts immediately
     # even with few jobs: with --jobs 2 the first two slots are S23-m0 +
     # S25-m0 instead of two S23 windows.
-    points = [(s, m) for m in mags for s in steps]
+    points = [(s, a, m) for m in mags for s, a in zip(steps, anchors)]
     todo = []
-    for s, m in points:
-        log = SIM / f"tb_fast_s{s}_m{m}.log"
+    for s, a, m in points:
+        log = log_name(s, a, m)
         if log.exists() and WIN_RX.search(log.read_text(errors="replace")):
             continue
-        todo.append((s, m))
+        todo.append((s, a, m))
     print(f"{len(points)} points, {len(todo)} to run, jobs={args.jobs} "
           f"(MAP_ONLY build required; RESULT lines are meaningless here, "
           f"read WINDOW/maxsw)", flush=True)
@@ -91,16 +108,17 @@ def main():
     try:
         while queue or running:
             while queue and len(running) < args.jobs:
-                s, m = queue.pop(0)
-                fh = open(SIM / f"tb_fast_s{s}_m{m}.log", "w")
+                s, a, m = queue.pop(0)
+                fh = open(log_name(s, a, m), "w")
                 cmd = [str(VVP), str(vvp), f"+step={s}", "+phase=0",
-                       f"+mag0={m}", f"+magN={args.magn}"]
+                       f"+mag0={m}", f"+magN={args.magn}",
+                       f"+anchor_step={a}"]
                 fh.write("$ " + " ".join(cmd) + "\n")
                 fh.flush()
                 proc = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT,
                                         cwd=str(SIM), env=env)
-                running.append((proc, fh, (s, m)))
-                print(f"  start step={s:<4} mag0={m:<3} "
+                running.append((proc, fh, (s, a, m)))
+                print(f"  start step={s:<4} anchor={a:<4} mag0={m:<3} "
                       f"(queued={len(queue)})", flush=True)
             time.sleep(5)
             still = []
@@ -111,7 +129,7 @@ def main():
                     fh.close()
                     r = collect(*pt, args.magn)
                     done.append(r)
-                    print(f"  done  step={r['step']:<4} mag0={r['mag0']:<3} "
+                    print(f"  done  step={r['step']:<4} anchor={r['anchor']:<4} mag0={r['mag0']:<3} "
                           f"WINDOW score={r['wscore']} @mag={r['wmag']} "
                           f"maxsw={r['maxsw']}  [{int(time.time()-t0)}s]",
                           flush=True)
@@ -126,19 +144,21 @@ def main():
             fh.close()
         raise SystemExit(130)
 
-    have = {(d["step"], d["mag0"]) for d in done}
-    for s, m in points:
-        if (s, m) not in have:
-            done.append(collect(s, m, args.magn))
+    have = {(d["step"], d["anchor"], d["mag0"]) for d in done}
+    for s, a, m in points:
+        if (s, a, m) not in have:
+            done.append(collect(s, a, m, args.magn))
 
     print("\n=== maxsw per (step x mag0 window) ===")
     print("step  " + "".join(f"m{m:<6}" for m in mags))
-    for s in steps:
+    for s, a in zip(steps, anchors):
         row = ""
         for m in mags:
-            hit = [d for d in done if d["step"] == s and d["mag0"] == m]
+            hit = [d for d in done if d["step"] == s and d["anchor"] == a
+                   and d["mag0"] == m]
             row += f"{hit[0]['maxsw']:<7}" if hit else "?      "
-        print(f"{s:<6}" + row)
+        tag = f"{s}a{a}" if a >= 0 and a != s else f"{s}"
+        print(f"{tag:<6}" + row)
     return 0
 
 
