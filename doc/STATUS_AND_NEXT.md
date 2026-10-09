@@ -85,8 +85,14 @@ Prerequisite: `python simulation/sim_ddr.py --fast-tb --map-only`
 1. **(b) Direct S23 mag2 window (~3 min). THE discriminant.**
    `vvp.exe simulation/tb_fast.vvp +step=23 +mag0=2 +magN=1`
    If 8 → mags 0/1 poison it (history length). If 6 → deeper (survey@23…).
+   **DONE 09/10: 6** (`tb_fast_s23_m2.log`: `window side=0 mag=02 score=6
+   rot=4`). Mags 0/1 innocent — not history length. → deeper.
 2. **(c) S23+K2 mag0 (~3 min). (STEP,K) decomposition.**
    `+step=23 +k=2 +mag0=0 +magN=1` (eff 25, survey@25, measure@25).
+   **DONE 09/10: 8** (`tb_fast_s23_m0.log`: `dll side=0 mag=00 score=8`,
+   final lock 8). Same measured rstep 25 as (b), opposite verdict →
+   **anchor+survey decide, not the endpoint**. Retest 09/10 reproduces:
+   survey@25 scores 8 from tries=00a (`latch=10071006…`, full pattern).
 3. **(a) 22/24 eye-map (~10 min).** `measure/mag_battery.py --steps 22,24
    --mag0 0 --magn 3 --jobs 2` (after `Remove-Item simulation/tb_fast_s*.log`).
 4. **(E2) No-pin run** (comment out `pinLeft := 2`, keep pulse+shift; CoreTest,
@@ -101,3 +107,33 @@ Prerequisite: `python simulation/sim_ddr.py --fast-tb --map-only`
 Process lessons: audit the WHOLE VCD; verify the binary before every battery;
 RPOINT free-runs (never compare absolute values); `win*.log` are UTF-16; a
 fix with no battery signal = immediate revert + doc.
+
+## 6. Fix retenu (09/10, NON VALIDÉ) : boucle externe d'ancre
+
+Good anchors connus : **25** (prouvé : test C + retest, survey@25 à 8 dès
+`tries=00a`, latch plein) et **26** (signalé session précédente,
+re-validation prévue batterie A). Mauvais : 23, 40 (→6), 60 (→7).
+
+Design : boucle externe sur ~5 bases relatives au lock vivant
+(`{0,+16,-16,+32,-32}`, paramétrable `anchorBases`/`anchorHopStep` dans
+`Ddr3Config`), boucle interne = survey(40) + sweep mag±64 existants, rejoués
+par base (couvre survey-empoisonné ET chemin-d'arrivée, encore confondus).
+Early-exit global sur premier vrai 8, bases ordonnées dès +0 (cartes saines :
+coût ~1×, comportement actuel préservé). Contraintes : steppers uniquement
+(PR0015, pas d'adder sur DLLSTEP) ; `WLOADN=0` tenu donc le write suit
+l'ancre en X4 (BIST cohérents par construction) ; re-run formel BMC requis.
+Coût HW ≈ 1–2 ms ; coût sim ≈ 1 h/base → valider sur subsets uniquement.
+
+Batteries sim recommandées (build MAP_ONLY actuel réutilisable : TB déjà
+rebuildé avec `+anchor_step`, `BUILD rc=0`, ne pas rebuild entre les runs) :
+- A. Densité d'ancres (~30 min, jobs=2) :
+  `python measure/mag_battery.py --steps 22,23,24,25,26,27,28 --mag0 0 --magn 1 --jobs 2`
+  → largeur de la zone bonne (25–26 isolés ? continuité ?), contrôle S25,
+  re-validation 26.
+- B. Discriminant hop (~20 min, jobs=2) :
+  `python measure/mag_battery.py --steps 23,25 --anchor-steps 25,23 --mag0 0,2 --magn 1 --jobs 2`
+  → s23a25 (survey23/ancre25/mesure25) + miroir s25a23, + 2 contrôles bonus
+  (mesure 23 et 27). Si s23a25 → 8 : l'ancre décide (cas A) ; si 6 : le
+  survey empoisonne l'aval (cas B).
+Total ≈ 50 min mur. Ensuite seulement : edit Scala → regen → unitaires →
+formel BMC + TB S25 en fond (batterie anti-régression du 08/10).

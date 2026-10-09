@@ -125,7 +125,7 @@ module tb_spinal;
     //     magN scans plus-side mags [mag0, mag0+magN) then reports WINDOW and
     //     finishes (diag only). Requires a MAP_ONLY build (no memtest).
     integer step_val, phase_val, wl_val, k_val, eff_step;
-    integer mag0_val, magN_val;
+    integer mag0_val, magN_val, anchor_step;
     initial begin
         step_val = 25;
         phase_val = 0;
@@ -134,12 +134,14 @@ module tb_spinal;
         eff_step = 25;
         mag0_val = 0;
         magN_val = 0;
+        anchor_step = -1;
         void'($value$plusargs("step=%d", step_val));
         void'($value$plusargs("phase=%d", phase_val));
         void'($value$plusargs("wl=%d", wl_val));
         void'($value$plusargs("k=%d", k_val));
         void'($value$plusargs("mag0=%d", mag0_val));
         void'($value$plusargs("magN=%d", magN_val));
+        void'($value$plusargs("anchor_step=%d", anchor_step));
         eff_step = (step_val + k_val) & 255;
         force u_dut.phy.dll_1.LOCK = 1'b1;
         // K experiment: STEP + K is what actually reaches the DQS primitives.
@@ -152,9 +154,22 @@ module tb_spinal;
         // same hierarchical-force precedent, constant in time.
         force u_dut.coreArea_core.sweepMag0 = mag0_val[6:0];
         force u_dut.coreArea_core.sweepMagN = magN_val[6:0];
-        $display("MAP step=%0d phase_ps=%0d wl=%0d k=%0d eff=%0d mag0=%0d magN=%0d",
-                 step_val, phase_val, wl_val, k_val, eff_step, mag0_val, magN_val);
+        $display("MAP step=%0d phase_ps=%0d wl=%0d k=%0d eff=%0d mag0=%0d magN=%0d anchor_step=%0d",
+                 step_val, phase_val, wl_val, k_val, eff_step, mag0_val, magN_val, anchor_step);
         $fflush();
+    end
+
+    // Anchor/survey decomposition: survey runs at eff_step (force above),
+    // then on sweep start re-force STEP to anchor_step (if >= 0) BEFORE the
+    // sweep's own anchor (anchorLeft reload) samples it. Precedent: WLOVR
+    // below (event-driven re-force). survey23/anchor25 = +step=23
+    // +anchor_step=25; survey25/anchor23 = +step=25 +anchor_step=23.
+    always @(posedge u_dut.coreArea_core.dllSweepOn) begin
+        if (anchor_step >= 0) begin
+            force u_dut.phy.dll_1.STEP = anchor_step[7:0];
+            $display("ANCHOR switch STEP %0d -> %0d at sweep start", eff_step, anchor_step);
+            $fflush();
+        end
     end
 
     // WSTEP override, applied once write leveling has locked. Forcing the net
