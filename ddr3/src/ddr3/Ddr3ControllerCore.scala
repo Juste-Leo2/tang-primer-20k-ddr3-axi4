@@ -58,6 +58,15 @@ case class Ddr3Config(
   // exit on a perfect 8/8. Predicted exits: STEP=25 -> +0, STEP=20 -> +5,
   // STEP=40 -> -15, STEP=60 -> -4 (sign = side).
   val dllSweepRange = 64
+  // Anchor-base scan (outer loop around the DLL sweep, full-sweep mode
+  // only): sweep scores proved history-dependent (a survey at a bad anchor
+  // poisons every offset, even the physically-good tap), so calibration
+  // surveys grids held at successive bases around the live lock and sweeps
+  // at the best one. Grid: plus side STEP..RANGE, then minus side (mag 0
+  // surveyed once, at plus). Any 2-tap-wide good zone contains a grid
+  // point. Sim uses a small window around the lock for wall-clock reasons.
+  val anchorScanStep = 2
+  val anchorScanRange = if (isSimulation) 8 else 64
   val rcalibCount = if (isSimulation) 2 else 8
 }
 
@@ -316,9 +325,22 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   val s2Mag  = Reg(UInt(7 bits)) init(0)
   val bestSide      = RegInit(False)
   val bestMag       = Reg(UInt(7 bits)) init(0)
+  // Anchor-base scan state (outer loop, full-sweep mode only). The pass-2
+  // survey doubles as base +0 (tracked at the lock); further bases run held
+  // (RLOADN high) after anchor+navigate. The best-surveyed base hosts the
+  // DLL sweep. Ties keep the earliest base (plus side first).
+  val scanOn         = RegInit(False)
+  val scSide         = RegInit(False)
+  val scMag          = Reg(UInt(7 bits)) init(0)
+  val bestSurveyCnt  = Reg(UInt(4 bits)) init(0)
+  val bestSurveySide = RegInit(False)
+  val bestSurveyMag  = Reg(UInt(7 bits)) init(0)
   // Align machinery: anchorLeft counts RLOADN pulse slots (reload rstep
-  // from the live DLL, then navigate); navigateLeft counts pulses to the
-  // frozen target (from anchored 0, exact). Scoring (and exit/exhaust
+  // from the live DLL, then navigate); navigateLeft counts SLOTS to the
+  // frozen target (from anchored 0, exact -- two slots per step: the DQS
+  // steps on RMOVE *falling* edges, so consecutive True slots would merge
+  // into a single step, VCD-proven: a 2-pulse navigate landed +1. Pulses
+  // fire on odd counts). Scoring (and exit/exhaust
   // checks) happen ONLY when anchorLeft==0 and not aligning -- transient
   // hardware would mislabel measurements. Uniform rule, no exceptions.
   // (No settle counter: the s-pipeline overwrite at align-start (below)
@@ -353,7 +375,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   // rewrap of the proven paths (lesson learned).
   val winDoneNow = (sweepMagN =/= 0) && !s2Side && (s2Mag === winEnd)
   val applyArmed = RegInit(False)
-  val navigateLeft = Reg(UInt(7 bits)) init(0)
+  val navigateLeft = Reg(UInt(8 bits)) init(0)
   // Stepper outputs. rloadn has no reg: combinational rule at the io drive
   // (track pre-sweep, hold from first anchor, reload during anchorLeft).
   // rmove pulses single slots (cleared at every case-12 top); rdir stable
@@ -399,6 +421,39 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     nWE(subcycle)  := cmd(0)
     BA(subcycle)   := baVal.resized
     A(subcycle)    := aVal.resized
+  }
+
+  // Anchor machinery shared by the scan and sweep handoffs (uniform with
+  // the side-switch/apply paths): overwrite the s-pipeline with the target,
+  // restart pos, anchor (reload rstep from the live DLL) + navigate there,
+  // loop back into the anchor slots. Positioning first, no BIST write: the
+  // ENUM/survey loop-backs write before each scored measurement.
+  def gotoBase(side: Bool, mag: UInt): Unit = {
+    s0Side := side
+    s0Mag := mag
+    s1Side := side
+    s1Mag := mag
+    s2Side := side
+    s2Mag := mag
+    rclkpos := 0
+    aligning := True
+    anchorLeft := 2
+    navigateLeft := mag << 1
+    applyArmed := False
+    cycle := config.RCD / 4
+  }
+
+  // Sweep handoff at a base: full-sweep inits (mirror of the survey-end
+  // path) + anchor/navigate there. Even sel forced: with rclksel[0]=1 the
+  // capture clock moves with the swept DQS and the sweep is provably futile.
+  def startSweepAtBase(side: Bool, mag: UInt): Unit = {
+    dllSweepOn := True
+    bestCntDll := 0
+    bestSide := False
+    bestMag := 0
+    rcalib_tries := 0
+    rclksel(0) := False
+    gotoBase(side, mag)
   }
 
   // Monitor rburst strobe
@@ -654,6 +709,12 @@ bestRot := 0
             s2Mag := 0
             bestSide := False
             bestMag := 0
+            scanOn := False
+            scSide := False
+            scMag := 0
+            bestSurveyCnt := 0
+            bestSurveySide := False
+            bestSurveyMag := 0
             anchorLeft := 0
             aligning := False
             settleLeft := 0
@@ -717,7 +778,46 @@ bestRot := 0
             // per-iteration flow (ACT / double burst / latch / score) as the
             // survey; only the axis that moves differs. RLOADN/RMOVE/RDIR are
             // driven here (RLOADN combinationally at the io drive).
-            when(dllSweepOn) {
+            // Scan positioning slots (scanOn, full-sweep mode only): the same
+            // anchor/navigate/settle rhythm as the sweep transients, so every
+            // base survey starts settled at its held base. The s-pipeline is
+            // untouched (surveys don't use it; s0 alone steers RDIR via the
+            // pulse below). pinLeft is excluded: only the sweep sets it, and
+            // this block must not wait on a flag it never clears. The proven
+            // sweep block below stays byte-identical.
+            when(scanOn && (aligning || (anchorLeft =/= 0) || (settleLeft =/= 0))) {
+              rmove := False // default; navigate pulses single slots below
+              when(anchorLeft =/= 0) {
+                // Anchor slot: RLOADN low (combinational) reloads rstep from
+                // the live DLL. Loops (same stall precedent as the sweep).
+                anchorLeft := anchorLeft - 1
+                cycle := config.RCD / 4
+              } otherwise {
+                when(aligning) {
+                  // Navigate: one isolated pulse per two slots toward the
+                  // gotoBase target (the DQS steps on RMOVE falling edges).
+                  // applyArmed is False throughout the scan, so RDIR follows
+                  // s0Side directly (stable by construction, like the sweep
+                  // side-switch).
+                  when(navigateLeft =/= 0) {
+                    rdir := s0Side
+                    rmove := navigateLeft(0)
+                    navigateLeft := navigateLeft - 1
+                    cycle := config.RCD / 4
+                  } otherwise {
+                    // Arrived: hand off to settle (2 slots), exactly once.
+                    settleLeft := 2
+                    aligning := False
+                    cycle := config.RCD / 4
+                  }
+                } otherwise {
+                  // Settle countdown; the survey resumes next slot (s2
+                  // alignment is a sweep-only concern).
+                  settleLeft := settleLeft - 1
+                  cycle := config.RCD / 4
+                }
+              }
+            } elsewhen(dllSweepOn) {
               rmove := False // default; pulses set below (single-slot high)
               // busyMoving = transient hardware (anchor/navigate/settle/pin):
               // pause enumeration, freeze pos, skip scoring. The s-pipeline
@@ -735,12 +835,13 @@ bestRot := 0
                 } otherwise {
                   // Anchor done: navigating (aligning) or settling.
                   when(aligning) {
-                    // Navigate: one pulse per slot toward the frozen target
-                    // (s0 at side-switch, best at apply). RDIR set explicitly
-                    // below (stable by construction, redundant on purpose).
+                    // Navigate: one isolated pulse per two slots toward the
+                    // frozen target (s0 at side-switch, best at apply). RDIR
+                    // set explicitly below (stable by construction, redundant
+                    // on purpose).
                     when(navigateLeft =/= 0) {
                       rdir := Mux(applyArmed, bestSide, s0Side)
-                      rmove := True
+                      rmove := navigateLeft(0)
                       navigateLeft := navigateLeft - 1
                       cycle := config.RCD / 4
                     } otherwise {
@@ -824,7 +925,7 @@ bestRot := 0
                   when(bestCntDll === 8) {
                     aligning := True
                     anchorLeft := 2
-                    navigateLeft := bestMag
+                    navigateLeft := bestMag << 1
                     applyArmed := True
                     // Overwrite s-pipeline with best (uniform with the
                     // side-switch below): s2 == hardware again by
@@ -849,7 +950,7 @@ bestRot := 0
                     when(s2Side && (s2Mag === config.dllSweepRange) && (rclkpos === 3)) {
                       aligning := True
                       anchorLeft := 2
-                      navigateLeft := bestMag
+                      navigateLeft := bestMag << 1
                       applyArmed := True
                       // Same s-overwrite as exit (uniform single path).
                       s0Side := bestSide
@@ -897,7 +998,7 @@ bestRot := 0
                           s2Mag := 1
                           aligning := True
                           anchorLeft := 2
-                          navigateLeft := 1
+                          navigateLeft := 2
                           applyArmed := False
                           if (!GenerationFlags.formal) {
                             report(L"RCALIB dll side switch to minus")
@@ -978,11 +1079,58 @@ bestRot := 0
                 // like the proven flow. Pass 2 (trained data): start the DLL
                 // offset sweep. Pass 3 (offset already measured): finish.
                 when(!training && !dllSweepDone) {
-                  dllSweepOn := True
-                  bestCntDll := 0
-                  bestSide := False
-                  bestMag := 0
-                  rcalib_tries := 0
+                  when(scanOn) {
+                    // Anchor-base scan: record the finished base when strictly
+                    // better (ties keep the earliest base), then move on.
+                    when(bestCnt > bestSurveyCnt) {
+                      bestSurveyCnt := bestCnt
+                      bestSurveySide := scSide
+                      bestSurveyMag := scMag
+                    }
+                    // Early exit: this base surveys a perfect 8 -- sweep here
+                    // now, no further bases needed.
+                    when(bestCnt === 8) {
+                      if (!GenerationFlags.formal) {
+                        report(L"RCALIB scan sweep at side=$scSide mag=$scMag score=$bestCnt")
+                      }
+                      scanOn := False
+                      startSweepAtBase(scSide, scMag)
+                    } otherwise {
+                      // Advance the base grid: plus side STEP..RANGE, then
+                      // minus side STEP..RANGE (mag 0 surveyed once, at plus).
+                      when(!scSide && scMag + config.anchorScanStep <= U(config.anchorScanRange, 7 bits)) {
+                        scMag := scMag + config.anchorScanStep
+                        rcalib_tries := 0
+                        bestCnt := 0
+                        gotoBase(False, scMag + config.anchorScanStep)
+                      } elsewhen(!scSide) {
+                        scSide := True
+                        scMag := U(config.anchorScanStep, 7 bits)
+                        rcalib_tries := 0
+                        bestCnt := 0
+                        gotoBase(True, U(config.anchorScanStep, 7 bits))
+                      } otherwise {
+                        when(scMag + config.anchorScanStep <= U(config.anchorScanRange, 7 bits)) {
+                          scMag := scMag + config.anchorScanStep
+                          rcalib_tries := 0
+                          bestCnt := 0
+                          gotoBase(True, scMag + config.anchorScanStep)
+                        } otherwise {
+                          // Scan done: sweep at the best-surveyed base.
+                          if (!GenerationFlags.formal) {
+                            report(L"RCALIB scan done best side=$bestSurveySide mag=$bestSurveyMag score=$bestSurveyCnt")
+                          }
+                          scanOn := False
+                          startSweepAtBase(bestSurveySide, bestSurveyMag)
+                        }
+                      }
+                    }
+                  } otherwise {
+                  // Pass-2 survey doubles as scan base +0 (tracked at the
+                  // live lock): record it.
+                  bestSurveyCnt := bestCnt
+                  bestSurveySide := False
+                  bestSurveyMag := 0
                   // Force an EVEN sel during the sweep: with rclksel[0]=1 the
                   // capture clock (DQSW90) is delayed by DLLSTEP itself, so it
                   // moves together with the DQS being swept and the relative
@@ -992,7 +1140,18 @@ bestRot := 0
                   // the final lock stays free to pick an odd sel if best.
                   rclksel(0) := False
                   when(sweepMagN =/= 0) {
-                    // Window entry (clone of the side-switch): overwrite the
+                    // Window entry: the sweep inits below are LOAD-BEARING,
+                    // not cosmetic. The ENUM machinery (side-switch, mag-step,
+                    // winDoneNow, BIST detour) lives under when(dllSweepOn);
+                    // without dllSweepOn the window would run survey rounds
+                    // forever and never report (regression caught 09/10: the
+                    // refactor had hoisted these into the fast path only).
+                    dllSweepOn := True
+                    bestCntDll := 0
+                    bestSide := False
+                    bestMag := 0
+                    rcalib_tries := 0
+                    // Window entry continued (clone of the side-switch): overwrite the
                     // s-pipeline with mag0, restart pos, anchor + navigate
                     // mag0 pulses from 0. Loops into the anchor (transient,
                     // no BIST write here: positioning first; the ENUM
@@ -1006,13 +1165,23 @@ bestRot := 0
                     rclkpos := 0
                     aligning := True
                     anchorLeft := 2
-                    navigateLeft := sweepMag0
+                    navigateLeft := sweepMag0 << 1
                     applyArmed := False
                     if (!GenerationFlags.formal) {
                       report(L"RCALIB window start mag0=$sweepMag0 n=$sweepMagN")
                     }
                     cycle := config.RCD / 4
                   } otherwise {
+                  // Full sweep (diag window off): a perfect survey at the
+                  // lock takes today's fast path (byte-identical inits +
+                  // BIST detour); otherwise scan further bases for a better
+                  // survey (the sweep follows at the winner).
+                  when(bestCnt === 8) {
+                  dllSweepOn := True
+                  bestCntDll := 0
+                  bestSide := False
+                  bestMag := 0
+                  rcalib_tries := 0
                   // Loop back into the sweep via a BIST refresh first (row is
                   // open from the survey; the WRITE returns through is(0)
                   // which re-ACTs after the auto-precharge). Falling through
@@ -1027,6 +1196,20 @@ bestRot := 0
                   bistReturn := True
                   state := Ddr3State.WRITE
                   cycle := 0
+                  } otherwise {
+                  // Imperfect survey at the lock: scan further bases for a
+                  // better survey (the sweep follows at the winner).
+                  scanOn := True
+                  scSide := False
+                  scMag := U(config.anchorScanStep, 7 bits)
+                  rcalib_tries := 0
+                  bestCnt := 0
+                  if (!GenerationFlags.formal) {
+                    report(L"RCALIB scan start")
+                  }
+                  gotoBase(False, U(config.anchorScanStep, 7 bits))
+                  }
+                  }
                   }
                 } otherwise {
                   dllSweepOn := False
@@ -1336,10 +1519,11 @@ bestRot := 0
   // Connect control ports to PHY
   io.phy.dqs_hold     := dqs_hold
   io.phy.wstep        := wstep
-  // RLOADN rule (load-bearing, see sweep): track (low) before the sweep and
+  // RLOADN rule (load-bearing, see sweep): track (low) before any sweep and
   // during anchor windows, hold (high) everywhere else -- from the first
-  // anchor through functional traffic, so the winner is never dropped.
-  io.phy.rloadn := (dllSweepOn || dllSweepDone) && (anchorLeft === 0)
+  // anchor through functional traffic, so the winner is never dropped. The
+  // anchor-base scan holds too (its surveys run at held bases).
+  io.phy.rloadn := (dllSweepOn || dllSweepDone || scanOn) && (anchorLeft === 0)
   io.phy.rmove        := rmove
   io.phy.rdir         := rdir
   io.phy.rclkpos      := rclkpos

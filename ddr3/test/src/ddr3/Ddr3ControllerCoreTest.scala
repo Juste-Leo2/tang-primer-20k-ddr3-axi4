@@ -55,7 +55,8 @@ class Ddr3ControllerCoreTest extends AnyFunSuite {
       // Wait until init_done is asserted (with timeout). Full calib is
       // long: 256-step WL eye sweep + nested-K read sweep (~65 mags x 8
       // K-groups x 4 pos x 2 sides x ~13 pclk) + training/poison writes.
-      dut.clockDomain.waitSamplingWhere(120000)(dut.io.init_done.toBoolean)
+      // Budget covers the anchor-base scan worst case (8 extra survey grids).
+      dut.clockDomain.waitSamplingWhere(200000)(dut.io.init_done.toBoolean)
       assert(dut.io.init_done.toBoolean, "DDR3 controller failed to initialize")
       assert(dut.io.write_level_done.toBoolean, "Write leveling failed")
       assert(dut.io.read_calib_done.toBoolean, "Read calibration failed")
