@@ -105,13 +105,16 @@ def build(top_files, out_vvp, extra_defines=()):
     return sh(cmd)
 
 
-def run(vvp_file, timeout=1800):
-    log = SIM / (Path(vvp_file).stem + ".log")
+def run(vvp_file, timeout=None, plusargs=(), log_name=None):
+    # No watchdog by default: long-but-healthy sims (full sweep under CPU
+    # contention) were killed at 1800s with a bare [TIMEOUT]. Pass an
+    # explicit timeout to re-arm.
+    log = SIM / ((log_name or Path(vvp_file).stem) + ".log")
     print(f"vvp streaming -> {log}", flush=True)
     with open(log, "w") as f:
-        print("$", " ".join([VVP, str(vvp_file)]), flush=True)
+        print("$", " ".join([VVP, str(vvp_file)] + list(plusargs)), flush=True)
         env = get_env()
-        p = subprocess.Popen([VVP, str(vvp_file)], stdout=f,
+        p = subprocess.Popen([VVP, str(vvp_file)] + list(plusargs), stdout=f,
                              stderr=subprocess.STDOUT, env=env, cwd=str(SIM))
         try:
             return p.wait(timeout=timeout)
@@ -125,9 +128,38 @@ def main():
     ap = argparse.ArgumentParser(description="Run DDR3 iverilog simulations")
     ap.add_argument("--baseline", action="store_true", help="original nand2mario ddr3 controller")
     ap.add_argument("--spinal", action="store_true", help="SpinalHDL Ddr3ControllerSim")
+    ap.add_argument("--fast-tb", action="store_true",
+                    help="tb_fast.v: same physics, Micron DEBUG=0, STEP/phase injectable")
+    ap.add_argument("--step", type=int, default=25,
+                    help="fast-tb only: DLL STEP (read delay tap), 0..255")
+    ap.add_argument("--phase", type=int, default=0,
+                    help="fast-tb only: permanent pclk offset vs ck/fclk, in ps")
+    ap.add_argument("--wl", type=int, default=-1,
+                    help="fast-tb only: force WSTEP to this value after write "
+                         "leveling (-1 = leave the echo-locked value)")
+    ap.add_argument("--k", type=int, default=0,
+                    help="fast-tb only: offset added to the DLL STEP before it "
+                         "reaches the DQS primitives (the RTL fix under test)")
+    ap.add_argument("--anchor-step", type=int, default=-1,
+                    help="fast-tb only: re-force DLL STEP to this value at sweep "
+                         "start (survey@step, anchor@sweep; -1 = no switch)")
+    ap.add_argument("--mag0", type=int, default=0,
+                    help="fast-tb only: window-scan start mag "
+                         "(0/0 = classic full sweep)")
+    ap.add_argument("--magN", type=int, default=0,
+                    help="fast-tb only: window-scan mag count "
+                         "(nonzero: measure [mag0, mag0+magN), report WINDOW)")
+    ap.add_argument("--vcdwin", type=int, default=0,
+                    help="fast-tb only: VCD micro-window length in ps "
+                         "(0 = off; e.g. 2500000; needs a --vcd build)")
+    ap.add_argument("--map-only", action="store_true",
+                    help="fast-tb only: calibration only, skip the functional memtest")
     ap.add_argument("--run", action="store_true", help="also execute vvp after build")
     ap.add_argument("--fastdll", action="store_true", help="spinal sim: force DLL lock")
     ap.add_argument("--no-vcd", action="store_true", help="skip VCD dump (much faster sim)")
+    ap.add_argument("--vcd", action="store_true",
+                    help="fast-tb only: enable VCD dump (default off: huge files, "
+                         "slower sim; map runs must NOT use it)")
     args = ap.parse_args()
 
     if not shutil.which(IVERILOG) and not Path(IVERILOG).exists():
@@ -142,8 +174,11 @@ def main():
                     SIM / "ddr3_controller_sim.v",
                     GOWIN_SIM], out)
         print("BUILD rc =", rc)
-        if rc == 0 and args.run:
-            run(out)
+        if rc != 0:
+            return rc
+        if args.run:
+            return run(out)
+        return 0
     elif args.spinal:
         out = SIM / "tb_spinal.vvp"
         extra = ["FASTDLL"] if args.fastdll else []
@@ -155,8 +190,46 @@ def main():
                     REPO / "hw" / "gen" / "Ddr3ControllerSim.v",
                     GOWIN_SIM], out, extra_defines=extra)
         print("BUILD rc =", rc)
-        if rc == 0 and args.run:
-            run(out)
+        if rc != 0:
+            return rc
+        if args.run:
+            return run(out)
+        return 0
+    elif args.fast_tb:
+        # STEP and phase are runtime plusargs: one build serves the whole map.
+        # ZERO_STALE_SLOTS hardens the IDES model (X on the DQ pad stores 0
+        # instead of poisoning the slot) so near-miss captures stay visible
+        # to the calibration score; tb_spinal/baseline builds are unaffected.
+        extra = ["ZERO_STALE_SLOTS"]
+        if not args.vcd:
+            extra.append("NO_VCD")
+        if args.map_only:
+            extra.append("MAP_ONLY")
+        out = SIM / "tb_fast.vvp"
+        rc = build([SIM / "tb_fast.v",
+                    SIM / "ddr3_vanilla.v",
+                    REPO / "hw" / "gen" / "Ddr3ControllerSim.v",
+                    GOWIN_SIM], out, extra_defines=extra)
+        print("BUILD rc =", rc)
+        if rc != 0:
+            return rc
+        if args.run:
+            plusargs = [f"+step={args.step}", f"+phase={args.phase}",
+                        f"+wl={args.wl}", f"+k={args.k}",
+                        f"+mag0={args.mag0}", f"+magN={args.magN}",
+                        f"+anchor_step={args.anchor_step}"]
+            if args.magN:
+                if args.anchor_step >= 0:
+                    log_name = f"tb_fast_s{args.step}a{args.anchor_step}_m{args.mag0}"
+                else:
+                    log_name = f"tb_fast_s{args.step}_m{args.mag0}"
+            else:
+                log_name = (f"tb_fast_s{args.step}_p{args.phase}_"
+                            f"w{args.wl}_k{args.k}")
+            if args.vcdwin:
+                plusargs.append(f"+vcdwinlen={args.vcdwin}")
+            return run(out, plusargs=plusargs, log_name=log_name)
+        return 0
     else:
         ap.print_help()
         return 1
