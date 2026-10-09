@@ -16,6 +16,8 @@ build_eda/
 
 # Simulation artifacts & traces
 simulation/*.vvp
+sim_tests/gen/
+sim_tests/**/*.vvp
 simulation/_vcd_probe.py
 *.vcd
 
