@@ -57,8 +57,8 @@ def run_one(key):
     cfg = TESTS[key]
     tdir = ROOT / cfg["dir"]
     GEN.mkdir(exist_ok=True)
-    vvp = GEN / (Path(cfg["tb"]).stem + ".vvp")
-    log = GEN / (cfg["name"] + ".log")
+    vvp = GEN / (key + ".vvp")
+    log = GEN / (key + ".log")
 
     cmd = [IVERILOG, "-o", str(vvp), "-g2012"]
     for d in cfg.get("defines", []):
@@ -66,6 +66,8 @@ def run_one(key):
     for inc in cfg.get("includes", []):
         cmd += ["-I", str(REPO / inc)]
     cmd.append(str(tdir / cfg["tb"]))
+    for s in cfg.get("sources", []):
+        cmd.append(str(REPO / s))
     print("$", " ".join(cmd), flush=True)
     b = subprocess.run(cmd, capture_output=True, text=True, timeout=600,
                        errors="replace", env=get_env())

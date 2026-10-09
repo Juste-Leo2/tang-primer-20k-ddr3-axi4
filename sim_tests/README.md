@@ -21,10 +21,10 @@ DUT ni de logique de test en Verilog main** : le DUT vient du Scala
 | # | Dossier | Question / utilité | Prio | Statut |
 |---|---------|--------------------|------|--------|
 | 1 | t01_dqs_law | Loi DQS read : reload/stepping/rstep, pas 25ps. Tranche "vrai-25 illusoire ?" | ★★★ | vert 09/10 (vrai-25 valide au DQS ; piège RFLAG stale trouvé) |
-| 2 | t02_dqsw_law | Loi DQS write : `wstep_init = DLLSTEP+WSTEP` (X4), saturé 255 | ★★★ | à faire |
-| 3 | t03_write_anchor | Write→readback à RPOINT fixe, ancre training 23 vs 25 : poison côté write ? | ★★★ | à faire |
-| 4 | t04_read_rpoint | Read à DLL fixe, RPOINT 23 vs 25 : le read seul explique 6 vs 8 ? | ★★★ | à faire |
-| 5 | t05_wl_anchor | WL complet à STEP 23 vs 25 : le WL dépend-il de l'ancre ? | ★★ | à faire |
+| 2 | t02_dqsw_law | Loi DQS write : init DLLSTEP+WSTEP saturé, WFLAG. Suspect DQSW0 27 vs 25 | ★★★ | vert 09/10 |
+| 3 | t03_write_anchor | Transport réel write/readback à ancre 23 vs 25 : le 6 perd-il des données ? (DUT généré Scala) | ★★★ | en cours |
+| 4 | t04_read_rpoint | Fenêtre read à write fixé (init 25, RPOINT 23–27 en direct) : le read seul explique 6 vs 8 ? (DUT généré Scala) | ★★★ | en cours |
+| 5 | t05_wl_anchor | WL seul à ancre 23 vs 25 : le WSTEP locké dépend-il de l'ancre ? (DUT généré Scala, court) | ★★ | vert 09/10 (wstep=19 aux 2, v2 propre → WL hors de cause) |
 | 6 | t06_latch_phase | Reproduire le latch 6 vs 8 en isolé : quelles phases tombent ? | ★★ | à faire |
 | 7 | t07_rmove_gap | 1 front descendant RMOVE = 1 pas, gap obligatoire (piège :14194) | ★★ | à faire |
 | 8 | t08_rloadn_live | RLOADN recharge depuis le DLL vivant (base PVT-safe) | ★★ | à faire |
