@@ -6,6 +6,19 @@ This repository is designed to be **100% self-contained and reproducible on Wind
 
 ---
 
+## Status (October 2026)
+
+**The controller does not work yet**: read calibration locks a false 6/8
+(C=6) both in simulation and on silicon. TX path (128-bit BL8 writes) is
+proven at the pins against the Micron model; the RX capture window is the
+open issue. Current state and next debug steps: `doc/STATUS_AND_NEXT.md`.
+Environment rules for WSL contributors: `AGENTS.md`.
+
+What is green: Verilog regen, Scala/Verilator unit tests (7/7), formal BMC
+proofs, S25 control run in simulation.
+
+---
+
 ## Features
 
 - **SpinalHDL Core Architecture**: Comprehensive state machine implementing full JEDEC DDR3 initialization, automated ZQ long calibration (ZQCL), Write Leveling, Read Calibration, and autonomous background refreshes.
@@ -76,16 +89,22 @@ The ready-to-flash bitstream will be produced at `build_eda/impl/pnr/Ddr3TesterT
 ## Repository Structure
 
 ```text
-├── ddr3/                 # SpinalHDL sources (src/) and test suites (test/)
-├── hw/gen/               # Pre-generated Verilog outputs (Ddr3TesterTop.v, Ddr3ControllerSim.v)
-├── src/                  # Tang Primer 20K physical constraints (.cst, .sdc), PLL, baseline RTL
-├── simulation/           # Icarus Verilog testbenches, Micron DRAM models & timing parameters
-├── doc/                  # Architecture documentation and oscilloscope/UART captures
-├── setup.bat             # Automated Windows setup script (downloads Mill & OSS CAD Suite)
-├── build.mill            # Mill build configuration (auto-detects local toolchain)
-├── eda-flow.py           # Automated headless Gowin synthesis script
-├── reproductible.md      # Detailed reproducibility and workflow methodology
-└── resume.md             # Hardware debug notes and test tracking
+├── ddr3/                    # DRAM controller RTL in SpinalHDL (do not edit without regen)
+│   ├── src/ddr3/            #   Ddr3ControllerCore.scala (FSM), GowinDdr3Phy.scala (DLL/DQS PHY),
+│   │                        #   Ddr3Controller/Axi4/Bridge, Ddr3TesterTop, Ddr3MemtestEngine, UartTx
+│   └── test/                #   unit tests (src/) + formal proofs (formal/)
+├── hw/gen/                  # Generated Verilog (Ddr3TesterTop.v, Ddr3ControllerSim.v, ...) — via mill
+├── src/                     # nand2mario baseline (kept): ddr3_controller.v, top, PLL, constraints (.cst, .sdc)
+├── simulation/               # sim_ddr.py driver, TBs (tb_fast.v active, tb_spinal.v, tb_controller.v),
+│                            # Micron models (ddr3_vanilla.v, *parameters.vh), Gowin prim model
+├── measure/                 # Active measurement batteries & analyses (mag_battery.py, map_capture.py, ...)
+├── archives/                # Ranged history, out of the active path (old scripts, legacy sim, 2026-10-02-07 docs)
+├── doc/                     # design.md + STATUS_AND_NEXT.md (current state & next steps)
+├── tools/                   # Local toolchains from setup.bat (oss-cad-suite, w64devkit) — gitignored
+├── AGENTS.md                # WSL/powershell environment rules (read first when working via WSL)
+├── setup.bat                # Automated Windows setup script (downloads Mill & OSS CAD Suite)
+├── build.mill               # Mill build configuration (auto-detects local toolchain)
+└── eda-flow.py              # Automated headless Gowin synthesis script (preset ddr3)
 ```
 
 ---

@@ -24,6 +24,15 @@ class GowinDdr3Phy(rowWidth: Int = 14, bankWidth: Int = 3) extends Component {
     // Controller inputs
     val dqs_hold    = in Bool()
     val wstep       = in Bits(8 bits)
+    // Dynamic read-delay steppers (vendor-intended fine mover, driven by read
+    // calibration). RLOADN=0 reloads the read tap (rstep) from the live DLL
+    // output (anchor); RLOADN=1 holds it; RMOVE falling edges step +-1 tap
+    // (RDIR: False=plus, True=minus). The sweep works RELATIVE to the DLL
+    // lock -- no fabric adder on DLLSTEP, which the placer forbids (PR0015:
+    // DQS.DLLSTEP must be driven DIRECTLY by the DLL, dedicated routing).
+    val rloadn      = in Bool()
+    val rmove       = in Bool()
+    val rdir        = in Bool()
     val rclkpos     = in Bits(2 bits)
     val rclksel     = in Bits(3 bits)
     val dqs_read    = in Bits(4 bits)
@@ -58,7 +67,11 @@ class GowinDdr3Phy(rowWidth: Int = 14, bankWidth: Int = 3) extends Component {
   dll.io.RESET    := !io.resetn
   dll.io.STOP     := False
   dll.io.UPDNCNTL := False
-  val dllstep     = dll.io.STEP
+  val dllstep = dll.io.STEP
+  // NOTE: NO fabric offset is added here on purpose. DQS.DLLSTEP is driven
+  // DIRECTLY by dll.io.STEP (placer rule PR0015: dedicated routing, no
+  // fabric logic allowed between DLL and DQS). The calibration fine-mover
+  // is rstep inside each DQS, stepped at runtime (RLOADN/RMOVE/RDIR).
   val dlllock     = dll.io.LOCK
   io.dlllock      := dlllock
 
@@ -91,9 +104,10 @@ class GowinDdr3Phy(rowWidth: Int = 14, bankWidth: Int = 3) extends Component {
     u_dqs.io.DQSIN   := dqs_pad_in(i)
     u_dqs.io.RESET   := !rst_lock_n
     u_dqs.io.HOLD    := io.dqs_hold
-    u_dqs.io.RLOADN  := False
+    u_dqs.io.RLOADN  := io.rloadn
     u_dqs.io.WLOADN  := False
-    u_dqs.io.RMOVE   := False
+    u_dqs.io.RMOVE   := io.rmove
+    u_dqs.io.RDIR    := io.rdir
     u_dqs.io.WMOVE   := False
     u_dqs.io.DLLSTEP := dllstep
     u_dqs.io.WSTEP   := io.wstep

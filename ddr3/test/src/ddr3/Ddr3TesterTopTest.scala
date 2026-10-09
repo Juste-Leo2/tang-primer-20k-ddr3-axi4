@@ -116,9 +116,13 @@ class Ddr3TesterTopTest extends AnyFunSuite {
         }
       }
 
-      // Wait for test_pass or test_err (full boot incl. 256-step WL sweep
-      // takes ~7000+ cycles now).
-      dut.clockDomain.waitSamplingWhere(12000)(dut.io.test_pass.toBoolean || dut.io.test_err.toBoolean)
+      // Wait for test_pass or test_err. Full boot (WL + 3 surveys + the
+      // ~516-pair relative RMOVE sweep, which cannot early-exit in this
+      // delay-insensitive mock) takes ~10-11k cycles, then the engine proper
+      // plus slow UART streaming (4 cycles/bit). 12000 starves the engine
+      // even when everything works; 60000 still catches real hangs fast
+      // (a hang never asserts either flag).
+      dut.clockDomain.waitSamplingWhere(120000)(dut.io.test_pass.toBoolean || dut.io.test_err.toBoolean)
 
       println(s"\n[SIM] Console output received:\n${receivedChars.toString.trim}")
       assert(!dut.io.test_err.toBoolean, "Ddr3MemtestEngine reported an error!")

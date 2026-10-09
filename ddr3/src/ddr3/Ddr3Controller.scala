@@ -63,6 +63,9 @@ class Ddr3Controller(val config: Ddr3Config = Ddr3Config()) extends Component {
   // Connect Core <-> PHY
   phy.io.dqs_hold     := coreArea.core.io.phy.dqs_hold
   phy.io.wstep        := coreArea.core.io.phy.wstep
+  phy.io.rloadn       := coreArea.core.io.phy.rloadn
+  phy.io.rmove        := coreArea.core.io.phy.rmove
+  phy.io.rdir         := coreArea.core.io.phy.rdir
   phy.io.rclkpos      := coreArea.core.io.phy.rclkpos
   phy.io.rclksel      := coreArea.core.io.phy.rclksel
   phy.io.dqs_read     := coreArea.core.io.phy.dqs_read

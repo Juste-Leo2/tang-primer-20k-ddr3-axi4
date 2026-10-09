@@ -43,6 +43,7 @@ class DQS extends BlackBox {
     val WLOADN   = in Bool()
     val RMOVE    = in Bool()
     val WMOVE    = in Bool()
+    val RDIR     = in Bool()
     val DLLSTEP  = in Bits(8 bits)
     val WSTEP    = in Bits(8 bits)
     val RCLKSEL  = in Bits(3 bits)
