@@ -22,10 +22,14 @@ DUT ni de logique de test en Verilog main** : le DUT vient du Scala
 |---|---------|--------------------|------|--------|
 | 1 | t01_dqs_law | Loi DQS read : reload/stepping/rstep, pas 25ps. Tranche "vrai-25 illusoire ?" | ★★★ | vert 09/10 (vrai-25 valide au DQS ; piège RFLAG stale trouvé) |
 | 2 | t02_dqsw_law | Loi DQS write : init DLLSTEP+WSTEP saturé, WFLAG. Suspect DQSW0 27 vs 25 | ★★★ | vert 09/10 |
-| 3 | t03_write_anchor | Transport réel write/readback à ancre 23 vs 25 : le 6 perd-il des données ? (DUT généré Scala) | ★★★ | en cours |
-| 4 | t04_read_rpoint | Fenêtre read à write fixé (init 25, RPOINT 23–27 en direct) : le read seul explique 6 vs 8 ? (DUT généré Scala) | ★★★ | en cours |
+| 3 | t03_write_anchor | Transport réel write/readback à ancre 23 vs 25 : le 6 perd-il des données ? (DUT généré Scala) | ★★★ | interrompu à 45µs (trop long) → t03b (repayait le WL, abandonné) → t03c |
+| 3c | t03c_forced | t03b sans WL : init JEDEC gardée, WSTEP=19 + taps forcés, 1 write + 1 read, seul DLLSTEP diffère | ★★★ | en cours |
+| 4 | t04_read_rpoint | Fenêtre read à write fixé (init 25, RPOINT 23–27 en direct) : le read seul explique 6 vs 8 ? (DUT généré Scala) | ★★★ | interrompu à 25µs/pos=2 (trop long) → t04b minimaliste : WL + sortie forcée + write + 5 reads |
+| 4b | t04b_window | t04 minimaliste : fenêtre read 23–27 à taps forcés, ancre 25 | ★★★ | écrit, après t03c |
+| 6 | t06_eye | Œil read (DQS+IDES seuls, burst TB) : translation pure 23 vs 25 ? (secondes) | ★★★ | balayage ±15 : tout OK 8–38, œil très large (bords non trouvés) |
 | 5 | t05_wl_anchor | WL seul à ancre 23 vs 25 : le WSTEP locké dépend-il de l'ancre ? (DUT généré Scala, court) | ★★ | vert 09/10 (wstep=19 aux 2, v2 propre → WL hors de cause) |
-| 6 | t06_latch_phase | Reproduire le latch 6 vs 8 en isolé : quelles phases tombent ? | ★★ | à faire |
+| 19 | t19_latch_phase | Reproduire le latch 6 vs 8 en isolé : quelles phases tombent ? | ★★ | à faire |
+| 20 | t20_earlystop | Arrêt précoce sur verdict survey (init naturelle, 0 force) : 8→stop, 6×4→stop | ★★★ | 25 vert (PASS best=8 à 3,4µs) ; 23 en cours |
 | 7 | t07_rmove_gap | 1 front descendant RMOVE = 1 pas, gap obligatoire (piège :14194) | ★★ | à faire |
 | 8 | t08_rloadn_live | RLOADN recharge depuis le DLL vivant (base PVT-safe) | ★★ | à faire |
 | 9 | t09_hold_wpoint | HOLD reset WPOINT ; WPOINT avance sur fronts DQSR90 | ★ | à faire |

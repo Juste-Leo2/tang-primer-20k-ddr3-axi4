@@ -53,7 +53,7 @@ def get_env():
     return env
 
 
-def run_one(key):
+def run_one(key, no_build=False):
     cfg = TESTS[key]
     tdir = ROOT / cfg["dir"]
     GEN.mkdir(exist_ok=True)
@@ -68,16 +68,21 @@ def run_one(key):
     cmd.append(str(tdir / cfg["tb"]))
     for s in cfg.get("sources", []):
         cmd.append(str(REPO / s))
-    print("$", " ".join(cmd), flush=True)
-    b = subprocess.run(cmd, capture_output=True, text=True, timeout=600,
-                       errors="replace", env=get_env())
-    if b.stdout:
-        print(b.stdout, end="")
-    if b.stderr:
-        print("STDERR:", b.stderr[-2000:], end="")
-    if b.returncode != 0:
-        print(f"{key}: BUILD FAIL rc={b.returncode}")
-        return False
+    srcs = [tdir / cfg["tb"]] + [REPO / s for s in cfg.get("sources", [])]
+    if no_build and vvp.exists() and all(
+            vvp.stat().st_mtime > p.stat().st_mtime for p in srcs):
+        print(f"{key}: build skipped (vvp à jour)", flush=True)
+    else:
+        print("$", " ".join(cmd), flush=True)
+        b = subprocess.run(cmd, capture_output=True, text=True, timeout=600,
+                           errors="replace", env=get_env())
+        if b.stdout:
+            print(b.stdout, end="")
+        if b.stderr:
+            print("STDERR:", b.stderr[-2000:], end="")
+        if b.returncode != 0:
+            print(f"{key}: BUILD FAIL rc={b.returncode}")
+            return False
 
     cmd = [VVP, str(vvp)] + [f"+{a}" for a in cfg.get("plusargs", [])]
     print("$", " ".join(cmd), f"> {log}", flush=True)
@@ -108,6 +113,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--test", default=None, help="clé du test (ex: t01)")
     ap.add_argument("--all", action="store_true", help="tous les tests, séquentiel")
+    ap.add_argument("--no-build", action="store_true",
+                    help="saute iverilog si le .vvp est plus récent que les sources")
     args = ap.parse_args()
     keys = list(TESTS) if args.all else [args.test]
     if not args.all and args.test not in TESTS:
@@ -115,7 +122,7 @@ def main():
         return 2
     ok = True
     for k in keys:
-        if not run_one(k):
+        if not run_one(k, args.no_build):
             ok = False
     print("ALL PASS" if ok else "ECHEC (voir ci-dessus)")
     return 0 if ok else 1
