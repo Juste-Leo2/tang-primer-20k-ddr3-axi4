@@ -11,14 +11,7 @@ case class Ddr3Config(
   rowWidth: Int       = 14,
   colWidth: Int       = 10,
   bankWidth: Int      = 3,
-  isSimulation: Boolean = false,
-  // Write-data phase shift (proof-test t21, 10/2026): rotates the 8 BIST
-  // beats within the driven window by +-1 tCK (+-2 beats) to compensate a
-  // DQ-vs-DQS slip in the OSER8_MEM TCLK handoff (DQSW270 = DLLSTEP+WSTEP
-  // in X4, DQS on DQSW0 = WSTEP only). +1 = advance (data 2 beats earlier,
-  // compensates a late DQ as seen at S23); -1 = retard; 0 = actuel.
-  // Elaboration-time constant: 0 = bit-identical. Window/OEN unchanged.
-  wrDqShift: Int = 0
+  isSimulation: Boolean = false
 ) {
   def addrWidth: Int = rowWidth + colWidth + bankWidth
 
@@ -65,7 +58,6 @@ case class Ddr3Config(
   // exit on a perfect 8/8. Predicted exits: STEP=25 -> +0, STEP=20 -> +5,
   // STEP=40 -> -15, STEP=60 -> -4 (sign = side).
   val dllSweepRange = 64
-  // (wrDqShift lives in the case-class params above so Ddr3Gen can set it.)
   // Anchor-base scan (outer loop around the DLL sweep, full-sweep mode
   // only): sweep scores proved history-dependent (a survey at a bad anchor
   // poisons every offset, even the physically-good tap), so calibration
@@ -284,6 +276,21 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   val bestPos = Reg(Bits(2 bits)) init(B"2'd0")
   val bestSel = Reg(Bits(3 bits)) init(B"3'd0")
   val bestRot = Reg(UInt(3 bits)) init(0)
+  // Write-phase (DQ/DQS OSER TCLK) calibration, one-shot per boot (t21,
+  // 10/2026): the DQ OSER re-takes FCLK data on DQSW270 = DLLSTEP+WSTEP
+  // while DQS uses DQSW0 = WSTEP, so across DLL anchors the DQ burst slips
+  // by an integer tCK (measured: S5/S23/S40 need +1 tCK advance, S25 needs
+  // 0). wrAdv selects the advanced window (data 2 beats earlier, DM follows
+  // the beats). Calibrated after WL/training by BIST write+read+score over
+  // {0,+1} (ties and healthy cards stay on 0); the slip is
+  // anchor-independent so one lock covers survey, sweep and functional.
+  val wrAdv         = RegInit(False)
+  val shiftCalDone  = RegInit(False)
+  val shiftPhase    = RegInit(False) // False = survey at shift 0, True = at +1
+  val best0         = Reg(UInt(4 bits)) init(0)
+  val best0Pos      = Reg(Bits(2 bits)) init(B"2'd0")
+  val best0Sel      = Reg(Bits(3 bits)) init(B"3'd0")
+  val best0Rot      = Reg(UInt(3 bits)) init(0)
 
   // DLL read-delay sweep, RELATIVE to the DLL lock, via the DQS dynamic
   // steppers (RLOADN/RMOVE/RDIR). Measured facts
@@ -454,14 +461,30 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   // Sweep handoff at a base: full-sweep inits (mirror of the survey-end
   // path) + anchor/navigate there. Even sel forced: with rclksel[0]=1 the
   // capture clock moves with the swept DQS and the sweep is provably futile.
-  def startSweepAtBase(side: Bool, mag: UInt): Unit = {
-    dllSweepOn := True
+  def startSweepAtBase(side: Bool, mag: UInt): Unit = {    dllSweepOn := True
     bestCntDll := 0
     bestSide := False
     bestMag := 0
     rcalib_tries := 0
     rclksel(0) := False
     gotoBase(side, mag)
+  }
+
+  // BIST rewrite detour (proven idiom, same as the survey/sweep ADVANCE):
+  // refresh block 0 through the WRITE path (auto-precharge closes the row;
+  // WRITE exit returns to is(0) which re-ACTs and, via bistReturn, preserves
+  // all pass state). The written content follows the CURRENT wrAdv, so the
+  // next scored slots measure the locked shift. Loops back via WRITE+is(0).
+  def bistRewrite(): Unit = {
+    reqReg.write := True
+    reqReg.addr := 0
+    reqReg.wdata := trainPat
+    reqReg.wstrb := B"16'hFFFF"
+    trainDone := True
+    needPoison := False
+    bistReturn := True
+    state := Ddr3State.WRITE
+    cycle := 0
   }
 
   // Monitor rburst strobe
@@ -701,6 +724,14 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
               // (no re-entry stall: this is not a pass entry).
               bistReturn := False
             } otherwise {
+            when(training) {
+              // Fresh boot (pass-1 entry): arm the one-shot write-shift
+              // search. Later entries (pass 2/3) keep the locked shift:
+              // re-arming there would silently drop the winner.
+              shiftCalDone := False
+              shiftPhase := False
+              wrAdv := False
+            }
             rcalib_cnt := 0
             rcalib_tries := 0
             bestCnt := 0
@@ -1087,6 +1118,61 @@ bestRot := 0
                 // like the proven flow. Pass 2 (trained data): start the DLL
                 // offset sweep. Pass 3 (offset already measured): finish.
                 when(!training && !dllSweepDone) {
+                  // (C) Write-shift prologue: one-shot {0,+1} search over full
+                  // 40-try surveys (see decl comment). Peer of the scan chain
+                  // below, mutually exclusive with it (A needs scanOn, B needs
+                  // shiftCalDone). Every path loops back via a BIST rewrite,
+                  // so the grid tail only runs once shiftCalDone. Scored
+                  // iterations update bests by max only, so the extra return
+                  // iteration is harmless.
+                  when(!scanOn && !shiftCalDone) {
+                    when(!shiftPhase) {
+                      when(bestCnt === 8) {
+                        // Fast path: shift 0 already perfect (healthy cards,
+                        // zero extra cost; content already 0).
+                        if (!GenerationFlags.formal) {
+                          report(L"RCALIB wshift lock 0 (fast)")
+                        }
+                        shiftCalDone := True
+                        rcalib_tries := 40
+                        bistRewrite()
+                      } otherwise {
+                        best0 := bestCnt
+                        best0Pos := bestPos
+                        best0Sel := best0Sel
+                        best0Rot := bestRot
+                        shiftPhase := True
+                        wrAdv := True
+                        rcalib_tries := 0
+                        bestCnt := 0
+                        if (!GenerationFlags.formal) {
+                          report(L"RCALIB wshift try +1")
+                        }
+                        bistRewrite()
+                      }
+                    } otherwise {
+                      // Phase-1 (+1 content throughout) survey done: strictly
+                      // better wins; ties stay on 0 = current behavior.
+                      when(bestCnt > best0) {
+                        // Live bests already hold the +1 winner, content +1.
+                        if (!GenerationFlags.formal) {
+                          report(L"RCALIB wshift lock +1")
+                        }
+                      } otherwise {
+                        bestCnt := best0
+                        bestPos := best0Pos
+                        bestSel := best0Sel
+                        bestRot := best0Rot
+                        wrAdv := False
+                        if (!GenerationFlags.formal) {
+                          report(L"RCALIB wshift lock 0")
+                        }
+                      }
+                      shiftCalDone := True
+                      rcalib_tries := 40
+                      bistRewrite()
+                    }
+                  }
                   when(scanOn) {
                     // Anchor-base scan: record the finished base when strictly
                     // better (ties keep the earliest base), then move on.
@@ -1133,7 +1219,7 @@ bestRot := 0
                         }
                       }
                     }
-                  } otherwise {
+                  } elsewhen(shiftCalDone) {
                   // Pass-2 survey doubles as scan base +0 (tracked at the
                   // live lock): record it.
                   bestSurveyCnt := bestCnt
@@ -1369,33 +1455,34 @@ bestRot := 0
         }
 
         // Cycle 2: Subcycle 2 (CK 10) = Preamble; Subcycle 3 (CK 11) = Beat 0
-        // wrDqShift proof-test t21 (élaboration) : compense un retard DQ de
-        // 2 beats sur DQS (DQSW270 = DLLSTEP+WSTEP vs DQSW0 = WSTEP en X4).
-        // +1 = fenêtre avancée de 2 beats (b0 sort sur D5 au lieu de D7 : la
-        // DRAM échantillonne sent[k-2] et retrouve b0..b7) ; -1 = contrôle
-        // retardé (b7 perdu, attendue <=6) ; 0 = actuel bit-identique.
-        // +1 élargit la fenêtre d'un slot (D5, déjà couvert par TX2 côté DQS)
-        // donc dq_oen passe à 0011 ; DM suit les données (toujours drivées).
+        // wrAdv (write-shift calibration, t21 10/2026): when True the window
+        // is advanced by 1 tCK (b0 on D5 instead of D7) to compensate a late
+        // DQ (DQSW270 = DLLSTEP+WSTEP vs DQSW0 = WSTEP in X4). The window
+        // grows by one slot (D5, already TX2-covered on the DQS side) so
+        // dq_oen opens TX2 as well; DM follows the beats (always driven).
         when(cycle === (config.RCD + config.CWL) / 4) {
           dqs_out := B"8'b0100_0000" // D4=0, D5=0 (preamble low); D6=1, D7=0 (Beat 0)
           dqs_oen := B"4'b0011"      // TX2=0, TX3=0 enabled; TX0=1, TX1=1 disabled
-          if (config.wrDqShift == 1) {
+          when(wrAdv) {
             dq_oen  := B"4'b0011"      // D4-D7 drivés (fenêtre avancée)
             dq_out(4) := B"16'h0"       // cadrage pré
             dq_out(5) := reqReg.wdata(15 downto 0)   // Beat 0 (avancé de 2)
             dq_out(6) := reqReg.wdata(31 downto 16)  // Beat 1
             dq_out(7) := reqReg.wdata(47 downto 32)  // Beat 2
-          } else {
+          } otherwise {
             dq_oen  := B"4'b0111"      // TX3=0 enabled; TX0..2=1 disabled
             dq_out(6) := 0
             dq_out(7) := reqReg.wdata(15 downto 0)   // Beat 0
           }
 
-          dm_out(6) := True
-          dm_out(7) := !reqReg.wstrb(1 downto 0).orR
-          if (config.wrDqShift == 1) {
-            dm_out(4) := True
-            dm_out(5) := !reqReg.wstrb(1 downto 0).orR
+          when(wrAdv) {
+            dm_out(4) := True                           // cadrage pré
+            dm_out(5) := !reqReg.wstrb(1 downto 0).orR   // Beat 0
+            dm_out(6) := !reqReg.wstrb(3 downto 2).orR   // Beat 1
+            dm_out(7) := !reqReg.wstrb(5 downto 4).orR   // Beat 2
+          } otherwise {
+            dm_out(6) := True
+            dm_out(7) := !reqReg.wstrb(1 downto 0).orR
           }
         }
 
@@ -1405,7 +1492,7 @@ bestRot := 0
           dqs_oen := B"4'b0000"      // All TX enabled
           dq_oen  := B"4'b0000"      // All TX enabled
 
-          if (config.wrDqShift == 1) {
+          when(wrAdv) {
             dq_out(0) := reqReg.wdata(63 downto 48)  // Beat 3
             dq_out(1) := reqReg.wdata(79 downto 64)  // Beat 4
             dq_out(2) := reqReg.wdata(95 downto 80)  // Beat 5
@@ -1413,15 +1500,7 @@ bestRot := 0
             dq_out(4) := reqReg.wdata(127 downto 112)// Beat 7
             dq_out(5) := B"16'h0"       // postamble (DRAM au-delà de BL8)
             dq_out(6) := B"16'h0"
-          } else if (config.wrDqShift == -1) {
-            dq_out(0) := B"16'h0"       // cadrage pré (retardé de 2)
-            dq_out(1) := reqReg.wdata(15 downto 0)   // Beat 0
-            dq_out(2) := reqReg.wdata(31 downto 16)  // Beat 1
-            dq_out(3) := reqReg.wdata(47 downto 32)  // Beat 2
-            dq_out(4) := reqReg.wdata(63 downto 48)  // Beat 3
-            dq_out(5) := reqReg.wdata(79 downto 64)  // Beat 4
-            dq_out(6) := reqReg.wdata(95 downto 80)  // Beat 5 (b6/b7 perdus)
-          } else {
+          } otherwise {
             dq_out(0) := reqReg.wdata(31 downto 16)  // Beat 1
             dq_out(1) := reqReg.wdata(47 downto 32)  // Beat 2
             dq_out(2) := reqReg.wdata(63 downto 48)  // Beat 3
@@ -1432,15 +1511,20 @@ bestRot := 0
           }
           dq_out(7) := 0
 
-          dm_out(0) := !reqReg.wstrb(3 downto 2).orR
-          dm_out(1) := !reqReg.wstrb(5 downto 4).orR
-          dm_out(2) := !reqReg.wstrb(7 downto 6).orR
-          dm_out(3) := !reqReg.wstrb(9 downto 8).orR
-          dm_out(4) := !reqReg.wstrb(11 downto 10).orR
-          if (config.wrDqShift == 1) {
+          when(wrAdv) {
+            dm_out(0) := !reqReg.wstrb(7 downto 6).orR    // Beat 3
+            dm_out(1) := !reqReg.wstrb(9 downto 8).orR    // Beat 4
+            dm_out(2) := !reqReg.wstrb(11 downto 10).orR  // Beat 5
+            dm_out(3) := !reqReg.wstrb(13 downto 12).orR  // Beat 6
+            dm_out(4) := !reqReg.wstrb(15 downto 14).orR  // Beat 7
             dm_out(5) := True // postamble (au-delà de BL8)
             dm_out(6) := True
-          } else {
+          } otherwise {
+            dm_out(0) := !reqReg.wstrb(3 downto 2).orR
+            dm_out(1) := !reqReg.wstrb(5 downto 4).orR
+            dm_out(2) := !reqReg.wstrb(7 downto 6).orR
+            dm_out(3) := !reqReg.wstrb(9 downto 8).orR
+            dm_out(4) := !reqReg.wstrb(11 downto 10).orR
             dm_out(5) := !reqReg.wstrb(13 downto 12).orR
             dm_out(6) := !reqReg.wstrb(15 downto 14).orR
           }
@@ -1540,6 +1624,13 @@ bestRot := 0
     rmove := False
     rdir := False
     bestRot := 0
+    wrAdv := False
+    shiftCalDone := False
+    shiftPhase := False
+    best0 := 0
+    best0Pos := B"2'd0"
+    best0Sel := B"3'd0"
+    best0Rot := 0
     training := True
     trainDone := False
     needPoison := False
@@ -1677,15 +1768,14 @@ bestRot := 0
     // P12: data_ready only inside READ.
     assert(!data_ready || state === Ddr3State.READ)
     // P13: write datapath mapping (beats + DM vs wstrb), observable next cycle.
-    // Skipped when the proof-test shift remaps beats on purpose.
-    if (config.wrDqShift == 0) {
-    when(state === Ddr3State.WRITE && cycle === wc + 1) {
+    // Shift-0 mapping only: under wrAdv the beats are remapped on purpose.
+    when(state === Ddr3State.WRITE && cycle === wc + 1 && !wrAdv) {
       assert(dq_out(7) === reqReg.wdata(15 downto 0))
       assert(dq_out(6) === 0)
       assert(dm_out(7) === !reqReg.wstrb(1 downto 0).orR)
       assert(dm_out(6))
     }
-    when(state === Ddr3State.WRITE && cycle === wc + 2) {
+    when(state === Ddr3State.WRITE && cycle === wc + 2 && !wrAdv) {
       assert(dq_out(0) === reqReg.wdata(31 downto 16))
       assert(dq_out(1) === reqReg.wdata(47 downto 32))
       assert(dq_out(2) === reqReg.wdata(63 downto 48))
@@ -1703,7 +1793,6 @@ bestRot := 0
       assert(dm_out(6) === !reqReg.wstrb(15 downto 14).orR)
       assert(dm_out(7))
     }
-    } // end if (wrDqShift == 0)
     // P14: ACT bank/row coherence between activate and R/W commands.
     val reqBank = reqReg.addr(config.colWidth - 4 + config.rowWidth + config.bankWidth downto config.colWidth - 3 + config.rowWidth).asBits
     val reqRow = reqReg.addr(config.colWidth - 4 + config.rowWidth downto config.colWidth - 3).asBits

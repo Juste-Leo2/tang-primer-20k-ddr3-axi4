@@ -4,10 +4,7 @@ import spinal.core._
 import spinal.lib.bus.amba4.axi.Axi4Config
 
 /** Sim-only variant (short init timeouts) for iverilog vs Micron model. */
-class Ddr3ControllerSim extends Ddr3Controller(Ddr3Config(rowWidth = 14, bankWidth = 3, isSimulation = true,
-  // Proof-test t21: +1 = fenêtre DQ avancée de 2 beats (fix S23 candidat),
-  // 0 = actuel. Remettre à 0 après le test.
-  wrDqShift = 1))
+class Ddr3ControllerSim extends Ddr3Controller(Ddr3Config(rowWidth = 14, bankWidth = 3, isSimulation = true))
 
 object Ddr3Gen {
   def main(args: Array[String]): Unit = {
