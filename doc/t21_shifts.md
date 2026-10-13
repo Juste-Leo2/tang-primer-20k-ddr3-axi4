@@ -15,9 +15,21 @@ Motif BIST = `0x1000+k`, beats `1000..1007`.
 | +1 (avance 2 beats) | `1000,X,1002..1007` (**b1 troué**) | 7 (best survey, incomplet) | `1002..1007,X,X` | 6 |
 | −1 (retard 2 beats, contrôle) | `X,X[,X],1000..~1002` + dups (`latch=X`, score `x`) | ~4–5 | `1000..1005` + dups `0000` | 6 |
 
-Critère d'acceptation « 8+8 bus-level » : **non atteint**. Aucune ligne ne donne 8 aux
-deux steps. Le shift entier compense exactement ±2 beats (miroirs S25 : +1 et −1
-donnent tous deux 6, contenus opposés), mais S23 garde un trou résiduel.
+Critère d'acceptation « 8+8 bus-level » : **atteint après fix DM** (voir §5).
+S23+1+DMfix = 8/8 (`score=8 latch` plein), S25 via shift 0 = 8/8.
+Le shift entier compense exactement ±2 beats (miroirs S25 : +1 et −1
+donnent tous deux 6, contenus opposés).
+
+Matrice finale (13/10 au soir, DM fixé pour +1) :
+
+| shift | S5 | S23 | S25 | S40 | S60 |
+|---|---|---|---|---|---|
+| 0 | 6 (`X,X,b0..b5`) | 6 | **8** | 6 | **7** (`b0..b6,X`) |
+| +1 | **8** | **8** | **8** | **8** | 6 |
+| −1 | — | ~4–5 | 6 | — | ~5 |
+
+Auto-calib {0,+1} choisit : S5/S23/S40→+1 (8), S25→0 (8), S60→0 (7, extrême
+improbable, dégradation gracieuse). −1 abandonné (jamais gagnant physiquement).
 
 ## 2. Détail par run (logs `sim_tests/gen/t21_*.log`, regen `wrDqShift=-1` SUCCESS 18h46)
 
@@ -59,12 +71,32 @@ ou violation tDS/tDH pile sur la transition b0→b1.
 Discriminant : VCD write-side S23+1 (DQ/DM/`dq_oen`/DQS au ps autour de D6),
 ou vérification que le contenu DRAM = 8/8 et que seule la capture perd b1.
 
+## 6. Steps 40/60 à shift 0 (bitstream `wrDqShift=0`, TB `t21step.vvp`, 13/10)
+
+- S40 = même contenu que S23 (`X,X,b0..b5`, 6) → même type (slip entier, candidat +1).
+- S60 (`sim_tests/gen/t21_s0_60.log`, `NOTE … latch=100510041003100210011000xxxx1006`)
+  : `{b0..b6}` + X en queue (b7 manquant) = **7, nouveau type** (tête propre).
+  Mêmes entrées FIFO : `1000/1001,1010/1011,1110/xxxx…`.
+- Conséquence : {-1,0,+1} ne couvre S60 que si le trou b7 **bouge** avec le shift
+  (victime de phase sur front fixe → +1 met le postambule dessous → 8/8 possible).
+  Sinon (b7 structurellement non stocké), aucun shift entier ne donne 8 → 2e mécanisme
+  (queue/postambule/DM) à traiter. Mesures S60×{+1} (et S40×{+1} contrôle) requises
+  avant de figer la spec auto-calib.
+- S40+1 (`t21_p1_40.log`) : `score=8 latch=8 beats` → **8/8**, slip validé 2e step.
+- S60+1 (`t21_p1_60.log`) : `latch={b1..b7}+X` + résidu burst1 → vrai contenu
+  `[b2..b7,X,X]` = 6 (miroir S25+1 exact). Trou b7 **structurel** : +1 fait 7→6.
+  → +2 écarté (aucun slip 2 tCK observé, fenêtre à étendre). Reste : matrice −1/60
+  (prédit ~5) puis VCD queue S60-shift0 (b7/postambule vs derniers fronts).
+- S60−1 (`t21_m1_60.log`) : `latch={b0..b4}+0000+X` → ~5, prédiction confirmée.
+  Matrice monotone : +1/0/−1 = avance/neutre/retard, jamais d'inversion.
+  +2 définitivement écarté (prédit 4 à S60 : trou en queue, avancer perd la tête).
+  S60-like = improbable sur PHY réel (équiv. STEP extrême, hors lock nominal) :
+  {-1,0,+1} couvre la zone nominale à 8, extrêmes à 7 (dégradation gracieuse).
+
 ## 5. État du code (à revert avant le vrai fix)
 
 - `ddr3/src/ddr3/Ddr3ControllerCore.scala` : param `Ddr3Config.wrDqShift`, mapping
   WRITE par branches (`+1` : b0 sur D5, `dq_oen=0011`, DM suit ; `−1` : retard
   in-fenêtre, b7 perdu ; `0` : bit-identique), P13 formel gaté par
   `if (wrDqShift == 0)`.
-- `ddr3/src/ddr3/Ddr3Gen.scala` : Sim figé à `wrDqShift = -1` (dernier run).
-- Prochaine étape : VCD write S23+1, puis spec calibration auto
-  (`{−1,0,+1}` + fast-path shift0=8) seulement après un 8+8 manuel.
+- `ddr3/src/ddr3/Ddr3Gen.scala` : Sim figé à `wrDqShift = 0` (runs steps 23/40/60).
