@@ -190,4 +190,28 @@ module tb_t21;
         $write("  latch=%h\n", u_dut.coreArea_core.trainLatch);
     end
 
+    // ---- optional VCD (plusarg +vcd, default OFF: t21 traces unchanged) ----
+    // Window 3.19 -> 3.43 us: BIST write (~3275 ns) + survey reads + latch.
+    // Run from simulation/ (run.py cwd): VCD lands next to the .log.
+    // Usage: vvp t21_23.vvp +step=23 +trt=1 +vcd
+    initial begin
+        #1;
+        if ($test$plusargs("vcd")) begin
+            if (step_val == 23)
+                $dumpfile("t21_23_shift.vcd");
+            else
+                $dumpfile("t21_25_shift.vcd");
+            $dumpvars(0, tb_t21.u_dut.phy);
+            $dumpvars(0, tb_t21.u_dut.coreArea_core);
+            $dumpvars(1, tb_t21.dq);
+            $dumpvars(1, tb_t21.dqs);
+            $dumpvars(1, tb_t21.fclk);
+            $dumpvars(1, tb_t21.pclk);
+            $dumpvars(1, tb_t21.ck);
+            $dumpoff;
+            #3189000;
+            $dumpon;
+        end
+    end
+
 endmodule
