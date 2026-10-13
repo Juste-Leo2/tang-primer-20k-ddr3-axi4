@@ -93,6 +93,29 @@ ou vérification que le contenu DRAM = 8/8 et que seule la capture perd b1.
   S60-like = improbable sur PHY réel (équiv. STEP extrême, hors lock nominal) :
   {-1,0,+1} couvre la zone nominale à 8, extrêmes à 7 (dégradation gracieuse).
 
+## 7. Boucle runtime t22 (14/10/2026) — le fix tourne, preuve sur silicium-modèle
+
+`t22_wshift_auto/tb_t22.v` = copie t21 (diff : verdict seul), driver
+`t22_wshift_auto/t22_loop.py` : phase A t21-short à 0, si `tries=001` ≠ 8
+phase B `+p1` (wrAdv forcé runtime, ré-init entre runs assumée).
+Règle = C (strictement-mieux, sinon 0). Référence `t21_loop.py` en parallèle.
+
+| step | T21L phase A (shift 0) | T22L verdict |
+|---|---|---|
+| 5 | `X,X,b0..b5` (x) | +1 → **8/8** |
+| 23 | `X,X,b0..b5` (x) | +1 → **8/8** |
+| 25 | **8** direct | 0 (fast, pas de relance) → 8 |
+| 40 | `X,X,b0..b5` (x) | +1 → **8/8** |
+| 50 | `X,X,b0..b5` (x) | +1 → **8/8** (S50 connu : slip standard) |
+| 60 | `{b0..b6}+X` (x) | 0 (B=6 < A, extrême hors scope) |
+
+Verdicts `sim_tests/gen/t22_loop.log` (`T22L DONE step=.. wshift=..`).
+S25+1 forcé = miroir incomplet (contrôle : le force agit).
+Coût PHY (DDR3-800, tCK 2.5 ns) : survey-0 40 tries ≈ 20 µs, +1 idem +
+2 rewrites ≈ 1 µs → **~20 µs (fast) à ~41 µs (pire cas) par boot**,
+une fois par (ré-)init, jamais en fonctionnel. +2 jamais observé (S60+1
+dégrade déjà) : {-1,0,+1} figé, extension +2 possible sur même mécanique.
+
 ## 5. État du code (à revert avant le vrai fix)
 
 - `ddr3/src/ddr3/Ddr3ControllerCore.scala` : param `Ddr3Config.wrDqShift`, mapping
