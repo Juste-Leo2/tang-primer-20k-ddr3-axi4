@@ -31,6 +31,9 @@ Repo Windows manipulé depuis WSL (`/mnt/i/tang-primer-20k-ddr3-axi4` ↔
 - `measure/` : batteries/analyses actives (`mag_battery.py`,
   `map_capture.py`, `analyze_window.py`, `analyze_vcd*.py`), logs lus dans
   `simulation/`. Voir `measure/README.md`.
+- `sim_tests/` : mini-TB isolés (1 test = 1 dossier `tNN_nom/` +
+  `PREDICTION.md` obligatoire), runner `python sim_tests/run.py --test t01`.
+  Voir `sim_tests/README.md`. Jamais de logique DUT en `.v`.
 - `archives/` : historique rangé (`sim-scripts/`, `sim-legacy/`,
   `docs-2026-10-02-07/`), hors chemin actif, historique git conservé.
 - `doc/` : `design.md` + `STATUS_AND_NEXT.md` (état + suite). Le reste est
@@ -81,6 +84,10 @@ Start-Process -FilePath 'cmd.exe' -ArgumentList '/c','python simulation\sim_ddr.
   (`prim_sim_tb.v:14194`) : N slots consécutifs à 1 = UN seul pas. Toujours
   un slot de gap entre deux pulses (`navigateLeft` compte des slots, pulse
   sur comptes impairs).
+- `RFLAG` stale après changement de `RDIR` sans mouvement `rstep`
+  (sensibilité = `rstep_reg` seul, `prim_sim_tb.v:14175`) : aux bornes ça
+  déborde (0 −1 → 255) au lieu de saturer. Poser `RDIR` AVANT le reload
+  (verrouillé par `sim_tests/t01`, sans effet à ~25 loin des bornes).
 - Jamais plusieurs `iverilog -o` concurrents vers le même `.vvp` (binaire
   corrompu → `Assertion failed: use_island, vvp_island.cc:309` au load,
   avant même la ligne MAP ; 09/10 : 3 rebuilds parallèles). Un seul build,
