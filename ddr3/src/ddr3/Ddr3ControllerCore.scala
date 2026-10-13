@@ -11,7 +11,14 @@ case class Ddr3Config(
   rowWidth: Int       = 14,
   colWidth: Int       = 10,
   bankWidth: Int      = 3,
-  isSimulation: Boolean = false
+  isSimulation: Boolean = false,
+  // Write-data phase shift (proof-test t21, 10/2026): rotates the 8 BIST
+  // beats within the driven window by +-1 tCK (+-2 beats) to compensate a
+  // DQ-vs-DQS slip in the OSER8_MEM TCLK handoff (DQSW270 = DLLSTEP+WSTEP
+  // in X4, DQS on DQSW0 = WSTEP only). +1 = advance (data 2 beats earlier,
+  // compensates a late DQ as seen at S23); -1 = retard; 0 = actuel.
+  // Elaboration-time constant: 0 = bit-identical. Window/OEN unchanged.
+  wrDqShift: Int = 0
 ) {
   def addrWidth: Int = rowWidth + colWidth + bankWidth
 
@@ -58,6 +65,7 @@ case class Ddr3Config(
   // exit on a perfect 8/8. Predicted exits: STEP=25 -> +0, STEP=20 -> +5,
   // STEP=40 -> -15, STEP=60 -> -4 (sign = side).
   val dllSweepRange = 64
+  // (wrDqShift lives in the case-class params above so Ddr3Gen can set it.)
   // Anchor-base scan (outer loop around the DLL sweep, full-sweep mode
   // only): sweep scores proved history-dependent (a survey at a bad anchor
   // poisons every offset, even the physically-good tap), so calibration
@@ -1361,16 +1369,34 @@ bestRot := 0
         }
 
         // Cycle 2: Subcycle 2 (CK 10) = Preamble; Subcycle 3 (CK 11) = Beat 0
+        // wrDqShift proof-test t21 (élaboration) : compense un retard DQ de
+        // 2 beats sur DQS (DQSW270 = DLLSTEP+WSTEP vs DQSW0 = WSTEP en X4).
+        // +1 = fenêtre avancée de 2 beats (b0 sort sur D5 au lieu de D7 : la
+        // DRAM échantillonne sent[k-2] et retrouve b0..b7) ; -1 = contrôle
+        // retardé (b7 perdu, attendue <=6) ; 0 = actuel bit-identique.
+        // +1 élargit la fenêtre d'un slot (D5, déjà couvert par TX2 côté DQS)
+        // donc dq_oen passe à 0011 ; DM suit les données (toujours drivées).
         when(cycle === (config.RCD + config.CWL) / 4) {
           dqs_out := B"8'b0100_0000" // D4=0, D5=0 (preamble low); D6=1, D7=0 (Beat 0)
           dqs_oen := B"4'b0011"      // TX2=0, TX3=0 enabled; TX0=1, TX1=1 disabled
-          dq_oen  := B"4'b0111"      // TX3=0 enabled; TX0..2=1 disabled
-
-          dq_out(6) := 0
-          dq_out(7) := reqReg.wdata(15 downto 0)   // Beat 0
+          if (config.wrDqShift == 1) {
+            dq_oen  := B"4'b0011"      // D4-D7 drivés (fenêtre avancée)
+            dq_out(4) := B"16'h0"       // cadrage pré
+            dq_out(5) := reqReg.wdata(15 downto 0)   // Beat 0 (avancé de 2)
+            dq_out(6) := reqReg.wdata(31 downto 16)  // Beat 1
+            dq_out(7) := reqReg.wdata(47 downto 32)  // Beat 2
+          } else {
+            dq_oen  := B"4'b0111"      // TX3=0 enabled; TX0..2=1 disabled
+            dq_out(6) := 0
+            dq_out(7) := reqReg.wdata(15 downto 0)   // Beat 0
+          }
 
           dm_out(6) := True
           dm_out(7) := !reqReg.wstrb(1 downto 0).orR
+          if (config.wrDqShift == 1) {
+            dm_out(4) := True
+            dm_out(5) := !reqReg.wstrb(1 downto 0).orR
+          }
         }
 
         // Cycle 3: Subcycles 0..2 (CK 12..14) = Beats 1..6; Subcycle 3 (CK 15) = Beat 7 + Postamble
@@ -1379,13 +1405,31 @@ bestRot := 0
           dqs_oen := B"4'b0000"      // All TX enabled
           dq_oen  := B"4'b0000"      // All TX enabled
 
-          dq_out(0) := reqReg.wdata(31 downto 16)  // Beat 1
-          dq_out(1) := reqReg.wdata(47 downto 32)  // Beat 2
-          dq_out(2) := reqReg.wdata(63 downto 48)  // Beat 3
-          dq_out(3) := reqReg.wdata(79 downto 64)  // Beat 4
-          dq_out(4) := reqReg.wdata(95 downto 80)  // Beat 5
-          dq_out(5) := reqReg.wdata(111 downto 96) // Beat 6
-          dq_out(6) := reqReg.wdata(127 downto 112)// Beat 7
+          if (config.wrDqShift == 1) {
+            dq_out(0) := reqReg.wdata(63 downto 48)  // Beat 3
+            dq_out(1) := reqReg.wdata(79 downto 64)  // Beat 4
+            dq_out(2) := reqReg.wdata(95 downto 80)  // Beat 5
+            dq_out(3) := reqReg.wdata(111 downto 96) // Beat 6
+            dq_out(4) := reqReg.wdata(127 downto 112)// Beat 7
+            dq_out(5) := B"16'h0"       // postamble (DRAM au-delà de BL8)
+            dq_out(6) := B"16'h0"
+          } else if (config.wrDqShift == -1) {
+            dq_out(0) := B"16'h0"       // cadrage pré (retardé de 2)
+            dq_out(1) := reqReg.wdata(15 downto 0)   // Beat 0
+            dq_out(2) := reqReg.wdata(31 downto 16)  // Beat 1
+            dq_out(3) := reqReg.wdata(47 downto 32)  // Beat 2
+            dq_out(4) := reqReg.wdata(63 downto 48)  // Beat 3
+            dq_out(5) := reqReg.wdata(79 downto 64)  // Beat 4
+            dq_out(6) := reqReg.wdata(95 downto 80)  // Beat 5 (b6/b7 perdus)
+          } else {
+            dq_out(0) := reqReg.wdata(31 downto 16)  // Beat 1
+            dq_out(1) := reqReg.wdata(47 downto 32)  // Beat 2
+            dq_out(2) := reqReg.wdata(63 downto 48)  // Beat 3
+            dq_out(3) := reqReg.wdata(79 downto 64)  // Beat 4
+            dq_out(4) := reqReg.wdata(95 downto 80)  // Beat 5
+            dq_out(5) := reqReg.wdata(111 downto 96) // Beat 6
+            dq_out(6) := reqReg.wdata(127 downto 112)// Beat 7
+          }
           dq_out(7) := 0
 
           dm_out(0) := !reqReg.wstrb(3 downto 2).orR
@@ -1393,8 +1437,13 @@ bestRot := 0
           dm_out(2) := !reqReg.wstrb(7 downto 6).orR
           dm_out(3) := !reqReg.wstrb(9 downto 8).orR
           dm_out(4) := !reqReg.wstrb(11 downto 10).orR
-          dm_out(5) := !reqReg.wstrb(13 downto 12).orR
-          dm_out(6) := !reqReg.wstrb(15 downto 14).orR
+          if (config.wrDqShift == 1) {
+            dm_out(5) := True // postamble (au-delà de BL8)
+            dm_out(6) := True
+          } else {
+            dm_out(5) := !reqReg.wstrb(13 downto 12).orR
+            dm_out(6) := !reqReg.wstrb(15 downto 14).orR
+          }
           dm_out(7) := True
         }
 
@@ -1628,6 +1677,8 @@ bestRot := 0
     // P12: data_ready only inside READ.
     assert(!data_ready || state === Ddr3State.READ)
     // P13: write datapath mapping (beats + DM vs wstrb), observable next cycle.
+    // Skipped when the proof-test shift remaps beats on purpose.
+    if (config.wrDqShift == 0) {
     when(state === Ddr3State.WRITE && cycle === wc + 1) {
       assert(dq_out(7) === reqReg.wdata(15 downto 0))
       assert(dq_out(6) === 0)
@@ -1652,6 +1703,7 @@ bestRot := 0
       assert(dm_out(6) === !reqReg.wstrb(15 downto 14).orR)
       assert(dm_out(7))
     }
+    } // end if (wrDqShift == 0)
     // P14: ACT bank/row coherence between activate and R/W commands.
     val reqBank = reqReg.addr(config.colWidth - 4 + config.rowWidth + config.bankWidth downto config.colWidth - 3 + config.rowWidth).asBits
     val reqRow = reqReg.addr(config.colWidth - 4 + config.rowWidth downto config.colWidth - 3).asBits

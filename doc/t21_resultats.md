@@ -67,3 +67,19 @@ C'est l'auto-capture de la BIST write via le loopback DQSIN, vers 3275–3290 ns
 ## 5. Divers
 
 - La coïncidence DQSR90/FCLK à STEP 25 (§2 de l'ancienne note) est réelle, mais elle n'a **aucun effet visible** côté FIFO dans ces traces.
+
+Oui pour la correction, non pour l'idée. Le côté écriture avait déjà été soupçonné, mais aucune correction côté écriture n'a jamais été essayée.
+
+**Ce qui existait déjà :**
+- **H7** (« l'ancre déplace la phase d'écriture en X4 ») est listée « Open, constrained » dans `STATUS_AND_NEXT.md`. Elle a été écartée en partie par le run s25a23 : survey à 25, puis écritures BIST à la phase 23, et ça donne 8 quand même.
+- **`dll-offset-K.md`** (archives) avait vu qu'à STEP=0 forcé, l'écriture devient marginale (violations tDS/tDH) et plafonne à 6. Mais c'était vu comme un cas extrême, pas comme la cause générale.
+- **t03 / t03b / t03c** étaient prévus exactement pour départager « KO à 23, OK à 25 = l'écriture est en cause ». Je n'ai trouvé aucun résultat écrit dans leurs `PREDICTION.md`, donc je ne peux pas dire ce qu'ils ont donné.
+- **t05** a montré que le write leveling donne le même WSTEP (0x19) aux deux ancres. Mais le WL n'aligne que le DQS, pas les DQ.
+
+**Ce qui est nouveau avec t21 :**
+- **Une preuve directe sur le bus.** À S23, la DRAM renvoie X, X, 1000…1005 : la mémoire contient le motif décalé de 1 tCK. Le « DQ turn-on +1 tCK » de la section 3 de `STATUS_AND_NEXT.md` avait été lu comme un problème de lecture (préambule, Hi-Z, H1). C'est en fait le contenu écrit.
+- **La cause du décalage est visible.** L'auto-capture de la BIST write montre qu'à S23 les DQ sortent 2 beats en retard sur notre DQS, alors que les fronts DQS tombent aux mêmes instants qu'à S25.
+
+**Différence avec toutes les solutions testées avant :** elles agissaient toutes sur la lecture. Ça couvre rstep, la boucle pos/sel, les ancres et le scan, le re-survey, le pin, HOLD, les doubles bursts, la rotation, la normalisation d'idle. Si la mémoire contient X, X, 0…5, aucun réglage de lecture ne peut faire mieux que 6, ce qui explique pourquoi tout plafonnait. La piste nouvelle est une calibration de l'alignement DQ/DQS à l'écriture, par exemple décaler `dq_out`/`dq_oen`/`dm_out` d'un sous-cycle et valider par relecture BIST. Elle n'a jamais été implémentée.
+
+**Ce qui reste à vérifier avant de coder :** le résultat s25a23 contredit en partie cette explication. Si la phase d'écriture suivait simplement STEP, les écritures à 23 après le changement d'ancre auraient dû stocker le motif décalé, et le score n'aurait pas pu atteindre 8. Il faut lire le modèle `OSER8_MEM` (`prim_sim_tb.v:3587`) pour voir s'il garde un état interne fixé lors des premières écritures. Ça expliquerait à la fois s25a23 et « l'historique décide ». Si ce n'est pas le cas, l'explication est incomplète.
