@@ -42,9 +42,9 @@ rPLL rpll_inst (
 //defparam rpll_inst.IDIV_SEL = 1;
 //defparam rpll_inst.ODIV_SEL = 2;
 
-// clkout @ 398.25 Mhz
+// clkout @ 265.5 Mhz
 defparam rpll_inst.FBDIV_SEL = 58;
-defparam rpll_inst.IDIV_SEL = 3;
+defparam rpll_inst.IDIV_SEL = 5;
 defparam rpll_inst.ODIV_SEL = 2;
 
 // clkoutd @ 1/4 * clkout

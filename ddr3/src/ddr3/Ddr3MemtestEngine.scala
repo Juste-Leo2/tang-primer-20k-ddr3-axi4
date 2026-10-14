@@ -17,7 +17,7 @@ import spinal.lib.fsm._
 class Ddr3MemtestEngine(
   val axiConfig: Axi4Config,
   val testBursts: Int = 1024,
-  val clkFreqHz: Int = 99560000,
+  val clkFreqHz: Int = 66375000,
   val baudRate: Int = 115200
 ) extends Component {
   val io = new Bundle {
