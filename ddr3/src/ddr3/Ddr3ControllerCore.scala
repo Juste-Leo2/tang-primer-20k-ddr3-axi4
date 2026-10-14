@@ -31,7 +31,7 @@ case class Ddr3Config(
   val SERDES = 16
 
   // Delays in pclk cycles
-  val usec = 100 // 1 microsecond in 100 MHz pclk cycles
+  val usec = if (isSimulation) 100 else 66 // 1 microsecond in pclk cycles (66 MHz HW)
 
   // Iteration counts for calibration
   // HW also requires 2 consecutive WL matches now: a single-hit lock
@@ -398,9 +398,9 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   val rmove  = RegInit(False)
   val rdir   = RegInit(False)
 
-  // Autonomous Refresh timer (every 7.8 us = 781 cycles @ 100MHz)
+  // Autonomous Refresh timer (every 7.8 us = 517 cycles @ 66MHz)
   // Sim uses a shorter period so iverilog runs cover several refreshes.
-  val refreshPeriod = if (config.isSimulation) 200 else 780
+  val refreshPeriod = if (config.isSimulation) 200 else 517
   val refresh_timer = Reg(UInt(11 bits)) init(0)
   val refresh_due   = RegInit(False)
 

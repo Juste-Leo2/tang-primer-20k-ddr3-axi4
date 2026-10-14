@@ -7,7 +7,7 @@ import spinal.lib._
  * Clean, robust UART transmitter for reporting and console output.
  * Configured for 8N1 (8 data bits, no parity, 1 stop bit).
  */
-class UartTx(clkFreqHz: Int = 99560000, baudRate: Int = 115200) extends Component {
+class UartTx(clkFreqHz: Int = 66375000, baudRate: Int = 115200) extends Component {
   val io = new Bundle {
     val write = slave Stream(Bits(8 bits))
     val txd   = out Bool()
