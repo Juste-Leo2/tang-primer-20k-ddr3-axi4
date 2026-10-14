@@ -109,3 +109,68 @@ après S0 : **une seule LED** allumée.
 2. Selon (1) : fix WL ciblé, revalidé par `WLMAP` non nul.
 3. Gates + watchdogs (5.1, 5.2, 5.4).
 4. Non-régression sim (unit + formel déjà verts sur ce bitstream).
+
+## 7. Passage 66 MHz (décision debug timing) — 14/10/2026
+
+Constat STA (bitstream `dev2`, `Ddr3TesterTop_tr_content.html`) :
+**461 endpoints en violation setup sur `pll_clkoutd`** (pclk 99.56 MHz),
+TNS −755.9 ns, Fmax réelle 75.7 MHz (logic level 14), hold 0.
+Pires chemins (WNS −3.17 ns) : `trainLatch[*]` → `bestRot/bestCnt` et
+`bestCnt` → `reqReg_wdata[*]/CE` = le cône score/comparaison 128 bits.
+Le design tournait ~25 % trop vite pour son silicium (coin slow
+0.95V/85C = cas warm) : froid OK, S0 KO, `main` aléatoire.
+
+Décision : baisser pclk 99.56 → **66.375 MHz** (fclk 398.25 → 265.5,
+ratio 4:1 conservé pour les OSER x4, tCK 3.77 ns = DDR3-533).
+5 fichiers : `src/gowin_rpll/gowin_rpll.v` (`IDIV_SEL` 3→5),
+`src/ddr3.sdc` (15.058/3.767 ns), `Ddr3ControllerCore.scala`
+(`usec` 100→66 conditional sim, `refreshPeriod` 780→517 —
+780 cycles @66 MHz = 11.75 µs > 7.8 µs requis),
+`Ddr3MemtestEngine.scala` + `UartTx.scala` (`clkFreqHz` → 66375000).
+Vérifié dans le Verilog stagé (517, 663750). PLL locke (LED1 éteinte).
+
+Résultats : **spin S0 terminé** (6/6 boots complètent), **WL
+déterministe au tap sim** (`W=18/19`, `f=19/1A`, sim = 0x19),
+**STA 0 setup + 0 hold**. Le lock marginal au tap 10 d'avant était un
+artefact d'échantillonnage du clock violé. RCALIB atteint `C=8`
+(6/11 boots) mais memtest FAIL toujours.
+
+Note placement : un build intermédiaire est retombé à `W=FF`×6 avec un
+core inchangé (seuls les patterns engine avaient bougé) puis le rebuild
+suivant a relocké. Le SDC n'a aucun délai d'entrée : le flop
+d'échantillonnage WL est placé au hasard et le sweep (~6 ns) couvre une
+fraction de la période (15 ns) → loterie par build. À traiter
+(`max_delay` DQ, voire couverture plein-période).
+
+## 8. Signature résiduelle + deux pistes (point de pause)
+
+Signature (66 MHz, STA propre, WL locké) :
+- `C=5-8` (dont `C=8` répétés en `P=2 S=0 R=0`), FAIL à `A=0` à chaque boot.
+- `G`/`H` = **beat0/beat1 du même burst** (pas deux lectures) :
+  beats répétés (`BA6776ABBA6776AB`, `G==H`), décalés de 32 bits
+  (`H[63:32]=G[31:0]`), restes trainPat (`1000/1001/1005`) et garbage
+  power-on — ni trainPat ni E-pattern.
+- Déterministe par boot (5/6/11 identiques à lock égal), variable entre boots.
+- Arriver à `C=8` prouve que le datapath assemble correctement :
+  le calib lit le trainPat écrit par le BIST ; le fonctionnel (pattern
+  dense `0123/FEDC` via AXI) échoue.
+
+Exclus par l'enquête : bridge AXI (relu, sain), `len` (global =1),
+WL (déterministe), refresh (517), timing (STA 0), framing (P1/formel).
+
+- **Piste A — phase RPOINT calib vs fonctionnel.** Le survey ne re-pinne
+  HOLD qu'en entrée de passe (free-run entre tries, `:718` vs `:773`),
+  le fonctionnel pinne à chaque lecture (`:1407`, `:1424`).
+  `bestRot` est locké à la phase du survey ; si la phase au `data_ready`
+  fonctionnel diffère (comptes d'arêtes DQS silicium vs modèle),
+  le derot applique la mauvaise rotation. En sim les deux coïncident
+  par construction (d'où PASS sim / FAIL carte).
+  Test : pin HOLD par try de survey (miroir du fonctionnel) → gate sim
+  (`tb_fast` S25 8/8 + PASS) puis flash.
+- **Piste B — SSO / densité du pattern.** trainPat (sparse, ~4 bits/beat)
+  passe à 8/8 ; E-pattern (dense, tous les DQ commutent) casse.
+  Le datapath digital est agnostique au contenu ; la sim est idéale (pas
+  de SSO). Test : pattern single-phase sparse
+  (`1000100010001000`/`0800080008000800`, préparé puis reverté) →
+  Phase1 PASS ⇒ centrage d'œil d'écriture (sweep WSTEP scoré) ou réglage
+  SI ; FAIL ⇒ bitstream d'instrumentation (dump `dq_in` brut sur FAIL).
