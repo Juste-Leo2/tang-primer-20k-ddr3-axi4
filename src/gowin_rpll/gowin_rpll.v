@@ -42,9 +42,9 @@ rPLL rpll_inst (
 //defparam rpll_inst.IDIV_SEL = 1;
 //defparam rpll_inst.ODIV_SEL = 2;
 
-// clkout @ 265.5 Mhz
-defparam rpll_inst.FBDIV_SEL = 58;
-defparam rpll_inst.IDIV_SEL = 5;
+// clkout @ 303.75 Mhz (pclk = 75.9375 Mhz, inside >=300 MHz DDR3 DLL spec)
+defparam rpll_inst.FBDIV_SEL = 44;
+defparam rpll_inst.IDIV_SEL = 3;
 defparam rpll_inst.ODIV_SEL = 2;
 
 // clkoutd @ 1/4 * clkout

@@ -35,6 +35,9 @@ class Ddr3Controller(val config: Ddr3Config = Ddr3Config()) extends Component {
     val wlFirst          = out Bits(8 bits)
     val wlLast           = out Bits(8 bits)
     val wlMatchN         = out Bits(8 bits)
+    val wr_adv           = out Bits(2 bits)
+    val w_scores         = out Bits(12 bits)
+    val train_latch      = out Bits(128 bits)
 
     // Physical DDR3 memory pads (matches tang20k.cst constraints)
     val pad = master(Ddr3Pins(config.rowWidth, config.bankWidth))
@@ -85,6 +88,11 @@ class Ddr3Controller(val config: Ddr3Config = Ddr3Config()) extends Component {
   coreArea.core.io.phy.dlllock    := phy.io.dlllock
   coreArea.core.io.phy.rst_lock_n := phy.io.rst_lock_n
   coreArea.core.io.phy.rburst     := phy.io.rburst
+  if (!config.isSimulation) {
+    coreArea.core.io.phy.rvalid   := phy.io.rvalid
+    coreArea.core.io.phy.wpoint   := phy.io.wpoint
+    coreArea.core.io.phy.rpoint   := phy.io.rpoint
+  }
   coreArea.core.io.phy.dq_in      := phy.io.dq_in
   coreArea.core.io.phy.dq_raw     := phy.io.dq_raw
 
@@ -109,4 +117,7 @@ class Ddr3Controller(val config: Ddr3Config = Ddr3Config()) extends Component {
   io.wlFirst          := coreArea.core.io.wlFirst
   io.wlLast           := coreArea.core.io.wlLast
   io.wlMatchN         := coreArea.core.io.wlMatchN
+  io.wr_adv           := coreArea.core.io.wr_adv
+  io.w_scores         := coreArea.core.io.w_scores
+  io.train_latch      := coreArea.core.io.train_latch
 }

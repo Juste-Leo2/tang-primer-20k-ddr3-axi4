@@ -17,7 +17,7 @@ import spinal.lib.fsm._
 class Ddr3MemtestEngine(
   val axiConfig: Axi4Config,
   val testBursts: Int = 1024,
-  val clkFreqHz: Int = 66375000,
+  val clkFreqHz: Int = 75937500,
   val baudRate: Int = 115200
 ) extends Component {
   val io = new Bundle {
@@ -39,6 +39,9 @@ class Ddr3MemtestEngine(
     val wlFirst          = in Bits(8 bits)
     val wlLast           = in Bits(8 bits)
     val wlMatchN         = in Bits(8 bits)
+    val wr_adv           = in Bits(2 bits) default(0)
+    val w_scores         = in Bits(12 bits) default(0)
+    val train_latch      = in Bits(128 bits) default(0)
 
     // User outputs
     val uart_tx          = out Bool()
@@ -150,6 +153,8 @@ class Ddr3MemtestEngine(
   // WL match-map as 64 printable nibbles (MSB first), latched statically.
   val wlMapNib = Vec(Bits(4 bits), 64)
   for (i <- 0 until 64) wlMapNib(i) := io.wlMap(i * 4 + 3 downto i * 4)
+  val latchNib = Vec(Bits(4 bits), 32)
+  for (i <- 0 until 32) latchNib(i) := io.train_latch(i * 4 + 3 downto i * 4)
 
   val fsm = new StateMachine {
     val sBootBanner: State    = new State
@@ -157,6 +162,7 @@ class Ddr3MemtestEngine(
     val sPrintCalib: State    = new State
     val sPrintBanner: State   = new State
     val sPrintWlmap: State    = new State
+    val sPrintLatch: State    = new State
     val sSingleWriteAW: State = new State
     val sSingleWriteW0: State = new State
     val sSingleWriteW1: State = new State
@@ -339,10 +345,43 @@ class Ddr3MemtestEngine(
           is(24) { printChar := 0x6D; printValid := True; msgIndex := msgIndex + 1 } // m
           is(25) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
           is(90) { printChar := 0x0D; printValid := True; msgIndex := msgIndex + 1 } // \r
-          is(91) { printChar := 0x0A; printValid := True; msgIndex := 0; goto(sSingleWriteAW) } // \n
+          is(91) { printChar := 0x0A; printValid := True; msgIndex := 0; goto(sPrintLatch) } // \n
           default {
             // Map nibbles MSB first: msgIndex 26 -> bits 255..252, ... 89 -> bits 3..0.
             printChar := nibbleToAscii(wlMapNib(U(63, 6 bits) - (msgIndex - 26).resize(6))); printValid := True; msgIndex := msgIndex + 1
+          }
+        }
+      }
+    }
+
+    // Print "[LATCH] A=<0..3> S=<w0><w1><w2> L=<32 hex>\r\n"
+    sPrintLatch.whenIsActive {
+      when(!printValid) {
+        switch(msgIndex) {
+          is(0)  { printChar := 0x5B; printValid := True; msgIndex := msgIndex + 1 } // [
+          is(1)  { printChar := 0x4C; printValid := True; msgIndex := msgIndex + 1 } // L
+          is(2)  { printChar := 0x41; printValid := True; msgIndex := msgIndex + 1 } // A
+          is(3)  { printChar := 0x54; printValid := True; msgIndex := msgIndex + 1 } // T
+          is(4)  { printChar := 0x43; printValid := True; msgIndex := msgIndex + 1 } // C
+          is(5)  { printChar := 0x48; printValid := True; msgIndex := msgIndex + 1 } // H
+          is(6)  { printChar := 0x5D; printValid := True; msgIndex := msgIndex + 1 } // ]
+          is(7)  { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(8)  { printChar := 0x41; printValid := True; msgIndex := msgIndex + 1 } // A
+          is(9)  { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
+          is(10) { printChar := nibbleToAscii(io.wr_adv.resized); printValid := True; msgIndex := msgIndex + 1 }
+          is(11) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(12) { printChar := 0x53; printValid := True; msgIndex := msgIndex + 1 } // S
+          is(13) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
+          is(14) { printChar := nibbleToAscii(io.w_scores(3 downto 0)); printValid := True; msgIndex := msgIndex + 1 }
+          is(15) { printChar := nibbleToAscii(io.w_scores(7 downto 4)); printValid := True; msgIndex := msgIndex + 1 }
+          is(16) { printChar := nibbleToAscii(io.w_scores(11 downto 8)); printValid := True; msgIndex := msgIndex + 1 }
+          is(17) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(18) { printChar := 0x4C; printValid := True; msgIndex := msgIndex + 1 } // L
+          is(19) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
+          is(52) { printChar := 0x0D; printValid := True; msgIndex := msgIndex + 1 } // \r
+          is(53) { printChar := 0x0A; printValid := True; msgIndex := 0; goto(sSingleWriteAW) } // \n
+          default {
+            printChar := nibbleToAscii(latchNib(U(31, 5 bits) - (msgIndex - 20).resize(5))); printValid := True; msgIndex := msgIndex + 1
           }
         }
       }

@@ -176,7 +176,7 @@ class Ddr3WlNoiseHarness(val axiConfig: Axi4Config, val config: Ddr3Config,
   // (must match Ddr3ControllerCore.trainPat; the strict C==8 clean test
   // will catch any skew).
   val sweeping = core.io.dbg_state === Ddr3State.READ_CALIB.asBits
-  val trainPatRef = B"128'h10071006100510041003100210011000"
+  val trainPatRef = B"128'hA707A606A505A404A303A202A101A000"
   val sweepWord = Bits(128 bits)
   for (b <- 0 until 8) {
     sweepWord(b * 16 + 15 downto b * 16) := (U(b, 4 bits) < drop) ? B(0, 16 bits) | trainPatRef(b * 16 + 15 downto b * 16)

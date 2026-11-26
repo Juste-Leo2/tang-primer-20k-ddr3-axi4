@@ -1,7 +1,7 @@
 // Generator : SpinalHDL v1.15.0    git head : 05a01af3d3345aa0afcaad8e0186dde13a359db2
 // Component : Ddr3TesterTop
-// Git hash  : 84c9ac72cb99fb4540a8927eca27dde0db122e6e
-// Date      : 13/10/2026, 20:12:56
+// Git hash  : 8e2adf3a9fcaf85d0ca530aec1d36f3213d13e4b
+// Date      : 26/11/2026, 16:54:54
 
 `timescale 1ns/1ps
 
@@ -54,6 +54,9 @@ module Ddr3TesterTop (
   wire       [7:0]    coreArea_ddr3_io_wlFirst;
   wire       [7:0]    coreArea_ddr3_io_wlLast;
   wire       [7:0]    coreArea_ddr3_io_wlMatchN;
+  wire       [1:0]    coreArea_ddr3_io_wr_adv;
+  wire       [11:0]   coreArea_ddr3_io_w_scores;
+  wire       [127:0]  coreArea_ddr3_io_train_latch;
   wire       [1:0]    coreArea_ddr3_io_pad_DDR3_DM;
   wire       [13:0]   coreArea_ddr3_io_pad_DDR3_A;
   wire       [2:0]    coreArea_ddr3_io_pad_DDR3_BA;
@@ -169,6 +172,9 @@ module Ddr3TesterTop (
     .io_wlFirst               (coreArea_ddr3_io_wlFirst[7:0]                ), //o
     .io_wlLast                (coreArea_ddr3_io_wlLast[7:0]                 ), //o
     .io_wlMatchN              (coreArea_ddr3_io_wlMatchN[7:0]               ), //o
+    .io_wr_adv                (coreArea_ddr3_io_wr_adv[1:0]                 ), //o
+    .io_w_scores              (coreArea_ddr3_io_w_scores[11:0]              ), //o
+    .io_train_latch           (coreArea_ddr3_io_train_latch[127:0]          ), //o
     .io_pad_DDR3_DQ           (DDR3_DQ                                      ), //~
     .io_pad_DDR3_DQS          (DDR3_DQS                                     ), //~
     .io_pad_DDR3_DM           (coreArea_ddr3_io_pad_DDR3_DM[1:0]            ), //o
@@ -237,6 +243,9 @@ module Ddr3TesterTop (
     .io_wlFirst               (coreArea_ddr3_io_wlFirst[7:0]                ), //i
     .io_wlLast                (coreArea_ddr3_io_wlLast[7:0]                 ), //i
     .io_wlMatchN              (coreArea_ddr3_io_wlMatchN[7:0]               ), //i
+    .io_wr_adv                (coreArea_ddr3_io_wr_adv[1:0]                 ), //i
+    .io_w_scores              (coreArea_ddr3_io_w_scores[11:0]              ), //i
+    .io_train_latch           (coreArea_ddr3_io_train_latch[127:0]          ), //i
     .io_uart_tx               (coreArea_engine_io_uart_tx                   ), //o
     .io_test_busy             (coreArea_engine_io_test_busy                 ), //o
     .io_test_pass             (coreArea_engine_io_test_pass                 ), //o
@@ -345,6 +354,9 @@ module Ddr3MemtestEngine (
   input  wire [7:0]    io_wlFirst,
   input  wire [7:0]    io_wlLast,
   input  wire [7:0]    io_wlMatchN,
+  input  wire [1:0]    io_wr_adv,
+  input  wire [11:0]   io_w_scores,
+  input  wire [127:0]  io_train_latch,
   output wire          io_uart_tx,
   output wire          io_test_busy,
   output wire          io_test_pass,
@@ -359,268 +371,289 @@ module Ddr3MemtestEngine (
   localparam fsm_sPrintCalib = 5'd3;
   localparam fsm_sPrintBanner = 5'd4;
   localparam fsm_sPrintWlmap = 5'd5;
-  localparam fsm_sSingleWriteAW = 5'd6;
-  localparam fsm_sSingleWriteW0 = 5'd7;
-  localparam fsm_sSingleWriteW1 = 5'd8;
-  localparam fsm_sSingleWriteB = 5'd9;
-  localparam fsm_sSingleReadAR = 5'd10;
-  localparam fsm_sSingleReadR0 = 5'd11;
-  localparam fsm_sSingleReadR1 = 5'd12;
-  localparam fsm_sBulkWriteAW = 5'd13;
-  localparam fsm_sBulkWriteW0 = 5'd14;
-  localparam fsm_sBulkWriteW1 = 5'd15;
-  localparam fsm_sBulkWriteB = 5'd16;
-  localparam fsm_sBulkReadAR = 5'd17;
-  localparam fsm_sBulkReadR0 = 5'd18;
-  localparam fsm_sBulkReadR1 = 5'd19;
-  localparam fsm_sReportPass = 5'd20;
-  localparam fsm_sReportFail = 5'd21;
-  localparam fsm_sLoopDelay = 5'd22;
+  localparam fsm_sPrintLatch = 5'd6;
+  localparam fsm_sSingleWriteAW = 5'd7;
+  localparam fsm_sSingleWriteW0 = 5'd8;
+  localparam fsm_sSingleWriteW1 = 5'd9;
+  localparam fsm_sSingleWriteB = 5'd10;
+  localparam fsm_sSingleReadAR = 5'd11;
+  localparam fsm_sSingleReadR0 = 5'd12;
+  localparam fsm_sSingleReadR1 = 5'd13;
+  localparam fsm_sBulkWriteAW = 5'd14;
+  localparam fsm_sBulkWriteW0 = 5'd15;
+  localparam fsm_sBulkWriteW1 = 5'd16;
+  localparam fsm_sBulkWriteB = 5'd17;
+  localparam fsm_sBulkReadAR = 5'd18;
+  localparam fsm_sBulkReadR0 = 5'd19;
+  localparam fsm_sBulkReadR1 = 5'd20;
+  localparam fsm_sReportPass = 5'd21;
+  localparam fsm_sReportFail = 5'd22;
+  localparam fsm_sLoopDelay = 5'd23;
 
   wire                uart_io_write_ready;
   wire                uart_io_txd;
   wire                uart_io_busy;
   wire       [14:0]   _zz_currentByteAddr;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65;
   wire       [7:0]    _zz__zz_printChar;
   wire       [7:0]    _zz__zz_printChar_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_1;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_1;
   wire       [7:0]    _zz__zz_printChar_1_1;
   wire       [7:0]    _zz__zz_printChar_1_2;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_2;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_2;
   wire       [7:0]    _zz__zz_printChar_2;
   wire       [7:0]    _zz__zz_printChar_2_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_3;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_3;
   wire       [7:0]    _zz__zz_printChar_3;
   wire       [7:0]    _zz__zz_printChar_3_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_4;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_4;
   wire       [7:0]    _zz__zz_printChar_4;
   wire       [7:0]    _zz__zz_printChar_4_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_5;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_5_1;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_5;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_5_1;
   wire       [7:0]    _zz__zz_printChar_5;
   wire       [7:0]    _zz__zz_printChar_5_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_6;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_6_1;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_6;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_6_1;
   wire       [7:0]    _zz__zz_printChar_6;
   wire       [7:0]    _zz__zz_printChar_6_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_7;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_7_1;
-  wire       [2:0]    _zz__zz_when_Ddr3MemtestEngine_l62_7_2;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_7;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_7_1;
+  wire       [2:0]    _zz__zz_when_Ddr3MemtestEngine_l65_7_2;
   wire       [7:0]    _zz__zz_printChar_7;
   wire       [7:0]    _zz__zz_printChar_7_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_8;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_8;
   wire       [7:0]    _zz__zz_printChar_8;
   wire       [7:0]    _zz__zz_printChar_8_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_9;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_9;
   wire       [7:0]    _zz__zz_printChar_9;
   wire       [7:0]    _zz__zz_printChar_9_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_10;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_10;
   wire       [7:0]    _zz__zz_printChar_10;
   wire       [7:0]    _zz__zz_printChar_10_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_11;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_11;
   wire       [7:0]    _zz__zz_printChar_11;
   wire       [7:0]    _zz__zz_printChar_11_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_12;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_12;
   wire       [7:0]    _zz__zz_printChar_12;
   wire       [7:0]    _zz__zz_printChar_12_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_13;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_13;
   wire       [7:0]    _zz__zz_printChar_13;
   wire       [7:0]    _zz__zz_printChar_13_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_14;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_14;
   wire       [7:0]    _zz__zz_printChar_14;
   wire       [7:0]    _zz__zz_printChar_14_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_15;
-  reg        [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_15_1;
-  wire       [5:0]    _zz__zz_when_Ddr3MemtestEngine_l62_15_2;
-  wire       [5:0]    _zz__zz_when_Ddr3MemtestEngine_l62_15_3;
-  wire       [6:0]    _zz__zz_when_Ddr3MemtestEngine_l62_15_4;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_15;
+  reg        [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_15_1;
+  wire       [5:0]    _zz__zz_when_Ddr3MemtestEngine_l65_15_2;
+  wire       [5:0]    _zz__zz_when_Ddr3MemtestEngine_l65_15_3;
+  wire       [6:0]    _zz__zz_when_Ddr3MemtestEngine_l65_15_4;
   wire       [7:0]    _zz__zz_printChar_15;
   wire       [7:0]    _zz__zz_printChar_15_1;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_16;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_16_1;
+  wire       [7:0]    _zz__zz_printChar_16;
+  wire       [7:0]    _zz__zz_printChar_16_1;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_17;
+  wire       [7:0]    _zz__zz_printChar_17;
+  wire       [7:0]    _zz__zz_printChar_17_1;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_18;
+  wire       [7:0]    _zz__zz_printChar_18;
+  wire       [7:0]    _zz__zz_printChar_18_1;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_19;
+  wire       [7:0]    _zz__zz_printChar_19;
+  wire       [7:0]    _zz__zz_printChar_19_1;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_20;
+  reg        [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_20_1;
+  wire       [4:0]    _zz__zz_when_Ddr3MemtestEngine_l65_20_2;
+  wire       [4:0]    _zz__zz_when_Ddr3MemtestEngine_l65_20_3;
+  wire       [6:0]    _zz__zz_when_Ddr3MemtestEngine_l65_20_4;
+  wire       [7:0]    _zz__zz_printChar_20;
+  wire       [7:0]    _zz__zz_printChar_20_1;
   wire       [31:0]   _zz_io_axi_w_payload_data;
   wire       [31:0]   _zz_io_axi_w_payload_data_1;
   wire       [31:0]   _zz__zz_errExpected;
   wire       [31:0]   _zz__zz_errExpected_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_16;
-  wire       [7:0]    _zz__zz_printChar_16;
-  wire       [7:0]    _zz__zz_printChar_16_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_17;
-  wire       [7:0]    _zz__zz_printChar_17;
-  wire       [7:0]    _zz__zz_printChar_17_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_18;
-  wire       [7:0]    _zz__zz_printChar_18;
-  wire       [7:0]    _zz__zz_printChar_18_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_19;
-  wire       [7:0]    _zz__zz_printChar_19;
-  wire       [7:0]    _zz__zz_printChar_19_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_20;
-  wire       [7:0]    _zz__zz_printChar_20;
-  wire       [7:0]    _zz__zz_printChar_20_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_21;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_21;
   wire       [7:0]    _zz__zz_printChar_21;
   wire       [7:0]    _zz__zz_printChar_21_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_22;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_22;
   wire       [7:0]    _zz__zz_printChar_22;
   wire       [7:0]    _zz__zz_printChar_22_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_23;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_23;
   wire       [7:0]    _zz__zz_printChar_23;
   wire       [7:0]    _zz__zz_printChar_23_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_24;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_24;
   wire       [7:0]    _zz__zz_printChar_24;
   wire       [7:0]    _zz__zz_printChar_24_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_25;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_25;
   wire       [7:0]    _zz__zz_printChar_25;
   wire       [7:0]    _zz__zz_printChar_25_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_26;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_26;
   wire       [7:0]    _zz__zz_printChar_26;
   wire       [7:0]    _zz__zz_printChar_26_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_27;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_27;
   wire       [7:0]    _zz__zz_printChar_27;
   wire       [7:0]    _zz__zz_printChar_27_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_28;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_28;
   wire       [7:0]    _zz__zz_printChar_28;
   wire       [7:0]    _zz__zz_printChar_28_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_29;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_29;
   wire       [7:0]    _zz__zz_printChar_29;
   wire       [7:0]    _zz__zz_printChar_29_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_30;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_30;
   wire       [7:0]    _zz__zz_printChar_30;
   wire       [7:0]    _zz__zz_printChar_30_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_31;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_31;
   wire       [7:0]    _zz__zz_printChar_31;
   wire       [7:0]    _zz__zz_printChar_31_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_32;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_32;
   wire       [7:0]    _zz__zz_printChar_32;
   wire       [7:0]    _zz__zz_printChar_32_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_33;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_33;
   wire       [7:0]    _zz__zz_printChar_33;
   wire       [7:0]    _zz__zz_printChar_33_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_34;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_34;
   wire       [7:0]    _zz__zz_printChar_34;
   wire       [7:0]    _zz__zz_printChar_34_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_35;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_35;
   wire       [7:0]    _zz__zz_printChar_35;
   wire       [7:0]    _zz__zz_printChar_35_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_36;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_36;
   wire       [7:0]    _zz__zz_printChar_36;
   wire       [7:0]    _zz__zz_printChar_36_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_37;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_37;
   wire       [7:0]    _zz__zz_printChar_37;
   wire       [7:0]    _zz__zz_printChar_37_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_38;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_38;
   wire       [7:0]    _zz__zz_printChar_38;
   wire       [7:0]    _zz__zz_printChar_38_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_39;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_39;
   wire       [7:0]    _zz__zz_printChar_39;
   wire       [7:0]    _zz__zz_printChar_39_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_40;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_40;
   wire       [7:0]    _zz__zz_printChar_40;
   wire       [7:0]    _zz__zz_printChar_40_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_41;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_41;
   wire       [7:0]    _zz__zz_printChar_41;
   wire       [7:0]    _zz__zz_printChar_41_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_42;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_42;
   wire       [7:0]    _zz__zz_printChar_42;
   wire       [7:0]    _zz__zz_printChar_42_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_43;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_43;
   wire       [7:0]    _zz__zz_printChar_43;
   wire       [7:0]    _zz__zz_printChar_43_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_44;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_44;
   wire       [7:0]    _zz__zz_printChar_44;
   wire       [7:0]    _zz__zz_printChar_44_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_45;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_45;
   wire       [7:0]    _zz__zz_printChar_45;
   wire       [7:0]    _zz__zz_printChar_45_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_46;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_46;
   wire       [7:0]    _zz__zz_printChar_46;
   wire       [7:0]    _zz__zz_printChar_46_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_47;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_47;
   wire       [7:0]    _zz__zz_printChar_47;
   wire       [7:0]    _zz__zz_printChar_47_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_48;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_48;
   wire       [7:0]    _zz__zz_printChar_48;
   wire       [7:0]    _zz__zz_printChar_48_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_49;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_49;
   wire       [7:0]    _zz__zz_printChar_49;
   wire       [7:0]    _zz__zz_printChar_49_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_50;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_50;
   wire       [7:0]    _zz__zz_printChar_50;
   wire       [7:0]    _zz__zz_printChar_50_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_51;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_51;
   wire       [7:0]    _zz__zz_printChar_51;
   wire       [7:0]    _zz__zz_printChar_51_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_52;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_52;
   wire       [7:0]    _zz__zz_printChar_52;
   wire       [7:0]    _zz__zz_printChar_52_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_53;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_53;
   wire       [7:0]    _zz__zz_printChar_53;
   wire       [7:0]    _zz__zz_printChar_53_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_54;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_54;
   wire       [7:0]    _zz__zz_printChar_54;
   wire       [7:0]    _zz__zz_printChar_54_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_55;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_55;
   wire       [7:0]    _zz__zz_printChar_55;
   wire       [7:0]    _zz__zz_printChar_55_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_56;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_56;
   wire       [7:0]    _zz__zz_printChar_56;
   wire       [7:0]    _zz__zz_printChar_56_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_57;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_57;
   wire       [7:0]    _zz__zz_printChar_57;
   wire       [7:0]    _zz__zz_printChar_57_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_58;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_58;
   wire       [7:0]    _zz__zz_printChar_58;
   wire       [7:0]    _zz__zz_printChar_58_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_59;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_59;
   wire       [7:0]    _zz__zz_printChar_59;
   wire       [7:0]    _zz__zz_printChar_59_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_60;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_60;
   wire       [7:0]    _zz__zz_printChar_60;
   wire       [7:0]    _zz__zz_printChar_60_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_61;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_61;
   wire       [7:0]    _zz__zz_printChar_61;
   wire       [7:0]    _zz__zz_printChar_61_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_62;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_62;
   wire       [7:0]    _zz__zz_printChar_62;
   wire       [7:0]    _zz__zz_printChar_62_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_63;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_63;
   wire       [7:0]    _zz__zz_printChar_63;
   wire       [7:0]    _zz__zz_printChar_63_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_64;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_64;
   wire       [7:0]    _zz__zz_printChar_64;
   wire       [7:0]    _zz__zz_printChar_64_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_65;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_65;
   wire       [7:0]    _zz__zz_printChar_65;
   wire       [7:0]    _zz__zz_printChar_65_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_66;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_66;
   wire       [7:0]    _zz__zz_printChar_66;
   wire       [7:0]    _zz__zz_printChar_66_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_67;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_67;
   wire       [7:0]    _zz__zz_printChar_67;
   wire       [7:0]    _zz__zz_printChar_67_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_68;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_68;
   wire       [7:0]    _zz__zz_printChar_68;
   wire       [7:0]    _zz__zz_printChar_68_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_69;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_69;
   wire       [7:0]    _zz__zz_printChar_69;
   wire       [7:0]    _zz__zz_printChar_69_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_70;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_70;
   wire       [7:0]    _zz__zz_printChar_70;
   wire       [7:0]    _zz__zz_printChar_70_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_71;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_71;
   wire       [7:0]    _zz__zz_printChar_71;
   wire       [7:0]    _zz__zz_printChar_71_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_72;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_72;
   wire       [7:0]    _zz__zz_printChar_72;
   wire       [7:0]    _zz__zz_printChar_72_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_73;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_73;
   wire       [7:0]    _zz__zz_printChar_73;
   wire       [7:0]    _zz__zz_printChar_73_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_74;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_74;
   wire       [7:0]    _zz__zz_printChar_74;
   wire       [7:0]    _zz__zz_printChar_74_1;
-  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l62_75;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_75;
   wire       [7:0]    _zz__zz_printChar_75;
   wire       [7:0]    _zz__zz_printChar_75_1;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_76;
+  wire       [7:0]    _zz__zz_printChar_76;
+  wire       [7:0]    _zz__zz_printChar_76_1;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_77;
+  wire       [7:0]    _zz__zz_printChar_77;
+  wire       [7:0]    _zz__zz_printChar_77_1;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_78;
+  wire       [7:0]    _zz__zz_printChar_78;
+  wire       [7:0]    _zz__zz_printChar_78_1;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_79;
+  wire       [7:0]    _zz__zz_printChar_79;
+  wire       [7:0]    _zz__zz_printChar_79_1;
+  wire       [3:0]    _zz__zz_when_Ddr3MemtestEngine_l65_80;
+  wire       [7:0]    _zz__zz_printChar_80;
+  wire       [7:0]    _zz__zz_printChar_80_1;
   wire                txStream_valid;
   wire                txStream_ready;
   wire       [7:0]    txStream_payload;
@@ -637,7 +670,7 @@ module Ddr3MemtestEngine (
   reg        [63:0]   errActual1;
   reg        [24:0]   hbCounter;
   reg                 hbReg;
-  wire                when_Ddr3MemtestEngine_l98;
+  wire                when_Ddr3MemtestEngine_l101;
   reg        [10:0]   burstIndex;
   wire       [31:0]   currentByteAddr;
   wire       [3:0]    wlMapNib_0;
@@ -704,6 +737,38 @@ module Ddr3MemtestEngine (
   wire       [3:0]    wlMapNib_61;
   wire       [3:0]    wlMapNib_62;
   wire       [3:0]    wlMapNib_63;
+  wire       [3:0]    latchNib_0;
+  wire       [3:0]    latchNib_1;
+  wire       [3:0]    latchNib_2;
+  wire       [3:0]    latchNib_3;
+  wire       [3:0]    latchNib_4;
+  wire       [3:0]    latchNib_5;
+  wire       [3:0]    latchNib_6;
+  wire       [3:0]    latchNib_7;
+  wire       [3:0]    latchNib_8;
+  wire       [3:0]    latchNib_9;
+  wire       [3:0]    latchNib_10;
+  wire       [3:0]    latchNib_11;
+  wire       [3:0]    latchNib_12;
+  wire       [3:0]    latchNib_13;
+  wire       [3:0]    latchNib_14;
+  wire       [3:0]    latchNib_15;
+  wire       [3:0]    latchNib_16;
+  wire       [3:0]    latchNib_17;
+  wire       [3:0]    latchNib_18;
+  wire       [3:0]    latchNib_19;
+  wire       [3:0]    latchNib_20;
+  wire       [3:0]    latchNib_21;
+  wire       [3:0]    latchNib_22;
+  wire       [3:0]    latchNib_23;
+  wire       [3:0]    latchNib_24;
+  wire       [3:0]    latchNib_25;
+  wire       [3:0]    latchNib_26;
+  wire       [3:0]    latchNib_27;
+  wire       [3:0]    latchNib_28;
+  wire       [3:0]    latchNib_29;
+  wire       [3:0]    latchNib_30;
+  wire       [3:0]    latchNib_31;
   wire                fsm_wantExit;
   reg                 fsm_wantStart;
   wire                fsm_wantKill;
@@ -711,253 +776,269 @@ module Ddr3MemtestEngine (
   reg        [27:0]   fsm_delayCounter;
   reg        [4:0]    fsm_stateReg;
   reg        [4:0]    fsm_stateNext;
-  wire                when_Ddr3MemtestEngine_l187;
-  wire                when_Ddr3MemtestEngine_l219;
-  wire                when_Ddr3MemtestEngine_l227;
-  wire                when_Ddr3MemtestEngine_l238;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62;
+  wire                when_Ddr3MemtestEngine_l193;
+  wire                when_Ddr3MemtestEngine_l225;
+  wire                when_Ddr3MemtestEngine_l233;
+  wire                when_Ddr3MemtestEngine_l244;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65;
   reg        [7:0]    _zz_printChar;
-  wire                when_Ddr3MemtestEngine_l62;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_1;
+  wire                when_Ddr3MemtestEngine_l65;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_1;
   reg        [7:0]    _zz_printChar_1;
-  wire                when_Ddr3MemtestEngine_l62_1;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_2;
+  wire                when_Ddr3MemtestEngine_l65_1;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_2;
   reg        [7:0]    _zz_printChar_2;
-  wire                when_Ddr3MemtestEngine_l62_2;
-  wire                when_Ddr3MemtestEngine_l265;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_3;
+  wire                when_Ddr3MemtestEngine_l65_2;
+  wire                when_Ddr3MemtestEngine_l271;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_3;
   reg        [7:0]    _zz_printChar_3;
-  wire                when_Ddr3MemtestEngine_l62_3;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_4;
+  wire                when_Ddr3MemtestEngine_l65_3;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_4;
   reg        [7:0]    _zz_printChar_4;
-  wire                when_Ddr3MemtestEngine_l62_4;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_5;
+  wire                when_Ddr3MemtestEngine_l65_4;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_5;
   reg        [7:0]    _zz_printChar_5;
-  wire                when_Ddr3MemtestEngine_l62_5;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_6;
+  wire                when_Ddr3MemtestEngine_l65_5;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_6;
   reg        [7:0]    _zz_printChar_6;
-  wire                when_Ddr3MemtestEngine_l62_6;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_7;
+  wire                when_Ddr3MemtestEngine_l65_6;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_7;
   reg        [7:0]    _zz_printChar_7;
-  wire                when_Ddr3MemtestEngine_l62_7;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_8;
+  wire                when_Ddr3MemtestEngine_l65_7;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_8;
   reg        [7:0]    _zz_printChar_8;
-  wire                when_Ddr3MemtestEngine_l62_8;
-  wire                when_Ddr3MemtestEngine_l313;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_9;
+  wire                when_Ddr3MemtestEngine_l65_8;
+  wire                when_Ddr3MemtestEngine_l319;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_9;
   reg        [7:0]    _zz_printChar_9;
-  wire                when_Ddr3MemtestEngine_l62_9;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_10;
+  wire                when_Ddr3MemtestEngine_l65_9;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_10;
   reg        [7:0]    _zz_printChar_10;
-  wire                when_Ddr3MemtestEngine_l62_10;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_11;
+  wire                when_Ddr3MemtestEngine_l65_10;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_11;
   reg        [7:0]    _zz_printChar_11;
-  wire                when_Ddr3MemtestEngine_l62_11;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_12;
+  wire                when_Ddr3MemtestEngine_l65_11;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_12;
   reg        [7:0]    _zz_printChar_12;
-  wire                when_Ddr3MemtestEngine_l62_12;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_13;
+  wire                when_Ddr3MemtestEngine_l65_12;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_13;
   reg        [7:0]    _zz_printChar_13;
-  wire                when_Ddr3MemtestEngine_l62_13;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_14;
+  wire                when_Ddr3MemtestEngine_l65_13;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_14;
   reg        [7:0]    _zz_printChar_14;
-  wire                when_Ddr3MemtestEngine_l62_14;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_15;
+  wire                when_Ddr3MemtestEngine_l65_14;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_15;
   reg        [7:0]    _zz_printChar_15;
-  wire                when_Ddr3MemtestEngine_l62_15;
-  wire                when_Ddr3MemtestEngine_l397;
-  wire                when_Ddr3MemtestEngine_l413;
-  wire                when_Ddr3MemtestEngine_l419;
-  wire                when_Ddr3MemtestEngine_l460;
-  wire       [63:0]   _zz_errExpected;
-  wire                when_Ddr3MemtestEngine_l482;
-  wire       [63:0]   _zz_errExpected_1;
-  wire                when_Ddr3MemtestEngine_l496;
-  wire                when_Ddr3MemtestEngine_l502;
-  wire                when_Ddr3MemtestEngine_l506;
-  wire                when_Ddr3MemtestEngine_l520;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_16;
+  wire                when_Ddr3MemtestEngine_l65_15;
+  wire                when_Ddr3MemtestEngine_l359;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_16;
   reg        [7:0]    _zz_printChar_16;
-  wire                when_Ddr3MemtestEngine_l62_16;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_17;
+  wire                when_Ddr3MemtestEngine_l65_16;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_17;
   reg        [7:0]    _zz_printChar_17;
-  wire                when_Ddr3MemtestEngine_l62_17;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_18;
+  wire                when_Ddr3MemtestEngine_l65_17;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_18;
   reg        [7:0]    _zz_printChar_18;
-  wire                when_Ddr3MemtestEngine_l62_18;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_19;
+  wire                when_Ddr3MemtestEngine_l65_18;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_19;
   reg        [7:0]    _zz_printChar_19;
-  wire                when_Ddr3MemtestEngine_l62_19;
-  wire                when_Ddr3MemtestEngine_l546;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_20;
+  wire                when_Ddr3MemtestEngine_l65_19;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_20;
   reg        [7:0]    _zz_printChar_20;
-  wire                when_Ddr3MemtestEngine_l62_20;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_21;
+  wire                when_Ddr3MemtestEngine_l65_20;
+  wire                when_Ddr3MemtestEngine_l436;
+  wire                when_Ddr3MemtestEngine_l452;
+  wire                when_Ddr3MemtestEngine_l458;
+  wire                when_Ddr3MemtestEngine_l499;
+  wire       [63:0]   _zz_errExpected;
+  wire                when_Ddr3MemtestEngine_l521;
+  wire       [63:0]   _zz_errExpected_1;
+  wire                when_Ddr3MemtestEngine_l535;
+  wire                when_Ddr3MemtestEngine_l541;
+  wire                when_Ddr3MemtestEngine_l545;
+  wire                when_Ddr3MemtestEngine_l559;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_21;
   reg        [7:0]    _zz_printChar_21;
-  wire                when_Ddr3MemtestEngine_l62_21;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_22;
+  wire                when_Ddr3MemtestEngine_l65_21;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_22;
   reg        [7:0]    _zz_printChar_22;
-  wire                when_Ddr3MemtestEngine_l62_22;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_23;
+  wire                when_Ddr3MemtestEngine_l65_22;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_23;
   reg        [7:0]    _zz_printChar_23;
-  wire                when_Ddr3MemtestEngine_l62_23;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_24;
+  wire                when_Ddr3MemtestEngine_l65_23;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_24;
   reg        [7:0]    _zz_printChar_24;
-  wire                when_Ddr3MemtestEngine_l62_24;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_25;
+  wire                when_Ddr3MemtestEngine_l65_24;
+  wire                when_Ddr3MemtestEngine_l585;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_25;
   reg        [7:0]    _zz_printChar_25;
-  wire                when_Ddr3MemtestEngine_l62_25;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_26;
+  wire                when_Ddr3MemtestEngine_l65_25;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_26;
   reg        [7:0]    _zz_printChar_26;
-  wire                when_Ddr3MemtestEngine_l62_26;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_27;
+  wire                when_Ddr3MemtestEngine_l65_26;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_27;
   reg        [7:0]    _zz_printChar_27;
-  wire                when_Ddr3MemtestEngine_l62_27;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_28;
+  wire                when_Ddr3MemtestEngine_l65_27;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_28;
   reg        [7:0]    _zz_printChar_28;
-  wire                when_Ddr3MemtestEngine_l62_28;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_29;
+  wire                when_Ddr3MemtestEngine_l65_28;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_29;
   reg        [7:0]    _zz_printChar_29;
-  wire                when_Ddr3MemtestEngine_l62_29;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_30;
+  wire                when_Ddr3MemtestEngine_l65_29;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_30;
   reg        [7:0]    _zz_printChar_30;
-  wire                when_Ddr3MemtestEngine_l62_30;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_31;
+  wire                when_Ddr3MemtestEngine_l65_30;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_31;
   reg        [7:0]    _zz_printChar_31;
-  wire                when_Ddr3MemtestEngine_l62_31;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_32;
+  wire                when_Ddr3MemtestEngine_l65_31;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_32;
   reg        [7:0]    _zz_printChar_32;
-  wire                when_Ddr3MemtestEngine_l62_32;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_33;
+  wire                when_Ddr3MemtestEngine_l65_32;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_33;
   reg        [7:0]    _zz_printChar_33;
-  wire                when_Ddr3MemtestEngine_l62_33;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_34;
+  wire                when_Ddr3MemtestEngine_l65_33;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_34;
   reg        [7:0]    _zz_printChar_34;
-  wire                when_Ddr3MemtestEngine_l62_34;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_35;
+  wire                when_Ddr3MemtestEngine_l65_34;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_35;
   reg        [7:0]    _zz_printChar_35;
-  wire                when_Ddr3MemtestEngine_l62_35;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_36;
+  wire                when_Ddr3MemtestEngine_l65_35;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_36;
   reg        [7:0]    _zz_printChar_36;
-  wire                when_Ddr3MemtestEngine_l62_36;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_37;
+  wire                when_Ddr3MemtestEngine_l65_36;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_37;
   reg        [7:0]    _zz_printChar_37;
-  wire                when_Ddr3MemtestEngine_l62_37;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_38;
+  wire                when_Ddr3MemtestEngine_l65_37;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_38;
   reg        [7:0]    _zz_printChar_38;
-  wire                when_Ddr3MemtestEngine_l62_38;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_39;
+  wire                when_Ddr3MemtestEngine_l65_38;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_39;
   reg        [7:0]    _zz_printChar_39;
-  wire                when_Ddr3MemtestEngine_l62_39;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_40;
+  wire                when_Ddr3MemtestEngine_l65_39;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_40;
   reg        [7:0]    _zz_printChar_40;
-  wire                when_Ddr3MemtestEngine_l62_40;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_41;
+  wire                when_Ddr3MemtestEngine_l65_40;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_41;
   reg        [7:0]    _zz_printChar_41;
-  wire                when_Ddr3MemtestEngine_l62_41;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_42;
+  wire                when_Ddr3MemtestEngine_l65_41;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_42;
   reg        [7:0]    _zz_printChar_42;
-  wire                when_Ddr3MemtestEngine_l62_42;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_43;
+  wire                when_Ddr3MemtestEngine_l65_42;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_43;
   reg        [7:0]    _zz_printChar_43;
-  wire                when_Ddr3MemtestEngine_l62_43;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_44;
+  wire                when_Ddr3MemtestEngine_l65_43;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_44;
   reg        [7:0]    _zz_printChar_44;
-  wire                when_Ddr3MemtestEngine_l62_44;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_45;
+  wire                when_Ddr3MemtestEngine_l65_44;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_45;
   reg        [7:0]    _zz_printChar_45;
-  wire                when_Ddr3MemtestEngine_l62_45;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_46;
+  wire                when_Ddr3MemtestEngine_l65_45;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_46;
   reg        [7:0]    _zz_printChar_46;
-  wire                when_Ddr3MemtestEngine_l62_46;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_47;
+  wire                when_Ddr3MemtestEngine_l65_46;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_47;
   reg        [7:0]    _zz_printChar_47;
-  wire                when_Ddr3MemtestEngine_l62_47;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_48;
+  wire                when_Ddr3MemtestEngine_l65_47;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_48;
   reg        [7:0]    _zz_printChar_48;
-  wire                when_Ddr3MemtestEngine_l62_48;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_49;
+  wire                when_Ddr3MemtestEngine_l65_48;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_49;
   reg        [7:0]    _zz_printChar_49;
-  wire                when_Ddr3MemtestEngine_l62_49;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_50;
+  wire                when_Ddr3MemtestEngine_l65_49;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_50;
   reg        [7:0]    _zz_printChar_50;
-  wire                when_Ddr3MemtestEngine_l62_50;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_51;
+  wire                when_Ddr3MemtestEngine_l65_50;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_51;
   reg        [7:0]    _zz_printChar_51;
-  wire                when_Ddr3MemtestEngine_l62_51;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_52;
+  wire                when_Ddr3MemtestEngine_l65_51;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_52;
   reg        [7:0]    _zz_printChar_52;
-  wire                when_Ddr3MemtestEngine_l62_52;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_53;
+  wire                when_Ddr3MemtestEngine_l65_52;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_53;
   reg        [7:0]    _zz_printChar_53;
-  wire                when_Ddr3MemtestEngine_l62_53;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_54;
+  wire                when_Ddr3MemtestEngine_l65_53;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_54;
   reg        [7:0]    _zz_printChar_54;
-  wire                when_Ddr3MemtestEngine_l62_54;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_55;
+  wire                when_Ddr3MemtestEngine_l65_54;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_55;
   reg        [7:0]    _zz_printChar_55;
-  wire                when_Ddr3MemtestEngine_l62_55;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_56;
+  wire                when_Ddr3MemtestEngine_l65_55;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_56;
   reg        [7:0]    _zz_printChar_56;
-  wire                when_Ddr3MemtestEngine_l62_56;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_57;
+  wire                when_Ddr3MemtestEngine_l65_56;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_57;
   reg        [7:0]    _zz_printChar_57;
-  wire                when_Ddr3MemtestEngine_l62_57;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_58;
+  wire                when_Ddr3MemtestEngine_l65_57;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_58;
   reg        [7:0]    _zz_printChar_58;
-  wire                when_Ddr3MemtestEngine_l62_58;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_59;
+  wire                when_Ddr3MemtestEngine_l65_58;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_59;
   reg        [7:0]    _zz_printChar_59;
-  wire                when_Ddr3MemtestEngine_l62_59;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_60;
+  wire                when_Ddr3MemtestEngine_l65_59;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_60;
   reg        [7:0]    _zz_printChar_60;
-  wire                when_Ddr3MemtestEngine_l62_60;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_61;
+  wire                when_Ddr3MemtestEngine_l65_60;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_61;
   reg        [7:0]    _zz_printChar_61;
-  wire                when_Ddr3MemtestEngine_l62_61;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_62;
+  wire                when_Ddr3MemtestEngine_l65_61;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_62;
   reg        [7:0]    _zz_printChar_62;
-  wire                when_Ddr3MemtestEngine_l62_62;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_63;
+  wire                when_Ddr3MemtestEngine_l65_62;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_63;
   reg        [7:0]    _zz_printChar_63;
-  wire                when_Ddr3MemtestEngine_l62_63;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_64;
+  wire                when_Ddr3MemtestEngine_l65_63;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_64;
   reg        [7:0]    _zz_printChar_64;
-  wire                when_Ddr3MemtestEngine_l62_64;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_65;
+  wire                when_Ddr3MemtestEngine_l65_64;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_65;
   reg        [7:0]    _zz_printChar_65;
-  wire                when_Ddr3MemtestEngine_l62_65;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_66;
+  wire                when_Ddr3MemtestEngine_l65_65;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_66;
   reg        [7:0]    _zz_printChar_66;
-  wire                when_Ddr3MemtestEngine_l62_66;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_67;
+  wire                when_Ddr3MemtestEngine_l65_66;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_67;
   reg        [7:0]    _zz_printChar_67;
-  wire                when_Ddr3MemtestEngine_l62_67;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_68;
+  wire                when_Ddr3MemtestEngine_l65_67;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_68;
   reg        [7:0]    _zz_printChar_68;
-  wire                when_Ddr3MemtestEngine_l62_68;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_69;
+  wire                when_Ddr3MemtestEngine_l65_68;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_69;
   reg        [7:0]    _zz_printChar_69;
-  wire                when_Ddr3MemtestEngine_l62_69;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_70;
+  wire                when_Ddr3MemtestEngine_l65_69;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_70;
   reg        [7:0]    _zz_printChar_70;
-  wire                when_Ddr3MemtestEngine_l62_70;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_71;
+  wire                when_Ddr3MemtestEngine_l65_70;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_71;
   reg        [7:0]    _zz_printChar_71;
-  wire                when_Ddr3MemtestEngine_l62_71;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_72;
+  wire                when_Ddr3MemtestEngine_l65_71;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_72;
   reg        [7:0]    _zz_printChar_72;
-  wire                when_Ddr3MemtestEngine_l62_72;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_73;
+  wire                when_Ddr3MemtestEngine_l65_72;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_73;
   reg        [7:0]    _zz_printChar_73;
-  wire                when_Ddr3MemtestEngine_l62_73;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_74;
+  wire                when_Ddr3MemtestEngine_l65_73;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_74;
   reg        [7:0]    _zz_printChar_74;
-  wire                when_Ddr3MemtestEngine_l62_74;
-  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l62_75;
+  wire                when_Ddr3MemtestEngine_l65_74;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_75;
   reg        [7:0]    _zz_printChar_75;
-  wire                when_Ddr3MemtestEngine_l62_75;
-  wire                when_Ddr3MemtestEngine_l634;
+  wire                when_Ddr3MemtestEngine_l65_75;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_76;
+  reg        [7:0]    _zz_printChar_76;
+  wire                when_Ddr3MemtestEngine_l65_76;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_77;
+  reg        [7:0]    _zz_printChar_77;
+  wire                when_Ddr3MemtestEngine_l65_77;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_78;
+  reg        [7:0]    _zz_printChar_78;
+  wire                when_Ddr3MemtestEngine_l65_78;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_79;
+  reg        [7:0]    _zz_printChar_79;
+  wire                when_Ddr3MemtestEngine_l65_79;
+  wire       [7:0]    _zz_when_Ddr3MemtestEngine_l65_80;
+  reg        [7:0]    _zz_printChar_80;
+  wire                when_Ddr3MemtestEngine_l65_80;
+  wire                when_Ddr3MemtestEngine_l673;
   `ifndef SYNTHESIS
   reg [111:0] fsm_stateReg_string;
   reg [111:0] fsm_stateNext_string;
@@ -965,245 +1046,264 @@ module Ddr3MemtestEngine (
 
 
   assign _zz_currentByteAddr = ({4'd0,burstIndex} <<< 3'd4);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62 = io_dbg_state;
-  assign _zz__zz_printChar = (_zz_when_Ddr3MemtestEngine_l62 + 8'h30);
-  assign _zz__zz_printChar_1 = (_zz_when_Ddr3MemtestEngine_l62 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_1 = io_wstep[7 : 4];
-  assign _zz__zz_printChar_1_1 = (_zz_when_Ddr3MemtestEngine_l62_1 + 8'h30);
-  assign _zz__zz_printChar_1_2 = (_zz_when_Ddr3MemtestEngine_l62_1 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_2 = io_wstep[3 : 0];
-  assign _zz__zz_printChar_2 = (_zz_when_Ddr3MemtestEngine_l62_2 + 8'h30);
-  assign _zz__zz_printChar_2_1 = (_zz_when_Ddr3MemtestEngine_l62_2 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_3 = io_wstep[7 : 4];
-  assign _zz__zz_printChar_3 = (_zz_when_Ddr3MemtestEngine_l62_3 + 8'h30);
-  assign _zz__zz_printChar_3_1 = (_zz_when_Ddr3MemtestEngine_l62_3 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_4 = io_wstep[3 : 0];
-  assign _zz__zz_printChar_4 = (_zz_when_Ddr3MemtestEngine_l62_4 + 8'h30);
-  assign _zz__zz_printChar_4_1 = (_zz_when_Ddr3MemtestEngine_l62_4 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_5 = _zz__zz_when_Ddr3MemtestEngine_l62_5_1;
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_5_1 = {2'd0, io_rclkpos};
-  assign _zz__zz_printChar_5 = (_zz_when_Ddr3MemtestEngine_l62_5 + 8'h30);
-  assign _zz__zz_printChar_5_1 = (_zz_when_Ddr3MemtestEngine_l62_5 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_6 = _zz__zz_when_Ddr3MemtestEngine_l62_6_1;
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_6_1 = {1'd0, io_rclksel};
-  assign _zz__zz_printChar_6 = (_zz_when_Ddr3MemtestEngine_l62_6 + 8'h30);
-  assign _zz__zz_printChar_6_1 = (_zz_when_Ddr3MemtestEngine_l62_6 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_7 = _zz__zz_when_Ddr3MemtestEngine_l62_7_1;
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_7_2 = io_best_rot;
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_7_1 = {1'd0, _zz__zz_when_Ddr3MemtestEngine_l62_7_2};
-  assign _zz__zz_printChar_7 = (_zz_when_Ddr3MemtestEngine_l62_7 + 8'h30);
-  assign _zz__zz_printChar_7_1 = (_zz_when_Ddr3MemtestEngine_l62_7 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_8 = io_best_score;
-  assign _zz__zz_printChar_8 = (_zz_when_Ddr3MemtestEngine_l62_8 + 8'h30);
-  assign _zz__zz_printChar_8_1 = (_zz_when_Ddr3MemtestEngine_l62_8 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_9 = io_wlFirst[7 : 4];
-  assign _zz__zz_printChar_9 = (_zz_when_Ddr3MemtestEngine_l62_9 + 8'h30);
-  assign _zz__zz_printChar_9_1 = (_zz_when_Ddr3MemtestEngine_l62_9 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_10 = io_wlFirst[3 : 0];
-  assign _zz__zz_printChar_10 = (_zz_when_Ddr3MemtestEngine_l62_10 + 8'h30);
-  assign _zz__zz_printChar_10_1 = (_zz_when_Ddr3MemtestEngine_l62_10 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_11 = io_wlLast[7 : 4];
-  assign _zz__zz_printChar_11 = (_zz_when_Ddr3MemtestEngine_l62_11 + 8'h30);
-  assign _zz__zz_printChar_11_1 = (_zz_when_Ddr3MemtestEngine_l62_11 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_12 = io_wlLast[3 : 0];
-  assign _zz__zz_printChar_12 = (_zz_when_Ddr3MemtestEngine_l62_12 + 8'h30);
-  assign _zz__zz_printChar_12_1 = (_zz_when_Ddr3MemtestEngine_l62_12 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_13 = io_wlMatchN[7 : 4];
-  assign _zz__zz_printChar_13 = (_zz_when_Ddr3MemtestEngine_l62_13 + 8'h30);
-  assign _zz__zz_printChar_13_1 = (_zz_when_Ddr3MemtestEngine_l62_13 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_14 = io_wlMatchN[3 : 0];
-  assign _zz__zz_printChar_14 = (_zz_when_Ddr3MemtestEngine_l62_14 + 8'h30);
-  assign _zz__zz_printChar_14_1 = (_zz_when_Ddr3MemtestEngine_l62_14 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_15 = _zz__zz_when_Ddr3MemtestEngine_l62_15_1;
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_15_2 = (6'h3f - _zz__zz_when_Ddr3MemtestEngine_l62_15_3);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_15_4 = (fsm_msgIndex - 7'h1a);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_15_3 = _zz__zz_when_Ddr3MemtestEngine_l62_15_4[5:0];
-  assign _zz__zz_printChar_15 = (_zz_when_Ddr3MemtestEngine_l62_15 + 8'h30);
-  assign _zz__zz_printChar_15_1 = (_zz_when_Ddr3MemtestEngine_l62_15 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65 = io_dbg_state;
+  assign _zz__zz_printChar = (_zz_when_Ddr3MemtestEngine_l65 + 8'h30);
+  assign _zz__zz_printChar_1 = (_zz_when_Ddr3MemtestEngine_l65 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_1 = io_wstep[7 : 4];
+  assign _zz__zz_printChar_1_1 = (_zz_when_Ddr3MemtestEngine_l65_1 + 8'h30);
+  assign _zz__zz_printChar_1_2 = (_zz_when_Ddr3MemtestEngine_l65_1 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_2 = io_wstep[3 : 0];
+  assign _zz__zz_printChar_2 = (_zz_when_Ddr3MemtestEngine_l65_2 + 8'h30);
+  assign _zz__zz_printChar_2_1 = (_zz_when_Ddr3MemtestEngine_l65_2 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_3 = io_wstep[7 : 4];
+  assign _zz__zz_printChar_3 = (_zz_when_Ddr3MemtestEngine_l65_3 + 8'h30);
+  assign _zz__zz_printChar_3_1 = (_zz_when_Ddr3MemtestEngine_l65_3 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_4 = io_wstep[3 : 0];
+  assign _zz__zz_printChar_4 = (_zz_when_Ddr3MemtestEngine_l65_4 + 8'h30);
+  assign _zz__zz_printChar_4_1 = (_zz_when_Ddr3MemtestEngine_l65_4 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_5 = _zz__zz_when_Ddr3MemtestEngine_l65_5_1;
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_5_1 = {2'd0, io_rclkpos};
+  assign _zz__zz_printChar_5 = (_zz_when_Ddr3MemtestEngine_l65_5 + 8'h30);
+  assign _zz__zz_printChar_5_1 = (_zz_when_Ddr3MemtestEngine_l65_5 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_6 = _zz__zz_when_Ddr3MemtestEngine_l65_6_1;
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_6_1 = {1'd0, io_rclksel};
+  assign _zz__zz_printChar_6 = (_zz_when_Ddr3MemtestEngine_l65_6 + 8'h30);
+  assign _zz__zz_printChar_6_1 = (_zz_when_Ddr3MemtestEngine_l65_6 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_7 = _zz__zz_when_Ddr3MemtestEngine_l65_7_1;
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_7_2 = io_best_rot;
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_7_1 = {1'd0, _zz__zz_when_Ddr3MemtestEngine_l65_7_2};
+  assign _zz__zz_printChar_7 = (_zz_when_Ddr3MemtestEngine_l65_7 + 8'h30);
+  assign _zz__zz_printChar_7_1 = (_zz_when_Ddr3MemtestEngine_l65_7 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_8 = io_best_score;
+  assign _zz__zz_printChar_8 = (_zz_when_Ddr3MemtestEngine_l65_8 + 8'h30);
+  assign _zz__zz_printChar_8_1 = (_zz_when_Ddr3MemtestEngine_l65_8 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_9 = io_wlFirst[7 : 4];
+  assign _zz__zz_printChar_9 = (_zz_when_Ddr3MemtestEngine_l65_9 + 8'h30);
+  assign _zz__zz_printChar_9_1 = (_zz_when_Ddr3MemtestEngine_l65_9 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_10 = io_wlFirst[3 : 0];
+  assign _zz__zz_printChar_10 = (_zz_when_Ddr3MemtestEngine_l65_10 + 8'h30);
+  assign _zz__zz_printChar_10_1 = (_zz_when_Ddr3MemtestEngine_l65_10 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_11 = io_wlLast[7 : 4];
+  assign _zz__zz_printChar_11 = (_zz_when_Ddr3MemtestEngine_l65_11 + 8'h30);
+  assign _zz__zz_printChar_11_1 = (_zz_when_Ddr3MemtestEngine_l65_11 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_12 = io_wlLast[3 : 0];
+  assign _zz__zz_printChar_12 = (_zz_when_Ddr3MemtestEngine_l65_12 + 8'h30);
+  assign _zz__zz_printChar_12_1 = (_zz_when_Ddr3MemtestEngine_l65_12 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_13 = io_wlMatchN[7 : 4];
+  assign _zz__zz_printChar_13 = (_zz_when_Ddr3MemtestEngine_l65_13 + 8'h30);
+  assign _zz__zz_printChar_13_1 = (_zz_when_Ddr3MemtestEngine_l65_13 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_14 = io_wlMatchN[3 : 0];
+  assign _zz__zz_printChar_14 = (_zz_when_Ddr3MemtestEngine_l65_14 + 8'h30);
+  assign _zz__zz_printChar_14_1 = (_zz_when_Ddr3MemtestEngine_l65_14 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_15 = _zz__zz_when_Ddr3MemtestEngine_l65_15_1;
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_15_2 = (6'h3f - _zz__zz_when_Ddr3MemtestEngine_l65_15_3);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_15_4 = (fsm_msgIndex - 7'h1a);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_15_3 = _zz__zz_when_Ddr3MemtestEngine_l65_15_4[5:0];
+  assign _zz__zz_printChar_15 = (_zz_when_Ddr3MemtestEngine_l65_15 + 8'h30);
+  assign _zz__zz_printChar_15_1 = (_zz_when_Ddr3MemtestEngine_l65_15 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_16 = _zz__zz_when_Ddr3MemtestEngine_l65_16_1;
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_16_1 = {2'd0, io_wr_adv};
+  assign _zz__zz_printChar_16 = (_zz_when_Ddr3MemtestEngine_l65_16 + 8'h30);
+  assign _zz__zz_printChar_16_1 = (_zz_when_Ddr3MemtestEngine_l65_16 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_17 = io_w_scores[3 : 0];
+  assign _zz__zz_printChar_17 = (_zz_when_Ddr3MemtestEngine_l65_17 + 8'h30);
+  assign _zz__zz_printChar_17_1 = (_zz_when_Ddr3MemtestEngine_l65_17 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_18 = io_w_scores[7 : 4];
+  assign _zz__zz_printChar_18 = (_zz_when_Ddr3MemtestEngine_l65_18 + 8'h30);
+  assign _zz__zz_printChar_18_1 = (_zz_when_Ddr3MemtestEngine_l65_18 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_19 = io_w_scores[11 : 8];
+  assign _zz__zz_printChar_19 = (_zz_when_Ddr3MemtestEngine_l65_19 + 8'h30);
+  assign _zz__zz_printChar_19_1 = (_zz_when_Ddr3MemtestEngine_l65_19 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_20 = _zz__zz_when_Ddr3MemtestEngine_l65_20_1;
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_20_2 = (5'h1f - _zz__zz_when_Ddr3MemtestEngine_l65_20_3);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_20_4 = (fsm_msgIndex - 7'h14);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_20_3 = _zz__zz_when_Ddr3MemtestEngine_l65_20_4[4:0];
+  assign _zz__zz_printChar_20 = (_zz_when_Ddr3MemtestEngine_l65_20 + 8'h30);
+  assign _zz__zz_printChar_20_1 = (_zz_when_Ddr3MemtestEngine_l65_20 + 8'h37);
   assign _zz_io_axi_w_payload_data = (currentByteAddr + 32'h00000001);
   assign _zz_io_axi_w_payload_data_1 = (currentByteAddr + 32'h00000002);
   assign _zz__zz_errExpected = (currentByteAddr + 32'h00000001);
   assign _zz__zz_errExpected_1 = (currentByteAddr + 32'h00000002);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_16 = passCount[15 : 12];
-  assign _zz__zz_printChar_16 = (_zz_when_Ddr3MemtestEngine_l62_16 + 8'h30);
-  assign _zz__zz_printChar_16_1 = (_zz_when_Ddr3MemtestEngine_l62_16 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_17 = passCount[11 : 8];
-  assign _zz__zz_printChar_17 = (_zz_when_Ddr3MemtestEngine_l62_17 + 8'h30);
-  assign _zz__zz_printChar_17_1 = (_zz_when_Ddr3MemtestEngine_l62_17 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_18 = passCount[7 : 4];
-  assign _zz__zz_printChar_18 = (_zz_when_Ddr3MemtestEngine_l62_18 + 8'h30);
-  assign _zz__zz_printChar_18_1 = (_zz_when_Ddr3MemtestEngine_l62_18 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_19 = passCount[3 : 0];
-  assign _zz__zz_printChar_19 = (_zz_when_Ddr3MemtestEngine_l62_19 + 8'h30);
-  assign _zz__zz_printChar_19_1 = (_zz_when_Ddr3MemtestEngine_l62_19 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_20 = errAddr[31 : 28];
-  assign _zz__zz_printChar_20 = (_zz_when_Ddr3MemtestEngine_l62_20 + 8'h30);
-  assign _zz__zz_printChar_20_1 = (_zz_when_Ddr3MemtestEngine_l62_20 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_21 = errAddr[27 : 24];
-  assign _zz__zz_printChar_21 = (_zz_when_Ddr3MemtestEngine_l62_21 + 8'h30);
-  assign _zz__zz_printChar_21_1 = (_zz_when_Ddr3MemtestEngine_l62_21 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_22 = errAddr[23 : 20];
-  assign _zz__zz_printChar_22 = (_zz_when_Ddr3MemtestEngine_l62_22 + 8'h30);
-  assign _zz__zz_printChar_22_1 = (_zz_when_Ddr3MemtestEngine_l62_22 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_23 = errAddr[19 : 16];
-  assign _zz__zz_printChar_23 = (_zz_when_Ddr3MemtestEngine_l62_23 + 8'h30);
-  assign _zz__zz_printChar_23_1 = (_zz_when_Ddr3MemtestEngine_l62_23 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_24 = errAddr[15 : 12];
-  assign _zz__zz_printChar_24 = (_zz_when_Ddr3MemtestEngine_l62_24 + 8'h30);
-  assign _zz__zz_printChar_24_1 = (_zz_when_Ddr3MemtestEngine_l62_24 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_25 = errAddr[11 : 8];
-  assign _zz__zz_printChar_25 = (_zz_when_Ddr3MemtestEngine_l62_25 + 8'h30);
-  assign _zz__zz_printChar_25_1 = (_zz_when_Ddr3MemtestEngine_l62_25 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_26 = errAddr[7 : 4];
-  assign _zz__zz_printChar_26 = (_zz_when_Ddr3MemtestEngine_l62_26 + 8'h30);
-  assign _zz__zz_printChar_26_1 = (_zz_when_Ddr3MemtestEngine_l62_26 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_27 = errAddr[3 : 0];
-  assign _zz__zz_printChar_27 = (_zz_when_Ddr3MemtestEngine_l62_27 + 8'h30);
-  assign _zz__zz_printChar_27_1 = (_zz_when_Ddr3MemtestEngine_l62_27 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_28 = errExpected[63 : 60];
-  assign _zz__zz_printChar_28 = (_zz_when_Ddr3MemtestEngine_l62_28 + 8'h30);
-  assign _zz__zz_printChar_28_1 = (_zz_when_Ddr3MemtestEngine_l62_28 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_29 = errExpected[59 : 56];
-  assign _zz__zz_printChar_29 = (_zz_when_Ddr3MemtestEngine_l62_29 + 8'h30);
-  assign _zz__zz_printChar_29_1 = (_zz_when_Ddr3MemtestEngine_l62_29 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_30 = errExpected[55 : 52];
-  assign _zz__zz_printChar_30 = (_zz_when_Ddr3MemtestEngine_l62_30 + 8'h30);
-  assign _zz__zz_printChar_30_1 = (_zz_when_Ddr3MemtestEngine_l62_30 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_31 = errExpected[51 : 48];
-  assign _zz__zz_printChar_31 = (_zz_when_Ddr3MemtestEngine_l62_31 + 8'h30);
-  assign _zz__zz_printChar_31_1 = (_zz_when_Ddr3MemtestEngine_l62_31 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_32 = errExpected[47 : 44];
-  assign _zz__zz_printChar_32 = (_zz_when_Ddr3MemtestEngine_l62_32 + 8'h30);
-  assign _zz__zz_printChar_32_1 = (_zz_when_Ddr3MemtestEngine_l62_32 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_33 = errExpected[43 : 40];
-  assign _zz__zz_printChar_33 = (_zz_when_Ddr3MemtestEngine_l62_33 + 8'h30);
-  assign _zz__zz_printChar_33_1 = (_zz_when_Ddr3MemtestEngine_l62_33 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_34 = errExpected[39 : 36];
-  assign _zz__zz_printChar_34 = (_zz_when_Ddr3MemtestEngine_l62_34 + 8'h30);
-  assign _zz__zz_printChar_34_1 = (_zz_when_Ddr3MemtestEngine_l62_34 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_35 = errExpected[35 : 32];
-  assign _zz__zz_printChar_35 = (_zz_when_Ddr3MemtestEngine_l62_35 + 8'h30);
-  assign _zz__zz_printChar_35_1 = (_zz_when_Ddr3MemtestEngine_l62_35 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_36 = errExpected[31 : 28];
-  assign _zz__zz_printChar_36 = (_zz_when_Ddr3MemtestEngine_l62_36 + 8'h30);
-  assign _zz__zz_printChar_36_1 = (_zz_when_Ddr3MemtestEngine_l62_36 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_37 = errExpected[27 : 24];
-  assign _zz__zz_printChar_37 = (_zz_when_Ddr3MemtestEngine_l62_37 + 8'h30);
-  assign _zz__zz_printChar_37_1 = (_zz_when_Ddr3MemtestEngine_l62_37 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_38 = errExpected[23 : 20];
-  assign _zz__zz_printChar_38 = (_zz_when_Ddr3MemtestEngine_l62_38 + 8'h30);
-  assign _zz__zz_printChar_38_1 = (_zz_when_Ddr3MemtestEngine_l62_38 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_39 = errExpected[19 : 16];
-  assign _zz__zz_printChar_39 = (_zz_when_Ddr3MemtestEngine_l62_39 + 8'h30);
-  assign _zz__zz_printChar_39_1 = (_zz_when_Ddr3MemtestEngine_l62_39 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_40 = errExpected[15 : 12];
-  assign _zz__zz_printChar_40 = (_zz_when_Ddr3MemtestEngine_l62_40 + 8'h30);
-  assign _zz__zz_printChar_40_1 = (_zz_when_Ddr3MemtestEngine_l62_40 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_41 = errExpected[11 : 8];
-  assign _zz__zz_printChar_41 = (_zz_when_Ddr3MemtestEngine_l62_41 + 8'h30);
-  assign _zz__zz_printChar_41_1 = (_zz_when_Ddr3MemtestEngine_l62_41 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_42 = errExpected[7 : 4];
-  assign _zz__zz_printChar_42 = (_zz_when_Ddr3MemtestEngine_l62_42 + 8'h30);
-  assign _zz__zz_printChar_42_1 = (_zz_when_Ddr3MemtestEngine_l62_42 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_43 = errExpected[3 : 0];
-  assign _zz__zz_printChar_43 = (_zz_when_Ddr3MemtestEngine_l62_43 + 8'h30);
-  assign _zz__zz_printChar_43_1 = (_zz_when_Ddr3MemtestEngine_l62_43 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_44 = errActual[63 : 60];
-  assign _zz__zz_printChar_44 = (_zz_when_Ddr3MemtestEngine_l62_44 + 8'h30);
-  assign _zz__zz_printChar_44_1 = (_zz_when_Ddr3MemtestEngine_l62_44 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_45 = errActual[59 : 56];
-  assign _zz__zz_printChar_45 = (_zz_when_Ddr3MemtestEngine_l62_45 + 8'h30);
-  assign _zz__zz_printChar_45_1 = (_zz_when_Ddr3MemtestEngine_l62_45 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_46 = errActual[55 : 52];
-  assign _zz__zz_printChar_46 = (_zz_when_Ddr3MemtestEngine_l62_46 + 8'h30);
-  assign _zz__zz_printChar_46_1 = (_zz_when_Ddr3MemtestEngine_l62_46 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_47 = errActual[51 : 48];
-  assign _zz__zz_printChar_47 = (_zz_when_Ddr3MemtestEngine_l62_47 + 8'h30);
-  assign _zz__zz_printChar_47_1 = (_zz_when_Ddr3MemtestEngine_l62_47 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_48 = errActual[47 : 44];
-  assign _zz__zz_printChar_48 = (_zz_when_Ddr3MemtestEngine_l62_48 + 8'h30);
-  assign _zz__zz_printChar_48_1 = (_zz_when_Ddr3MemtestEngine_l62_48 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_49 = errActual[43 : 40];
-  assign _zz__zz_printChar_49 = (_zz_when_Ddr3MemtestEngine_l62_49 + 8'h30);
-  assign _zz__zz_printChar_49_1 = (_zz_when_Ddr3MemtestEngine_l62_49 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_50 = errActual[39 : 36];
-  assign _zz__zz_printChar_50 = (_zz_when_Ddr3MemtestEngine_l62_50 + 8'h30);
-  assign _zz__zz_printChar_50_1 = (_zz_when_Ddr3MemtestEngine_l62_50 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_51 = errActual[35 : 32];
-  assign _zz__zz_printChar_51 = (_zz_when_Ddr3MemtestEngine_l62_51 + 8'h30);
-  assign _zz__zz_printChar_51_1 = (_zz_when_Ddr3MemtestEngine_l62_51 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_52 = errActual[31 : 28];
-  assign _zz__zz_printChar_52 = (_zz_when_Ddr3MemtestEngine_l62_52 + 8'h30);
-  assign _zz__zz_printChar_52_1 = (_zz_when_Ddr3MemtestEngine_l62_52 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_53 = errActual[27 : 24];
-  assign _zz__zz_printChar_53 = (_zz_when_Ddr3MemtestEngine_l62_53 + 8'h30);
-  assign _zz__zz_printChar_53_1 = (_zz_when_Ddr3MemtestEngine_l62_53 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_54 = errActual[23 : 20];
-  assign _zz__zz_printChar_54 = (_zz_when_Ddr3MemtestEngine_l62_54 + 8'h30);
-  assign _zz__zz_printChar_54_1 = (_zz_when_Ddr3MemtestEngine_l62_54 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_55 = errActual[19 : 16];
-  assign _zz__zz_printChar_55 = (_zz_when_Ddr3MemtestEngine_l62_55 + 8'h30);
-  assign _zz__zz_printChar_55_1 = (_zz_when_Ddr3MemtestEngine_l62_55 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_56 = errActual[15 : 12];
-  assign _zz__zz_printChar_56 = (_zz_when_Ddr3MemtestEngine_l62_56 + 8'h30);
-  assign _zz__zz_printChar_56_1 = (_zz_when_Ddr3MemtestEngine_l62_56 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_57 = errActual[11 : 8];
-  assign _zz__zz_printChar_57 = (_zz_when_Ddr3MemtestEngine_l62_57 + 8'h30);
-  assign _zz__zz_printChar_57_1 = (_zz_when_Ddr3MemtestEngine_l62_57 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_58 = errActual[7 : 4];
-  assign _zz__zz_printChar_58 = (_zz_when_Ddr3MemtestEngine_l62_58 + 8'h30);
-  assign _zz__zz_printChar_58_1 = (_zz_when_Ddr3MemtestEngine_l62_58 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_59 = errActual[3 : 0];
-  assign _zz__zz_printChar_59 = (_zz_when_Ddr3MemtestEngine_l62_59 + 8'h30);
-  assign _zz__zz_printChar_59_1 = (_zz_when_Ddr3MemtestEngine_l62_59 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_60 = errActual1[63 : 60];
-  assign _zz__zz_printChar_60 = (_zz_when_Ddr3MemtestEngine_l62_60 + 8'h30);
-  assign _zz__zz_printChar_60_1 = (_zz_when_Ddr3MemtestEngine_l62_60 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_61 = errActual1[59 : 56];
-  assign _zz__zz_printChar_61 = (_zz_when_Ddr3MemtestEngine_l62_61 + 8'h30);
-  assign _zz__zz_printChar_61_1 = (_zz_when_Ddr3MemtestEngine_l62_61 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_62 = errActual1[55 : 52];
-  assign _zz__zz_printChar_62 = (_zz_when_Ddr3MemtestEngine_l62_62 + 8'h30);
-  assign _zz__zz_printChar_62_1 = (_zz_when_Ddr3MemtestEngine_l62_62 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_63 = errActual1[51 : 48];
-  assign _zz__zz_printChar_63 = (_zz_when_Ddr3MemtestEngine_l62_63 + 8'h30);
-  assign _zz__zz_printChar_63_1 = (_zz_when_Ddr3MemtestEngine_l62_63 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_64 = errActual1[47 : 44];
-  assign _zz__zz_printChar_64 = (_zz_when_Ddr3MemtestEngine_l62_64 + 8'h30);
-  assign _zz__zz_printChar_64_1 = (_zz_when_Ddr3MemtestEngine_l62_64 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_65 = errActual1[43 : 40];
-  assign _zz__zz_printChar_65 = (_zz_when_Ddr3MemtestEngine_l62_65 + 8'h30);
-  assign _zz__zz_printChar_65_1 = (_zz_when_Ddr3MemtestEngine_l62_65 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_66 = errActual1[39 : 36];
-  assign _zz__zz_printChar_66 = (_zz_when_Ddr3MemtestEngine_l62_66 + 8'h30);
-  assign _zz__zz_printChar_66_1 = (_zz_when_Ddr3MemtestEngine_l62_66 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_67 = errActual1[35 : 32];
-  assign _zz__zz_printChar_67 = (_zz_when_Ddr3MemtestEngine_l62_67 + 8'h30);
-  assign _zz__zz_printChar_67_1 = (_zz_when_Ddr3MemtestEngine_l62_67 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_68 = errActual1[31 : 28];
-  assign _zz__zz_printChar_68 = (_zz_when_Ddr3MemtestEngine_l62_68 + 8'h30);
-  assign _zz__zz_printChar_68_1 = (_zz_when_Ddr3MemtestEngine_l62_68 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_69 = errActual1[27 : 24];
-  assign _zz__zz_printChar_69 = (_zz_when_Ddr3MemtestEngine_l62_69 + 8'h30);
-  assign _zz__zz_printChar_69_1 = (_zz_when_Ddr3MemtestEngine_l62_69 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_70 = errActual1[23 : 20];
-  assign _zz__zz_printChar_70 = (_zz_when_Ddr3MemtestEngine_l62_70 + 8'h30);
-  assign _zz__zz_printChar_70_1 = (_zz_when_Ddr3MemtestEngine_l62_70 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_71 = errActual1[19 : 16];
-  assign _zz__zz_printChar_71 = (_zz_when_Ddr3MemtestEngine_l62_71 + 8'h30);
-  assign _zz__zz_printChar_71_1 = (_zz_when_Ddr3MemtestEngine_l62_71 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_72 = errActual1[15 : 12];
-  assign _zz__zz_printChar_72 = (_zz_when_Ddr3MemtestEngine_l62_72 + 8'h30);
-  assign _zz__zz_printChar_72_1 = (_zz_when_Ddr3MemtestEngine_l62_72 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_73 = errActual1[11 : 8];
-  assign _zz__zz_printChar_73 = (_zz_when_Ddr3MemtestEngine_l62_73 + 8'h30);
-  assign _zz__zz_printChar_73_1 = (_zz_when_Ddr3MemtestEngine_l62_73 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_74 = errActual1[7 : 4];
-  assign _zz__zz_printChar_74 = (_zz_when_Ddr3MemtestEngine_l62_74 + 8'h30);
-  assign _zz__zz_printChar_74_1 = (_zz_when_Ddr3MemtestEngine_l62_74 + 8'h37);
-  assign _zz__zz_when_Ddr3MemtestEngine_l62_75 = errActual1[3 : 0];
-  assign _zz__zz_printChar_75 = (_zz_when_Ddr3MemtestEngine_l62_75 + 8'h30);
-  assign _zz__zz_printChar_75_1 = (_zz_when_Ddr3MemtestEngine_l62_75 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_21 = passCount[15 : 12];
+  assign _zz__zz_printChar_21 = (_zz_when_Ddr3MemtestEngine_l65_21 + 8'h30);
+  assign _zz__zz_printChar_21_1 = (_zz_when_Ddr3MemtestEngine_l65_21 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_22 = passCount[11 : 8];
+  assign _zz__zz_printChar_22 = (_zz_when_Ddr3MemtestEngine_l65_22 + 8'h30);
+  assign _zz__zz_printChar_22_1 = (_zz_when_Ddr3MemtestEngine_l65_22 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_23 = passCount[7 : 4];
+  assign _zz__zz_printChar_23 = (_zz_when_Ddr3MemtestEngine_l65_23 + 8'h30);
+  assign _zz__zz_printChar_23_1 = (_zz_when_Ddr3MemtestEngine_l65_23 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_24 = passCount[3 : 0];
+  assign _zz__zz_printChar_24 = (_zz_when_Ddr3MemtestEngine_l65_24 + 8'h30);
+  assign _zz__zz_printChar_24_1 = (_zz_when_Ddr3MemtestEngine_l65_24 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_25 = errAddr[31 : 28];
+  assign _zz__zz_printChar_25 = (_zz_when_Ddr3MemtestEngine_l65_25 + 8'h30);
+  assign _zz__zz_printChar_25_1 = (_zz_when_Ddr3MemtestEngine_l65_25 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_26 = errAddr[27 : 24];
+  assign _zz__zz_printChar_26 = (_zz_when_Ddr3MemtestEngine_l65_26 + 8'h30);
+  assign _zz__zz_printChar_26_1 = (_zz_when_Ddr3MemtestEngine_l65_26 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_27 = errAddr[23 : 20];
+  assign _zz__zz_printChar_27 = (_zz_when_Ddr3MemtestEngine_l65_27 + 8'h30);
+  assign _zz__zz_printChar_27_1 = (_zz_when_Ddr3MemtestEngine_l65_27 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_28 = errAddr[19 : 16];
+  assign _zz__zz_printChar_28 = (_zz_when_Ddr3MemtestEngine_l65_28 + 8'h30);
+  assign _zz__zz_printChar_28_1 = (_zz_when_Ddr3MemtestEngine_l65_28 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_29 = errAddr[15 : 12];
+  assign _zz__zz_printChar_29 = (_zz_when_Ddr3MemtestEngine_l65_29 + 8'h30);
+  assign _zz__zz_printChar_29_1 = (_zz_when_Ddr3MemtestEngine_l65_29 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_30 = errAddr[11 : 8];
+  assign _zz__zz_printChar_30 = (_zz_when_Ddr3MemtestEngine_l65_30 + 8'h30);
+  assign _zz__zz_printChar_30_1 = (_zz_when_Ddr3MemtestEngine_l65_30 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_31 = errAddr[7 : 4];
+  assign _zz__zz_printChar_31 = (_zz_when_Ddr3MemtestEngine_l65_31 + 8'h30);
+  assign _zz__zz_printChar_31_1 = (_zz_when_Ddr3MemtestEngine_l65_31 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_32 = errAddr[3 : 0];
+  assign _zz__zz_printChar_32 = (_zz_when_Ddr3MemtestEngine_l65_32 + 8'h30);
+  assign _zz__zz_printChar_32_1 = (_zz_when_Ddr3MemtestEngine_l65_32 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_33 = errExpected[63 : 60];
+  assign _zz__zz_printChar_33 = (_zz_when_Ddr3MemtestEngine_l65_33 + 8'h30);
+  assign _zz__zz_printChar_33_1 = (_zz_when_Ddr3MemtestEngine_l65_33 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_34 = errExpected[59 : 56];
+  assign _zz__zz_printChar_34 = (_zz_when_Ddr3MemtestEngine_l65_34 + 8'h30);
+  assign _zz__zz_printChar_34_1 = (_zz_when_Ddr3MemtestEngine_l65_34 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_35 = errExpected[55 : 52];
+  assign _zz__zz_printChar_35 = (_zz_when_Ddr3MemtestEngine_l65_35 + 8'h30);
+  assign _zz__zz_printChar_35_1 = (_zz_when_Ddr3MemtestEngine_l65_35 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_36 = errExpected[51 : 48];
+  assign _zz__zz_printChar_36 = (_zz_when_Ddr3MemtestEngine_l65_36 + 8'h30);
+  assign _zz__zz_printChar_36_1 = (_zz_when_Ddr3MemtestEngine_l65_36 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_37 = errExpected[47 : 44];
+  assign _zz__zz_printChar_37 = (_zz_when_Ddr3MemtestEngine_l65_37 + 8'h30);
+  assign _zz__zz_printChar_37_1 = (_zz_when_Ddr3MemtestEngine_l65_37 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_38 = errExpected[43 : 40];
+  assign _zz__zz_printChar_38 = (_zz_when_Ddr3MemtestEngine_l65_38 + 8'h30);
+  assign _zz__zz_printChar_38_1 = (_zz_when_Ddr3MemtestEngine_l65_38 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_39 = errExpected[39 : 36];
+  assign _zz__zz_printChar_39 = (_zz_when_Ddr3MemtestEngine_l65_39 + 8'h30);
+  assign _zz__zz_printChar_39_1 = (_zz_when_Ddr3MemtestEngine_l65_39 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_40 = errExpected[35 : 32];
+  assign _zz__zz_printChar_40 = (_zz_when_Ddr3MemtestEngine_l65_40 + 8'h30);
+  assign _zz__zz_printChar_40_1 = (_zz_when_Ddr3MemtestEngine_l65_40 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_41 = errExpected[31 : 28];
+  assign _zz__zz_printChar_41 = (_zz_when_Ddr3MemtestEngine_l65_41 + 8'h30);
+  assign _zz__zz_printChar_41_1 = (_zz_when_Ddr3MemtestEngine_l65_41 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_42 = errExpected[27 : 24];
+  assign _zz__zz_printChar_42 = (_zz_when_Ddr3MemtestEngine_l65_42 + 8'h30);
+  assign _zz__zz_printChar_42_1 = (_zz_when_Ddr3MemtestEngine_l65_42 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_43 = errExpected[23 : 20];
+  assign _zz__zz_printChar_43 = (_zz_when_Ddr3MemtestEngine_l65_43 + 8'h30);
+  assign _zz__zz_printChar_43_1 = (_zz_when_Ddr3MemtestEngine_l65_43 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_44 = errExpected[19 : 16];
+  assign _zz__zz_printChar_44 = (_zz_when_Ddr3MemtestEngine_l65_44 + 8'h30);
+  assign _zz__zz_printChar_44_1 = (_zz_when_Ddr3MemtestEngine_l65_44 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_45 = errExpected[15 : 12];
+  assign _zz__zz_printChar_45 = (_zz_when_Ddr3MemtestEngine_l65_45 + 8'h30);
+  assign _zz__zz_printChar_45_1 = (_zz_when_Ddr3MemtestEngine_l65_45 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_46 = errExpected[11 : 8];
+  assign _zz__zz_printChar_46 = (_zz_when_Ddr3MemtestEngine_l65_46 + 8'h30);
+  assign _zz__zz_printChar_46_1 = (_zz_when_Ddr3MemtestEngine_l65_46 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_47 = errExpected[7 : 4];
+  assign _zz__zz_printChar_47 = (_zz_when_Ddr3MemtestEngine_l65_47 + 8'h30);
+  assign _zz__zz_printChar_47_1 = (_zz_when_Ddr3MemtestEngine_l65_47 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_48 = errExpected[3 : 0];
+  assign _zz__zz_printChar_48 = (_zz_when_Ddr3MemtestEngine_l65_48 + 8'h30);
+  assign _zz__zz_printChar_48_1 = (_zz_when_Ddr3MemtestEngine_l65_48 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_49 = errActual[63 : 60];
+  assign _zz__zz_printChar_49 = (_zz_when_Ddr3MemtestEngine_l65_49 + 8'h30);
+  assign _zz__zz_printChar_49_1 = (_zz_when_Ddr3MemtestEngine_l65_49 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_50 = errActual[59 : 56];
+  assign _zz__zz_printChar_50 = (_zz_when_Ddr3MemtestEngine_l65_50 + 8'h30);
+  assign _zz__zz_printChar_50_1 = (_zz_when_Ddr3MemtestEngine_l65_50 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_51 = errActual[55 : 52];
+  assign _zz__zz_printChar_51 = (_zz_when_Ddr3MemtestEngine_l65_51 + 8'h30);
+  assign _zz__zz_printChar_51_1 = (_zz_when_Ddr3MemtestEngine_l65_51 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_52 = errActual[51 : 48];
+  assign _zz__zz_printChar_52 = (_zz_when_Ddr3MemtestEngine_l65_52 + 8'h30);
+  assign _zz__zz_printChar_52_1 = (_zz_when_Ddr3MemtestEngine_l65_52 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_53 = errActual[47 : 44];
+  assign _zz__zz_printChar_53 = (_zz_when_Ddr3MemtestEngine_l65_53 + 8'h30);
+  assign _zz__zz_printChar_53_1 = (_zz_when_Ddr3MemtestEngine_l65_53 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_54 = errActual[43 : 40];
+  assign _zz__zz_printChar_54 = (_zz_when_Ddr3MemtestEngine_l65_54 + 8'h30);
+  assign _zz__zz_printChar_54_1 = (_zz_when_Ddr3MemtestEngine_l65_54 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_55 = errActual[39 : 36];
+  assign _zz__zz_printChar_55 = (_zz_when_Ddr3MemtestEngine_l65_55 + 8'h30);
+  assign _zz__zz_printChar_55_1 = (_zz_when_Ddr3MemtestEngine_l65_55 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_56 = errActual[35 : 32];
+  assign _zz__zz_printChar_56 = (_zz_when_Ddr3MemtestEngine_l65_56 + 8'h30);
+  assign _zz__zz_printChar_56_1 = (_zz_when_Ddr3MemtestEngine_l65_56 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_57 = errActual[31 : 28];
+  assign _zz__zz_printChar_57 = (_zz_when_Ddr3MemtestEngine_l65_57 + 8'h30);
+  assign _zz__zz_printChar_57_1 = (_zz_when_Ddr3MemtestEngine_l65_57 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_58 = errActual[27 : 24];
+  assign _zz__zz_printChar_58 = (_zz_when_Ddr3MemtestEngine_l65_58 + 8'h30);
+  assign _zz__zz_printChar_58_1 = (_zz_when_Ddr3MemtestEngine_l65_58 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_59 = errActual[23 : 20];
+  assign _zz__zz_printChar_59 = (_zz_when_Ddr3MemtestEngine_l65_59 + 8'h30);
+  assign _zz__zz_printChar_59_1 = (_zz_when_Ddr3MemtestEngine_l65_59 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_60 = errActual[19 : 16];
+  assign _zz__zz_printChar_60 = (_zz_when_Ddr3MemtestEngine_l65_60 + 8'h30);
+  assign _zz__zz_printChar_60_1 = (_zz_when_Ddr3MemtestEngine_l65_60 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_61 = errActual[15 : 12];
+  assign _zz__zz_printChar_61 = (_zz_when_Ddr3MemtestEngine_l65_61 + 8'h30);
+  assign _zz__zz_printChar_61_1 = (_zz_when_Ddr3MemtestEngine_l65_61 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_62 = errActual[11 : 8];
+  assign _zz__zz_printChar_62 = (_zz_when_Ddr3MemtestEngine_l65_62 + 8'h30);
+  assign _zz__zz_printChar_62_1 = (_zz_when_Ddr3MemtestEngine_l65_62 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_63 = errActual[7 : 4];
+  assign _zz__zz_printChar_63 = (_zz_when_Ddr3MemtestEngine_l65_63 + 8'h30);
+  assign _zz__zz_printChar_63_1 = (_zz_when_Ddr3MemtestEngine_l65_63 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_64 = errActual[3 : 0];
+  assign _zz__zz_printChar_64 = (_zz_when_Ddr3MemtestEngine_l65_64 + 8'h30);
+  assign _zz__zz_printChar_64_1 = (_zz_when_Ddr3MemtestEngine_l65_64 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_65 = errActual1[63 : 60];
+  assign _zz__zz_printChar_65 = (_zz_when_Ddr3MemtestEngine_l65_65 + 8'h30);
+  assign _zz__zz_printChar_65_1 = (_zz_when_Ddr3MemtestEngine_l65_65 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_66 = errActual1[59 : 56];
+  assign _zz__zz_printChar_66 = (_zz_when_Ddr3MemtestEngine_l65_66 + 8'h30);
+  assign _zz__zz_printChar_66_1 = (_zz_when_Ddr3MemtestEngine_l65_66 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_67 = errActual1[55 : 52];
+  assign _zz__zz_printChar_67 = (_zz_when_Ddr3MemtestEngine_l65_67 + 8'h30);
+  assign _zz__zz_printChar_67_1 = (_zz_when_Ddr3MemtestEngine_l65_67 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_68 = errActual1[51 : 48];
+  assign _zz__zz_printChar_68 = (_zz_when_Ddr3MemtestEngine_l65_68 + 8'h30);
+  assign _zz__zz_printChar_68_1 = (_zz_when_Ddr3MemtestEngine_l65_68 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_69 = errActual1[47 : 44];
+  assign _zz__zz_printChar_69 = (_zz_when_Ddr3MemtestEngine_l65_69 + 8'h30);
+  assign _zz__zz_printChar_69_1 = (_zz_when_Ddr3MemtestEngine_l65_69 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_70 = errActual1[43 : 40];
+  assign _zz__zz_printChar_70 = (_zz_when_Ddr3MemtestEngine_l65_70 + 8'h30);
+  assign _zz__zz_printChar_70_1 = (_zz_when_Ddr3MemtestEngine_l65_70 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_71 = errActual1[39 : 36];
+  assign _zz__zz_printChar_71 = (_zz_when_Ddr3MemtestEngine_l65_71 + 8'h30);
+  assign _zz__zz_printChar_71_1 = (_zz_when_Ddr3MemtestEngine_l65_71 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_72 = errActual1[35 : 32];
+  assign _zz__zz_printChar_72 = (_zz_when_Ddr3MemtestEngine_l65_72 + 8'h30);
+  assign _zz__zz_printChar_72_1 = (_zz_when_Ddr3MemtestEngine_l65_72 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_73 = errActual1[31 : 28];
+  assign _zz__zz_printChar_73 = (_zz_when_Ddr3MemtestEngine_l65_73 + 8'h30);
+  assign _zz__zz_printChar_73_1 = (_zz_when_Ddr3MemtestEngine_l65_73 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_74 = errActual1[27 : 24];
+  assign _zz__zz_printChar_74 = (_zz_when_Ddr3MemtestEngine_l65_74 + 8'h30);
+  assign _zz__zz_printChar_74_1 = (_zz_when_Ddr3MemtestEngine_l65_74 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_75 = errActual1[23 : 20];
+  assign _zz__zz_printChar_75 = (_zz_when_Ddr3MemtestEngine_l65_75 + 8'h30);
+  assign _zz__zz_printChar_75_1 = (_zz_when_Ddr3MemtestEngine_l65_75 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_76 = errActual1[19 : 16];
+  assign _zz__zz_printChar_76 = (_zz_when_Ddr3MemtestEngine_l65_76 + 8'h30);
+  assign _zz__zz_printChar_76_1 = (_zz_when_Ddr3MemtestEngine_l65_76 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_77 = errActual1[15 : 12];
+  assign _zz__zz_printChar_77 = (_zz_when_Ddr3MemtestEngine_l65_77 + 8'h30);
+  assign _zz__zz_printChar_77_1 = (_zz_when_Ddr3MemtestEngine_l65_77 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_78 = errActual1[11 : 8];
+  assign _zz__zz_printChar_78 = (_zz_when_Ddr3MemtestEngine_l65_78 + 8'h30);
+  assign _zz__zz_printChar_78_1 = (_zz_when_Ddr3MemtestEngine_l65_78 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_79 = errActual1[7 : 4];
+  assign _zz__zz_printChar_79 = (_zz_when_Ddr3MemtestEngine_l65_79 + 8'h30);
+  assign _zz__zz_printChar_79_1 = (_zz_when_Ddr3MemtestEngine_l65_79 + 8'h37);
+  assign _zz__zz_when_Ddr3MemtestEngine_l65_80 = errActual1[3 : 0];
+  assign _zz__zz_printChar_80 = (_zz_when_Ddr3MemtestEngine_l65_80 + 8'h30);
+  assign _zz__zz_printChar_80_1 = (_zz_when_Ddr3MemtestEngine_l65_80 + 8'h37);
   UartTx uart (
     .io_write_valid   (txStream_valid       ), //i
     .io_write_ready   (uart_io_write_ready  ), //o
@@ -1214,71 +1314,108 @@ module Ddr3MemtestEngine (
     ._zz_1            (_zz_1                )  //i
   );
   always @(*) begin
-    case(_zz__zz_when_Ddr3MemtestEngine_l62_15_2)
-      6'b000000 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_0;
-      6'b000001 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_1;
-      6'b000010 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_2;
-      6'b000011 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_3;
-      6'b000100 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_4;
-      6'b000101 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_5;
-      6'b000110 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_6;
-      6'b000111 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_7;
-      6'b001000 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_8;
-      6'b001001 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_9;
-      6'b001010 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_10;
-      6'b001011 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_11;
-      6'b001100 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_12;
-      6'b001101 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_13;
-      6'b001110 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_14;
-      6'b001111 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_15;
-      6'b010000 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_16;
-      6'b010001 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_17;
-      6'b010010 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_18;
-      6'b010011 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_19;
-      6'b010100 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_20;
-      6'b010101 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_21;
-      6'b010110 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_22;
-      6'b010111 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_23;
-      6'b011000 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_24;
-      6'b011001 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_25;
-      6'b011010 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_26;
-      6'b011011 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_27;
-      6'b011100 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_28;
-      6'b011101 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_29;
-      6'b011110 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_30;
-      6'b011111 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_31;
-      6'b100000 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_32;
-      6'b100001 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_33;
-      6'b100010 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_34;
-      6'b100011 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_35;
-      6'b100100 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_36;
-      6'b100101 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_37;
-      6'b100110 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_38;
-      6'b100111 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_39;
-      6'b101000 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_40;
-      6'b101001 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_41;
-      6'b101010 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_42;
-      6'b101011 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_43;
-      6'b101100 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_44;
-      6'b101101 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_45;
-      6'b101110 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_46;
-      6'b101111 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_47;
-      6'b110000 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_48;
-      6'b110001 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_49;
-      6'b110010 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_50;
-      6'b110011 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_51;
-      6'b110100 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_52;
-      6'b110101 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_53;
-      6'b110110 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_54;
-      6'b110111 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_55;
-      6'b111000 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_56;
-      6'b111001 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_57;
-      6'b111010 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_58;
-      6'b111011 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_59;
-      6'b111100 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_60;
-      6'b111101 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_61;
-      6'b111110 : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_62;
-      default : _zz__zz_when_Ddr3MemtestEngine_l62_15_1 = wlMapNib_63;
+    case(_zz__zz_when_Ddr3MemtestEngine_l65_15_2)
+      6'b000000 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_0;
+      6'b000001 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_1;
+      6'b000010 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_2;
+      6'b000011 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_3;
+      6'b000100 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_4;
+      6'b000101 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_5;
+      6'b000110 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_6;
+      6'b000111 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_7;
+      6'b001000 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_8;
+      6'b001001 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_9;
+      6'b001010 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_10;
+      6'b001011 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_11;
+      6'b001100 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_12;
+      6'b001101 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_13;
+      6'b001110 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_14;
+      6'b001111 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_15;
+      6'b010000 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_16;
+      6'b010001 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_17;
+      6'b010010 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_18;
+      6'b010011 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_19;
+      6'b010100 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_20;
+      6'b010101 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_21;
+      6'b010110 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_22;
+      6'b010111 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_23;
+      6'b011000 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_24;
+      6'b011001 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_25;
+      6'b011010 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_26;
+      6'b011011 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_27;
+      6'b011100 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_28;
+      6'b011101 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_29;
+      6'b011110 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_30;
+      6'b011111 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_31;
+      6'b100000 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_32;
+      6'b100001 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_33;
+      6'b100010 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_34;
+      6'b100011 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_35;
+      6'b100100 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_36;
+      6'b100101 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_37;
+      6'b100110 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_38;
+      6'b100111 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_39;
+      6'b101000 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_40;
+      6'b101001 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_41;
+      6'b101010 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_42;
+      6'b101011 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_43;
+      6'b101100 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_44;
+      6'b101101 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_45;
+      6'b101110 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_46;
+      6'b101111 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_47;
+      6'b110000 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_48;
+      6'b110001 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_49;
+      6'b110010 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_50;
+      6'b110011 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_51;
+      6'b110100 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_52;
+      6'b110101 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_53;
+      6'b110110 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_54;
+      6'b110111 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_55;
+      6'b111000 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_56;
+      6'b111001 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_57;
+      6'b111010 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_58;
+      6'b111011 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_59;
+      6'b111100 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_60;
+      6'b111101 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_61;
+      6'b111110 : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_62;
+      default : _zz__zz_when_Ddr3MemtestEngine_l65_15_1 = wlMapNib_63;
+    endcase
+  end
+
+  always @(*) begin
+    case(_zz__zz_when_Ddr3MemtestEngine_l65_20_2)
+      5'b00000 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_0;
+      5'b00001 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_1;
+      5'b00010 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_2;
+      5'b00011 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_3;
+      5'b00100 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_4;
+      5'b00101 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_5;
+      5'b00110 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_6;
+      5'b00111 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_7;
+      5'b01000 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_8;
+      5'b01001 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_9;
+      5'b01010 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_10;
+      5'b01011 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_11;
+      5'b01100 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_12;
+      5'b01101 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_13;
+      5'b01110 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_14;
+      5'b01111 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_15;
+      5'b10000 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_16;
+      5'b10001 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_17;
+      5'b10010 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_18;
+      5'b10011 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_19;
+      5'b10100 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_20;
+      5'b10101 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_21;
+      5'b10110 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_22;
+      5'b10111 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_23;
+      5'b11000 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_24;
+      5'b11001 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_25;
+      5'b11010 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_26;
+      5'b11011 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_27;
+      5'b11100 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_28;
+      5'b11101 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_29;
+      5'b11110 : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_30;
+      default : _zz__zz_when_Ddr3MemtestEngine_l65_20_1 = latchNib_31;
     endcase
   end
 
@@ -1291,6 +1428,7 @@ module Ddr3MemtestEngine (
       fsm_sPrintCalib : fsm_stateReg_string = "sPrintCalib   ";
       fsm_sPrintBanner : fsm_stateReg_string = "sPrintBanner  ";
       fsm_sPrintWlmap : fsm_stateReg_string = "sPrintWlmap   ";
+      fsm_sPrintLatch : fsm_stateReg_string = "sPrintLatch   ";
       fsm_sSingleWriteAW : fsm_stateReg_string = "sSingleWriteAW";
       fsm_sSingleWriteW0 : fsm_stateReg_string = "sSingleWriteW0";
       fsm_sSingleWriteW1 : fsm_stateReg_string = "sSingleWriteW1";
@@ -1319,6 +1457,7 @@ module Ddr3MemtestEngine (
       fsm_sPrintCalib : fsm_stateNext_string = "sPrintCalib   ";
       fsm_sPrintBanner : fsm_stateNext_string = "sPrintBanner  ";
       fsm_sPrintWlmap : fsm_stateNext_string = "sPrintWlmap   ";
+      fsm_sPrintLatch : fsm_stateNext_string = "sPrintLatch   ";
       fsm_sSingleWriteAW : fsm_stateNext_string = "sSingleWriteAW";
       fsm_sSingleWriteW0 : fsm_stateNext_string = "sSingleWriteW0";
       fsm_sSingleWriteW1 : fsm_stateNext_string = "sSingleWriteW1";
@@ -1349,7 +1488,7 @@ module Ddr3MemtestEngine (
   assign txStream_fire = (txStream_valid && txStream_ready);
   assign io_test_error = errorReg;
   assign io_test_pass = passReg;
-  assign when_Ddr3MemtestEngine_l98 = (hbCounter == 25'h0);
+  assign when_Ddr3MemtestEngine_l101 = (hbCounter == 25'h0);
   assign io_heartbeat = hbReg;
   always @(*) begin
     io_axi_aw_valid = 1'b0;
@@ -1363,6 +1502,8 @@ module Ddr3MemtestEngine (
       fsm_sPrintBanner : begin
       end
       fsm_sPrintWlmap : begin
+      end
+      fsm_sPrintLatch : begin
       end
       fsm_sSingleWriteAW : begin
         io_axi_aw_valid = 1'b1;
@@ -1417,6 +1558,8 @@ module Ddr3MemtestEngine (
       fsm_sPrintBanner : begin
       end
       fsm_sPrintWlmap : begin
+      end
+      fsm_sPrintLatch : begin
       end
       fsm_sSingleWriteAW : begin
         io_axi_aw_payload_addr = 32'h0;
@@ -1481,6 +1624,8 @@ module Ddr3MemtestEngine (
       end
       fsm_sPrintWlmap : begin
       end
+      fsm_sPrintLatch : begin
+      end
       fsm_sSingleWriteAW : begin
       end
       fsm_sSingleWriteW0 : begin
@@ -1536,6 +1681,8 @@ module Ddr3MemtestEngine (
       fsm_sPrintBanner : begin
       end
       fsm_sPrintWlmap : begin
+      end
+      fsm_sPrintLatch : begin
       end
       fsm_sSingleWriteAW : begin
       end
@@ -1593,6 +1740,8 @@ module Ddr3MemtestEngine (
       end
       fsm_sPrintWlmap : begin
       end
+      fsm_sPrintLatch : begin
+      end
       fsm_sSingleWriteAW : begin
       end
       fsm_sSingleWriteW0 : begin
@@ -1648,6 +1797,8 @@ module Ddr3MemtestEngine (
       fsm_sPrintBanner : begin
       end
       fsm_sPrintWlmap : begin
+      end
+      fsm_sPrintLatch : begin
       end
       fsm_sSingleWriteAW : begin
       end
@@ -1706,6 +1857,8 @@ module Ddr3MemtestEngine (
       end
       fsm_sPrintWlmap : begin
       end
+      fsm_sPrintLatch : begin
+      end
       fsm_sSingleWriteAW : begin
       end
       fsm_sSingleWriteW0 : begin
@@ -1759,6 +1912,8 @@ module Ddr3MemtestEngine (
       fsm_sPrintBanner : begin
       end
       fsm_sPrintWlmap : begin
+      end
+      fsm_sPrintLatch : begin
       end
       fsm_sSingleWriteAW : begin
       end
@@ -1822,6 +1977,8 @@ module Ddr3MemtestEngine (
       fsm_sPrintBanner : begin
       end
       fsm_sPrintWlmap : begin
+      end
+      fsm_sPrintLatch : begin
       end
       fsm_sSingleWriteAW : begin
       end
@@ -1931,6 +2088,38 @@ module Ddr3MemtestEngine (
   assign wlMapNib_61 = io_wlMap[247 : 244];
   assign wlMapNib_62 = io_wlMap[251 : 248];
   assign wlMapNib_63 = io_wlMap[255 : 252];
+  assign latchNib_0 = io_train_latch[3 : 0];
+  assign latchNib_1 = io_train_latch[7 : 4];
+  assign latchNib_2 = io_train_latch[11 : 8];
+  assign latchNib_3 = io_train_latch[15 : 12];
+  assign latchNib_4 = io_train_latch[19 : 16];
+  assign latchNib_5 = io_train_latch[23 : 20];
+  assign latchNib_6 = io_train_latch[27 : 24];
+  assign latchNib_7 = io_train_latch[31 : 28];
+  assign latchNib_8 = io_train_latch[35 : 32];
+  assign latchNib_9 = io_train_latch[39 : 36];
+  assign latchNib_10 = io_train_latch[43 : 40];
+  assign latchNib_11 = io_train_latch[47 : 44];
+  assign latchNib_12 = io_train_latch[51 : 48];
+  assign latchNib_13 = io_train_latch[55 : 52];
+  assign latchNib_14 = io_train_latch[59 : 56];
+  assign latchNib_15 = io_train_latch[63 : 60];
+  assign latchNib_16 = io_train_latch[67 : 64];
+  assign latchNib_17 = io_train_latch[71 : 68];
+  assign latchNib_18 = io_train_latch[75 : 72];
+  assign latchNib_19 = io_train_latch[79 : 76];
+  assign latchNib_20 = io_train_latch[83 : 80];
+  assign latchNib_21 = io_train_latch[87 : 84];
+  assign latchNib_22 = io_train_latch[91 : 88];
+  assign latchNib_23 = io_train_latch[95 : 92];
+  assign latchNib_24 = io_train_latch[99 : 96];
+  assign latchNib_25 = io_train_latch[103 : 100];
+  assign latchNib_26 = io_train_latch[107 : 104];
+  assign latchNib_27 = io_train_latch[111 : 108];
+  assign latchNib_28 = io_train_latch[115 : 112];
+  assign latchNib_29 = io_train_latch[119 : 116];
+  assign latchNib_30 = io_train_latch[123 : 120];
+  assign latchNib_31 = io_train_latch[127 : 124];
   assign fsm_wantExit = 1'b0;
   always @(*) begin
     fsm_wantStart = 1'b0;
@@ -1944,6 +2133,8 @@ module Ddr3MemtestEngine (
       fsm_sPrintBanner : begin
       end
       fsm_sPrintWlmap : begin
+      end
+      fsm_sPrintLatch : begin
       end
       fsm_sSingleWriteAW : begin
       end
@@ -1991,7 +2182,7 @@ module Ddr3MemtestEngine (
     fsm_stateNext = fsm_stateReg;
     case(fsm_stateReg)
       fsm_sBootBanner : begin
-        if(when_Ddr3MemtestEngine_l187) begin
+        if(when_Ddr3MemtestEngine_l193) begin
           case(fsm_msgIndex)
             7'h0 : begin
             end
@@ -2040,16 +2231,16 @@ module Ddr3MemtestEngine (
         end
       end
       fsm_sWaitCalib : begin
-        if(when_Ddr3MemtestEngine_l219) begin
+        if(when_Ddr3MemtestEngine_l225) begin
           fsm_stateNext = fsm_sPrintBanner;
         end else begin
-          if(when_Ddr3MemtestEngine_l227) begin
+          if(when_Ddr3MemtestEngine_l233) begin
             fsm_stateNext = fsm_sPrintCalib;
           end
         end
       end
       fsm_sPrintCalib : begin
-        if(when_Ddr3MemtestEngine_l238) begin
+        if(when_Ddr3MemtestEngine_l244) begin
           case(fsm_msgIndex)
             7'h0 : begin
             end
@@ -2088,7 +2279,7 @@ module Ddr3MemtestEngine (
         end
       end
       fsm_sPrintBanner : begin
-        if(when_Ddr3MemtestEngine_l265) begin
+        if(when_Ddr3MemtestEngine_l271) begin
           case(fsm_msgIndex)
             7'h0 : begin
             end
@@ -2165,7 +2356,7 @@ module Ddr3MemtestEngine (
         end
       end
       fsm_sPrintWlmap : begin
-        if(when_Ddr3MemtestEngine_l313) begin
+        if(when_Ddr3MemtestEngine_l319) begin
           case(fsm_msgIndex)
             7'h0 : begin
             end
@@ -2222,6 +2413,59 @@ module Ddr3MemtestEngine (
             7'h5a : begin
             end
             7'h5b : begin
+              fsm_stateNext = fsm_sPrintLatch;
+            end
+            default : begin
+            end
+          endcase
+        end
+      end
+      fsm_sPrintLatch : begin
+        if(when_Ddr3MemtestEngine_l359) begin
+          case(fsm_msgIndex)
+            7'h0 : begin
+            end
+            7'h01 : begin
+            end
+            7'h02 : begin
+            end
+            7'h03 : begin
+            end
+            7'h04 : begin
+            end
+            7'h05 : begin
+            end
+            7'h06 : begin
+            end
+            7'h07 : begin
+            end
+            7'h08 : begin
+            end
+            7'h09 : begin
+            end
+            7'h0a : begin
+            end
+            7'h0b : begin
+            end
+            7'h0c : begin
+            end
+            7'h0d : begin
+            end
+            7'h0e : begin
+            end
+            7'h0f : begin
+            end
+            7'h10 : begin
+            end
+            7'h11 : begin
+            end
+            7'h12 : begin
+            end
+            7'h13 : begin
+            end
+            7'h34 : begin
+            end
+            7'h35 : begin
               fsm_stateNext = fsm_sSingleWriteAW;
             end
             default : begin
@@ -2261,7 +2505,7 @@ module Ddr3MemtestEngine (
       end
       fsm_sSingleReadR1 : begin
         if(io_axi_r_valid) begin
-          if(when_Ddr3MemtestEngine_l419) begin
+          if(when_Ddr3MemtestEngine_l458) begin
             fsm_stateNext = fsm_sReportFail;
           end else begin
             fsm_stateNext = fsm_sBulkWriteAW;
@@ -2285,7 +2529,7 @@ module Ddr3MemtestEngine (
       end
       fsm_sBulkWriteB : begin
         if(io_axi_b_valid) begin
-          if(when_Ddr3MemtestEngine_l460) begin
+          if(when_Ddr3MemtestEngine_l499) begin
             fsm_stateNext = fsm_sBulkReadAR;
           end else begin
             fsm_stateNext = fsm_sBulkWriteAW;
@@ -2304,10 +2548,10 @@ module Ddr3MemtestEngine (
       end
       fsm_sBulkReadR1 : begin
         if(io_axi_r_valid) begin
-          if(when_Ddr3MemtestEngine_l502) begin
+          if(when_Ddr3MemtestEngine_l541) begin
             fsm_stateNext = fsm_sReportFail;
           end else begin
-            if(when_Ddr3MemtestEngine_l506) begin
+            if(when_Ddr3MemtestEngine_l545) begin
               fsm_stateNext = fsm_sReportPass;
             end else begin
               fsm_stateNext = fsm_sBulkReadAR;
@@ -2316,7 +2560,7 @@ module Ddr3MemtestEngine (
         end
       end
       fsm_sReportPass : begin
-        if(when_Ddr3MemtestEngine_l520) begin
+        if(when_Ddr3MemtestEngine_l559) begin
           case(fsm_msgIndex)
             7'h0 : begin
             end
@@ -2353,7 +2597,7 @@ module Ddr3MemtestEngine (
       fsm_sReportFail : begin
       end
       fsm_sLoopDelay : begin
-        if(when_Ddr3MemtestEngine_l634) begin
+        if(when_Ddr3MemtestEngine_l673) begin
           fsm_stateNext = fsm_sBulkWriteAW;
         end
       end
@@ -2368,785 +2612,836 @@ module Ddr3MemtestEngine (
     end
   end
 
-  assign when_Ddr3MemtestEngine_l187 = (! printValid);
-  assign when_Ddr3MemtestEngine_l219 = (((io_pll_lock && io_init_done) && io_write_level_done) && io_read_calib_done);
-  assign when_Ddr3MemtestEngine_l227 = (fsm_delayCounter == 28'h2f79520);
-  assign when_Ddr3MemtestEngine_l238 = (! printValid);
-  assign _zz_when_Ddr3MemtestEngine_l62 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62};
-  assign when_Ddr3MemtestEngine_l62 = (_zz_when_Ddr3MemtestEngine_l62 < 8'h0a);
+  assign when_Ddr3MemtestEngine_l193 = (! printValid);
+  assign when_Ddr3MemtestEngine_l225 = (((io_pll_lock && io_init_done) && io_write_level_done) && io_read_calib_done);
+  assign when_Ddr3MemtestEngine_l233 = (fsm_delayCounter == 28'h2435b6e);
+  assign when_Ddr3MemtestEngine_l244 = (! printValid);
+  assign _zz_when_Ddr3MemtestEngine_l65 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65};
+  assign when_Ddr3MemtestEngine_l65 = (_zz_when_Ddr3MemtestEngine_l65 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62) begin
+    if(when_Ddr3MemtestEngine_l65) begin
       _zz_printChar = _zz__zz_printChar;
     end else begin
       _zz_printChar = _zz__zz_printChar_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_1 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_1};
-  assign when_Ddr3MemtestEngine_l62_1 = (_zz_when_Ddr3MemtestEngine_l62_1 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_1 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_1};
+  assign when_Ddr3MemtestEngine_l65_1 = (_zz_when_Ddr3MemtestEngine_l65_1 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_1) begin
+    if(when_Ddr3MemtestEngine_l65_1) begin
       _zz_printChar_1 = _zz__zz_printChar_1_1;
     end else begin
       _zz_printChar_1 = _zz__zz_printChar_1_2;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_2 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_2};
-  assign when_Ddr3MemtestEngine_l62_2 = (_zz_when_Ddr3MemtestEngine_l62_2 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_2 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_2};
+  assign when_Ddr3MemtestEngine_l65_2 = (_zz_when_Ddr3MemtestEngine_l65_2 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_2) begin
+    if(when_Ddr3MemtestEngine_l65_2) begin
       _zz_printChar_2 = _zz__zz_printChar_2;
     end else begin
       _zz_printChar_2 = _zz__zz_printChar_2_1;
     end
   end
 
-  assign when_Ddr3MemtestEngine_l265 = (! printValid);
-  assign _zz_when_Ddr3MemtestEngine_l62_3 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_3};
-  assign when_Ddr3MemtestEngine_l62_3 = (_zz_when_Ddr3MemtestEngine_l62_3 < 8'h0a);
+  assign when_Ddr3MemtestEngine_l271 = (! printValid);
+  assign _zz_when_Ddr3MemtestEngine_l65_3 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_3};
+  assign when_Ddr3MemtestEngine_l65_3 = (_zz_when_Ddr3MemtestEngine_l65_3 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_3) begin
+    if(when_Ddr3MemtestEngine_l65_3) begin
       _zz_printChar_3 = _zz__zz_printChar_3;
     end else begin
       _zz_printChar_3 = _zz__zz_printChar_3_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_4 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_4};
-  assign when_Ddr3MemtestEngine_l62_4 = (_zz_when_Ddr3MemtestEngine_l62_4 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_4 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_4};
+  assign when_Ddr3MemtestEngine_l65_4 = (_zz_when_Ddr3MemtestEngine_l65_4 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_4) begin
+    if(when_Ddr3MemtestEngine_l65_4) begin
       _zz_printChar_4 = _zz__zz_printChar_4;
     end else begin
       _zz_printChar_4 = _zz__zz_printChar_4_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_5 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_5};
-  assign when_Ddr3MemtestEngine_l62_5 = (_zz_when_Ddr3MemtestEngine_l62_5 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_5 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_5};
+  assign when_Ddr3MemtestEngine_l65_5 = (_zz_when_Ddr3MemtestEngine_l65_5 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_5) begin
+    if(when_Ddr3MemtestEngine_l65_5) begin
       _zz_printChar_5 = _zz__zz_printChar_5;
     end else begin
       _zz_printChar_5 = _zz__zz_printChar_5_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_6 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_6};
-  assign when_Ddr3MemtestEngine_l62_6 = (_zz_when_Ddr3MemtestEngine_l62_6 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_6 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_6};
+  assign when_Ddr3MemtestEngine_l65_6 = (_zz_when_Ddr3MemtestEngine_l65_6 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_6) begin
+    if(when_Ddr3MemtestEngine_l65_6) begin
       _zz_printChar_6 = _zz__zz_printChar_6;
     end else begin
       _zz_printChar_6 = _zz__zz_printChar_6_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_7 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_7};
-  assign when_Ddr3MemtestEngine_l62_7 = (_zz_when_Ddr3MemtestEngine_l62_7 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_7 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_7};
+  assign when_Ddr3MemtestEngine_l65_7 = (_zz_when_Ddr3MemtestEngine_l65_7 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_7) begin
+    if(when_Ddr3MemtestEngine_l65_7) begin
       _zz_printChar_7 = _zz__zz_printChar_7;
     end else begin
       _zz_printChar_7 = _zz__zz_printChar_7_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_8 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_8};
-  assign when_Ddr3MemtestEngine_l62_8 = (_zz_when_Ddr3MemtestEngine_l62_8 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_8 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_8};
+  assign when_Ddr3MemtestEngine_l65_8 = (_zz_when_Ddr3MemtestEngine_l65_8 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_8) begin
+    if(when_Ddr3MemtestEngine_l65_8) begin
       _zz_printChar_8 = _zz__zz_printChar_8;
     end else begin
       _zz_printChar_8 = _zz__zz_printChar_8_1;
     end
   end
 
-  assign when_Ddr3MemtestEngine_l313 = (! printValid);
-  assign _zz_when_Ddr3MemtestEngine_l62_9 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_9};
-  assign when_Ddr3MemtestEngine_l62_9 = (_zz_when_Ddr3MemtestEngine_l62_9 < 8'h0a);
+  assign when_Ddr3MemtestEngine_l319 = (! printValid);
+  assign _zz_when_Ddr3MemtestEngine_l65_9 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_9};
+  assign when_Ddr3MemtestEngine_l65_9 = (_zz_when_Ddr3MemtestEngine_l65_9 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_9) begin
+    if(when_Ddr3MemtestEngine_l65_9) begin
       _zz_printChar_9 = _zz__zz_printChar_9;
     end else begin
       _zz_printChar_9 = _zz__zz_printChar_9_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_10 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_10};
-  assign when_Ddr3MemtestEngine_l62_10 = (_zz_when_Ddr3MemtestEngine_l62_10 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_10 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_10};
+  assign when_Ddr3MemtestEngine_l65_10 = (_zz_when_Ddr3MemtestEngine_l65_10 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_10) begin
+    if(when_Ddr3MemtestEngine_l65_10) begin
       _zz_printChar_10 = _zz__zz_printChar_10;
     end else begin
       _zz_printChar_10 = _zz__zz_printChar_10_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_11 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_11};
-  assign when_Ddr3MemtestEngine_l62_11 = (_zz_when_Ddr3MemtestEngine_l62_11 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_11 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_11};
+  assign when_Ddr3MemtestEngine_l65_11 = (_zz_when_Ddr3MemtestEngine_l65_11 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_11) begin
+    if(when_Ddr3MemtestEngine_l65_11) begin
       _zz_printChar_11 = _zz__zz_printChar_11;
     end else begin
       _zz_printChar_11 = _zz__zz_printChar_11_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_12 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_12};
-  assign when_Ddr3MemtestEngine_l62_12 = (_zz_when_Ddr3MemtestEngine_l62_12 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_12 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_12};
+  assign when_Ddr3MemtestEngine_l65_12 = (_zz_when_Ddr3MemtestEngine_l65_12 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_12) begin
+    if(when_Ddr3MemtestEngine_l65_12) begin
       _zz_printChar_12 = _zz__zz_printChar_12;
     end else begin
       _zz_printChar_12 = _zz__zz_printChar_12_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_13 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_13};
-  assign when_Ddr3MemtestEngine_l62_13 = (_zz_when_Ddr3MemtestEngine_l62_13 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_13 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_13};
+  assign when_Ddr3MemtestEngine_l65_13 = (_zz_when_Ddr3MemtestEngine_l65_13 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_13) begin
+    if(when_Ddr3MemtestEngine_l65_13) begin
       _zz_printChar_13 = _zz__zz_printChar_13;
     end else begin
       _zz_printChar_13 = _zz__zz_printChar_13_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_14 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_14};
-  assign when_Ddr3MemtestEngine_l62_14 = (_zz_when_Ddr3MemtestEngine_l62_14 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_14 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_14};
+  assign when_Ddr3MemtestEngine_l65_14 = (_zz_when_Ddr3MemtestEngine_l65_14 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_14) begin
+    if(when_Ddr3MemtestEngine_l65_14) begin
       _zz_printChar_14 = _zz__zz_printChar_14;
     end else begin
       _zz_printChar_14 = _zz__zz_printChar_14_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_15 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_15};
-  assign when_Ddr3MemtestEngine_l62_15 = (_zz_when_Ddr3MemtestEngine_l62_15 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_15 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_15};
+  assign when_Ddr3MemtestEngine_l65_15 = (_zz_when_Ddr3MemtestEngine_l65_15 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_15) begin
+    if(when_Ddr3MemtestEngine_l65_15) begin
       _zz_printChar_15 = _zz__zz_printChar_15;
     end else begin
       _zz_printChar_15 = _zz__zz_printChar_15_1;
     end
   end
 
-  assign when_Ddr3MemtestEngine_l397 = ((! errorReg) && (io_axi_r_payload_data != 64'h0123456789abcdef));
-  assign when_Ddr3MemtestEngine_l413 = ((! errorReg) && (io_axi_r_payload_data != 64'hfedcba9876543210));
-  assign when_Ddr3MemtestEngine_l419 = (errorReg || (io_axi_r_payload_data != 64'hfedcba9876543210));
-  assign when_Ddr3MemtestEngine_l460 = (burstIndex == 11'h3ff);
-  assign _zz_errExpected = {(currentByteAddr ^ 32'h5aa55aa5),_zz__zz_errExpected};
-  assign when_Ddr3MemtestEngine_l482 = ((! errorReg) && (io_axi_r_payload_data != _zz_errExpected));
-  assign _zz_errExpected_1 = {(currentByteAddr ^ 32'h12345678),_zz__zz_errExpected_1};
-  assign when_Ddr3MemtestEngine_l496 = ((! errorReg) && (io_axi_r_payload_data != _zz_errExpected_1));
-  assign when_Ddr3MemtestEngine_l502 = (errorReg || (io_axi_r_payload_data != _zz_errExpected_1));
-  assign when_Ddr3MemtestEngine_l506 = (burstIndex == 11'h3ff);
-  assign when_Ddr3MemtestEngine_l520 = (! printValid);
-  assign _zz_when_Ddr3MemtestEngine_l62_16 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_16};
-  assign when_Ddr3MemtestEngine_l62_16 = (_zz_when_Ddr3MemtestEngine_l62_16 < 8'h0a);
+  assign when_Ddr3MemtestEngine_l359 = (! printValid);
+  assign _zz_when_Ddr3MemtestEngine_l65_16 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_16};
+  assign when_Ddr3MemtestEngine_l65_16 = (_zz_when_Ddr3MemtestEngine_l65_16 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_16) begin
+    if(when_Ddr3MemtestEngine_l65_16) begin
       _zz_printChar_16 = _zz__zz_printChar_16;
     end else begin
       _zz_printChar_16 = _zz__zz_printChar_16_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_17 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_17};
-  assign when_Ddr3MemtestEngine_l62_17 = (_zz_when_Ddr3MemtestEngine_l62_17 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_17 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_17};
+  assign when_Ddr3MemtestEngine_l65_17 = (_zz_when_Ddr3MemtestEngine_l65_17 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_17) begin
+    if(when_Ddr3MemtestEngine_l65_17) begin
       _zz_printChar_17 = _zz__zz_printChar_17;
     end else begin
       _zz_printChar_17 = _zz__zz_printChar_17_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_18 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_18};
-  assign when_Ddr3MemtestEngine_l62_18 = (_zz_when_Ddr3MemtestEngine_l62_18 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_18 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_18};
+  assign when_Ddr3MemtestEngine_l65_18 = (_zz_when_Ddr3MemtestEngine_l65_18 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_18) begin
+    if(when_Ddr3MemtestEngine_l65_18) begin
       _zz_printChar_18 = _zz__zz_printChar_18;
     end else begin
       _zz_printChar_18 = _zz__zz_printChar_18_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_19 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_19};
-  assign when_Ddr3MemtestEngine_l62_19 = (_zz_when_Ddr3MemtestEngine_l62_19 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_19 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_19};
+  assign when_Ddr3MemtestEngine_l65_19 = (_zz_when_Ddr3MemtestEngine_l65_19 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_19) begin
+    if(when_Ddr3MemtestEngine_l65_19) begin
       _zz_printChar_19 = _zz__zz_printChar_19;
     end else begin
       _zz_printChar_19 = _zz__zz_printChar_19_1;
     end
   end
 
-  assign when_Ddr3MemtestEngine_l546 = (! printValid);
-  assign _zz_when_Ddr3MemtestEngine_l62_20 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_20};
-  assign when_Ddr3MemtestEngine_l62_20 = (_zz_when_Ddr3MemtestEngine_l62_20 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_20 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_20};
+  assign when_Ddr3MemtestEngine_l65_20 = (_zz_when_Ddr3MemtestEngine_l65_20 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_20) begin
+    if(when_Ddr3MemtestEngine_l65_20) begin
       _zz_printChar_20 = _zz__zz_printChar_20;
     end else begin
       _zz_printChar_20 = _zz__zz_printChar_20_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_21 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_21};
-  assign when_Ddr3MemtestEngine_l62_21 = (_zz_when_Ddr3MemtestEngine_l62_21 < 8'h0a);
+  assign when_Ddr3MemtestEngine_l436 = ((! errorReg) && (io_axi_r_payload_data != 64'h0123456789abcdef));
+  assign when_Ddr3MemtestEngine_l452 = ((! errorReg) && (io_axi_r_payload_data != 64'hfedcba9876543210));
+  assign when_Ddr3MemtestEngine_l458 = (errorReg || (io_axi_r_payload_data != 64'hfedcba9876543210));
+  assign when_Ddr3MemtestEngine_l499 = (burstIndex == 11'h3ff);
+  assign _zz_errExpected = {(currentByteAddr ^ 32'h5aa55aa5),_zz__zz_errExpected};
+  assign when_Ddr3MemtestEngine_l521 = ((! errorReg) && (io_axi_r_payload_data != _zz_errExpected));
+  assign _zz_errExpected_1 = {(currentByteAddr ^ 32'h12345678),_zz__zz_errExpected_1};
+  assign when_Ddr3MemtestEngine_l535 = ((! errorReg) && (io_axi_r_payload_data != _zz_errExpected_1));
+  assign when_Ddr3MemtestEngine_l541 = (errorReg || (io_axi_r_payload_data != _zz_errExpected_1));
+  assign when_Ddr3MemtestEngine_l545 = (burstIndex == 11'h3ff);
+  assign when_Ddr3MemtestEngine_l559 = (! printValid);
+  assign _zz_when_Ddr3MemtestEngine_l65_21 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_21};
+  assign when_Ddr3MemtestEngine_l65_21 = (_zz_when_Ddr3MemtestEngine_l65_21 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_21) begin
+    if(when_Ddr3MemtestEngine_l65_21) begin
       _zz_printChar_21 = _zz__zz_printChar_21;
     end else begin
       _zz_printChar_21 = _zz__zz_printChar_21_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_22 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_22};
-  assign when_Ddr3MemtestEngine_l62_22 = (_zz_when_Ddr3MemtestEngine_l62_22 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_22 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_22};
+  assign when_Ddr3MemtestEngine_l65_22 = (_zz_when_Ddr3MemtestEngine_l65_22 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_22) begin
+    if(when_Ddr3MemtestEngine_l65_22) begin
       _zz_printChar_22 = _zz__zz_printChar_22;
     end else begin
       _zz_printChar_22 = _zz__zz_printChar_22_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_23 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_23};
-  assign when_Ddr3MemtestEngine_l62_23 = (_zz_when_Ddr3MemtestEngine_l62_23 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_23 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_23};
+  assign when_Ddr3MemtestEngine_l65_23 = (_zz_when_Ddr3MemtestEngine_l65_23 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_23) begin
+    if(when_Ddr3MemtestEngine_l65_23) begin
       _zz_printChar_23 = _zz__zz_printChar_23;
     end else begin
       _zz_printChar_23 = _zz__zz_printChar_23_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_24 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_24};
-  assign when_Ddr3MemtestEngine_l62_24 = (_zz_when_Ddr3MemtestEngine_l62_24 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_24 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_24};
+  assign when_Ddr3MemtestEngine_l65_24 = (_zz_when_Ddr3MemtestEngine_l65_24 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_24) begin
+    if(when_Ddr3MemtestEngine_l65_24) begin
       _zz_printChar_24 = _zz__zz_printChar_24;
     end else begin
       _zz_printChar_24 = _zz__zz_printChar_24_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_25 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_25};
-  assign when_Ddr3MemtestEngine_l62_25 = (_zz_when_Ddr3MemtestEngine_l62_25 < 8'h0a);
+  assign when_Ddr3MemtestEngine_l585 = (! printValid);
+  assign _zz_when_Ddr3MemtestEngine_l65_25 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_25};
+  assign when_Ddr3MemtestEngine_l65_25 = (_zz_when_Ddr3MemtestEngine_l65_25 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_25) begin
+    if(when_Ddr3MemtestEngine_l65_25) begin
       _zz_printChar_25 = _zz__zz_printChar_25;
     end else begin
       _zz_printChar_25 = _zz__zz_printChar_25_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_26 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_26};
-  assign when_Ddr3MemtestEngine_l62_26 = (_zz_when_Ddr3MemtestEngine_l62_26 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_26 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_26};
+  assign when_Ddr3MemtestEngine_l65_26 = (_zz_when_Ddr3MemtestEngine_l65_26 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_26) begin
+    if(when_Ddr3MemtestEngine_l65_26) begin
       _zz_printChar_26 = _zz__zz_printChar_26;
     end else begin
       _zz_printChar_26 = _zz__zz_printChar_26_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_27 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_27};
-  assign when_Ddr3MemtestEngine_l62_27 = (_zz_when_Ddr3MemtestEngine_l62_27 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_27 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_27};
+  assign when_Ddr3MemtestEngine_l65_27 = (_zz_when_Ddr3MemtestEngine_l65_27 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_27) begin
+    if(when_Ddr3MemtestEngine_l65_27) begin
       _zz_printChar_27 = _zz__zz_printChar_27;
     end else begin
       _zz_printChar_27 = _zz__zz_printChar_27_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_28 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_28};
-  assign when_Ddr3MemtestEngine_l62_28 = (_zz_when_Ddr3MemtestEngine_l62_28 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_28 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_28};
+  assign when_Ddr3MemtestEngine_l65_28 = (_zz_when_Ddr3MemtestEngine_l65_28 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_28) begin
+    if(when_Ddr3MemtestEngine_l65_28) begin
       _zz_printChar_28 = _zz__zz_printChar_28;
     end else begin
       _zz_printChar_28 = _zz__zz_printChar_28_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_29 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_29};
-  assign when_Ddr3MemtestEngine_l62_29 = (_zz_when_Ddr3MemtestEngine_l62_29 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_29 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_29};
+  assign when_Ddr3MemtestEngine_l65_29 = (_zz_when_Ddr3MemtestEngine_l65_29 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_29) begin
+    if(when_Ddr3MemtestEngine_l65_29) begin
       _zz_printChar_29 = _zz__zz_printChar_29;
     end else begin
       _zz_printChar_29 = _zz__zz_printChar_29_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_30 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_30};
-  assign when_Ddr3MemtestEngine_l62_30 = (_zz_when_Ddr3MemtestEngine_l62_30 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_30 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_30};
+  assign when_Ddr3MemtestEngine_l65_30 = (_zz_when_Ddr3MemtestEngine_l65_30 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_30) begin
+    if(when_Ddr3MemtestEngine_l65_30) begin
       _zz_printChar_30 = _zz__zz_printChar_30;
     end else begin
       _zz_printChar_30 = _zz__zz_printChar_30_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_31 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_31};
-  assign when_Ddr3MemtestEngine_l62_31 = (_zz_when_Ddr3MemtestEngine_l62_31 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_31 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_31};
+  assign when_Ddr3MemtestEngine_l65_31 = (_zz_when_Ddr3MemtestEngine_l65_31 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_31) begin
+    if(when_Ddr3MemtestEngine_l65_31) begin
       _zz_printChar_31 = _zz__zz_printChar_31;
     end else begin
       _zz_printChar_31 = _zz__zz_printChar_31_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_32 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_32};
-  assign when_Ddr3MemtestEngine_l62_32 = (_zz_when_Ddr3MemtestEngine_l62_32 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_32 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_32};
+  assign when_Ddr3MemtestEngine_l65_32 = (_zz_when_Ddr3MemtestEngine_l65_32 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_32) begin
+    if(when_Ddr3MemtestEngine_l65_32) begin
       _zz_printChar_32 = _zz__zz_printChar_32;
     end else begin
       _zz_printChar_32 = _zz__zz_printChar_32_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_33 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_33};
-  assign when_Ddr3MemtestEngine_l62_33 = (_zz_when_Ddr3MemtestEngine_l62_33 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_33 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_33};
+  assign when_Ddr3MemtestEngine_l65_33 = (_zz_when_Ddr3MemtestEngine_l65_33 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_33) begin
+    if(when_Ddr3MemtestEngine_l65_33) begin
       _zz_printChar_33 = _zz__zz_printChar_33;
     end else begin
       _zz_printChar_33 = _zz__zz_printChar_33_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_34 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_34};
-  assign when_Ddr3MemtestEngine_l62_34 = (_zz_when_Ddr3MemtestEngine_l62_34 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_34 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_34};
+  assign when_Ddr3MemtestEngine_l65_34 = (_zz_when_Ddr3MemtestEngine_l65_34 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_34) begin
+    if(when_Ddr3MemtestEngine_l65_34) begin
       _zz_printChar_34 = _zz__zz_printChar_34;
     end else begin
       _zz_printChar_34 = _zz__zz_printChar_34_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_35 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_35};
-  assign when_Ddr3MemtestEngine_l62_35 = (_zz_when_Ddr3MemtestEngine_l62_35 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_35 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_35};
+  assign when_Ddr3MemtestEngine_l65_35 = (_zz_when_Ddr3MemtestEngine_l65_35 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_35) begin
+    if(when_Ddr3MemtestEngine_l65_35) begin
       _zz_printChar_35 = _zz__zz_printChar_35;
     end else begin
       _zz_printChar_35 = _zz__zz_printChar_35_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_36 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_36};
-  assign when_Ddr3MemtestEngine_l62_36 = (_zz_when_Ddr3MemtestEngine_l62_36 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_36 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_36};
+  assign when_Ddr3MemtestEngine_l65_36 = (_zz_when_Ddr3MemtestEngine_l65_36 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_36) begin
+    if(when_Ddr3MemtestEngine_l65_36) begin
       _zz_printChar_36 = _zz__zz_printChar_36;
     end else begin
       _zz_printChar_36 = _zz__zz_printChar_36_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_37 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_37};
-  assign when_Ddr3MemtestEngine_l62_37 = (_zz_when_Ddr3MemtestEngine_l62_37 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_37 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_37};
+  assign when_Ddr3MemtestEngine_l65_37 = (_zz_when_Ddr3MemtestEngine_l65_37 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_37) begin
+    if(when_Ddr3MemtestEngine_l65_37) begin
       _zz_printChar_37 = _zz__zz_printChar_37;
     end else begin
       _zz_printChar_37 = _zz__zz_printChar_37_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_38 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_38};
-  assign when_Ddr3MemtestEngine_l62_38 = (_zz_when_Ddr3MemtestEngine_l62_38 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_38 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_38};
+  assign when_Ddr3MemtestEngine_l65_38 = (_zz_when_Ddr3MemtestEngine_l65_38 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_38) begin
+    if(when_Ddr3MemtestEngine_l65_38) begin
       _zz_printChar_38 = _zz__zz_printChar_38;
     end else begin
       _zz_printChar_38 = _zz__zz_printChar_38_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_39 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_39};
-  assign when_Ddr3MemtestEngine_l62_39 = (_zz_when_Ddr3MemtestEngine_l62_39 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_39 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_39};
+  assign when_Ddr3MemtestEngine_l65_39 = (_zz_when_Ddr3MemtestEngine_l65_39 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_39) begin
+    if(when_Ddr3MemtestEngine_l65_39) begin
       _zz_printChar_39 = _zz__zz_printChar_39;
     end else begin
       _zz_printChar_39 = _zz__zz_printChar_39_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_40 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_40};
-  assign when_Ddr3MemtestEngine_l62_40 = (_zz_when_Ddr3MemtestEngine_l62_40 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_40 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_40};
+  assign when_Ddr3MemtestEngine_l65_40 = (_zz_when_Ddr3MemtestEngine_l65_40 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_40) begin
+    if(when_Ddr3MemtestEngine_l65_40) begin
       _zz_printChar_40 = _zz__zz_printChar_40;
     end else begin
       _zz_printChar_40 = _zz__zz_printChar_40_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_41 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_41};
-  assign when_Ddr3MemtestEngine_l62_41 = (_zz_when_Ddr3MemtestEngine_l62_41 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_41 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_41};
+  assign when_Ddr3MemtestEngine_l65_41 = (_zz_when_Ddr3MemtestEngine_l65_41 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_41) begin
+    if(when_Ddr3MemtestEngine_l65_41) begin
       _zz_printChar_41 = _zz__zz_printChar_41;
     end else begin
       _zz_printChar_41 = _zz__zz_printChar_41_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_42 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_42};
-  assign when_Ddr3MemtestEngine_l62_42 = (_zz_when_Ddr3MemtestEngine_l62_42 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_42 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_42};
+  assign when_Ddr3MemtestEngine_l65_42 = (_zz_when_Ddr3MemtestEngine_l65_42 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_42) begin
+    if(when_Ddr3MemtestEngine_l65_42) begin
       _zz_printChar_42 = _zz__zz_printChar_42;
     end else begin
       _zz_printChar_42 = _zz__zz_printChar_42_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_43 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_43};
-  assign when_Ddr3MemtestEngine_l62_43 = (_zz_when_Ddr3MemtestEngine_l62_43 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_43 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_43};
+  assign when_Ddr3MemtestEngine_l65_43 = (_zz_when_Ddr3MemtestEngine_l65_43 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_43) begin
+    if(when_Ddr3MemtestEngine_l65_43) begin
       _zz_printChar_43 = _zz__zz_printChar_43;
     end else begin
       _zz_printChar_43 = _zz__zz_printChar_43_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_44 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_44};
-  assign when_Ddr3MemtestEngine_l62_44 = (_zz_when_Ddr3MemtestEngine_l62_44 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_44 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_44};
+  assign when_Ddr3MemtestEngine_l65_44 = (_zz_when_Ddr3MemtestEngine_l65_44 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_44) begin
+    if(when_Ddr3MemtestEngine_l65_44) begin
       _zz_printChar_44 = _zz__zz_printChar_44;
     end else begin
       _zz_printChar_44 = _zz__zz_printChar_44_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_45 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_45};
-  assign when_Ddr3MemtestEngine_l62_45 = (_zz_when_Ddr3MemtestEngine_l62_45 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_45 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_45};
+  assign when_Ddr3MemtestEngine_l65_45 = (_zz_when_Ddr3MemtestEngine_l65_45 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_45) begin
+    if(when_Ddr3MemtestEngine_l65_45) begin
       _zz_printChar_45 = _zz__zz_printChar_45;
     end else begin
       _zz_printChar_45 = _zz__zz_printChar_45_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_46 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_46};
-  assign when_Ddr3MemtestEngine_l62_46 = (_zz_when_Ddr3MemtestEngine_l62_46 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_46 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_46};
+  assign when_Ddr3MemtestEngine_l65_46 = (_zz_when_Ddr3MemtestEngine_l65_46 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_46) begin
+    if(when_Ddr3MemtestEngine_l65_46) begin
       _zz_printChar_46 = _zz__zz_printChar_46;
     end else begin
       _zz_printChar_46 = _zz__zz_printChar_46_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_47 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_47};
-  assign when_Ddr3MemtestEngine_l62_47 = (_zz_when_Ddr3MemtestEngine_l62_47 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_47 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_47};
+  assign when_Ddr3MemtestEngine_l65_47 = (_zz_when_Ddr3MemtestEngine_l65_47 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_47) begin
+    if(when_Ddr3MemtestEngine_l65_47) begin
       _zz_printChar_47 = _zz__zz_printChar_47;
     end else begin
       _zz_printChar_47 = _zz__zz_printChar_47_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_48 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_48};
-  assign when_Ddr3MemtestEngine_l62_48 = (_zz_when_Ddr3MemtestEngine_l62_48 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_48 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_48};
+  assign when_Ddr3MemtestEngine_l65_48 = (_zz_when_Ddr3MemtestEngine_l65_48 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_48) begin
+    if(when_Ddr3MemtestEngine_l65_48) begin
       _zz_printChar_48 = _zz__zz_printChar_48;
     end else begin
       _zz_printChar_48 = _zz__zz_printChar_48_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_49 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_49};
-  assign when_Ddr3MemtestEngine_l62_49 = (_zz_when_Ddr3MemtestEngine_l62_49 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_49 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_49};
+  assign when_Ddr3MemtestEngine_l65_49 = (_zz_when_Ddr3MemtestEngine_l65_49 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_49) begin
+    if(when_Ddr3MemtestEngine_l65_49) begin
       _zz_printChar_49 = _zz__zz_printChar_49;
     end else begin
       _zz_printChar_49 = _zz__zz_printChar_49_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_50 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_50};
-  assign when_Ddr3MemtestEngine_l62_50 = (_zz_when_Ddr3MemtestEngine_l62_50 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_50 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_50};
+  assign when_Ddr3MemtestEngine_l65_50 = (_zz_when_Ddr3MemtestEngine_l65_50 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_50) begin
+    if(when_Ddr3MemtestEngine_l65_50) begin
       _zz_printChar_50 = _zz__zz_printChar_50;
     end else begin
       _zz_printChar_50 = _zz__zz_printChar_50_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_51 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_51};
-  assign when_Ddr3MemtestEngine_l62_51 = (_zz_when_Ddr3MemtestEngine_l62_51 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_51 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_51};
+  assign when_Ddr3MemtestEngine_l65_51 = (_zz_when_Ddr3MemtestEngine_l65_51 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_51) begin
+    if(when_Ddr3MemtestEngine_l65_51) begin
       _zz_printChar_51 = _zz__zz_printChar_51;
     end else begin
       _zz_printChar_51 = _zz__zz_printChar_51_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_52 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_52};
-  assign when_Ddr3MemtestEngine_l62_52 = (_zz_when_Ddr3MemtestEngine_l62_52 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_52 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_52};
+  assign when_Ddr3MemtestEngine_l65_52 = (_zz_when_Ddr3MemtestEngine_l65_52 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_52) begin
+    if(when_Ddr3MemtestEngine_l65_52) begin
       _zz_printChar_52 = _zz__zz_printChar_52;
     end else begin
       _zz_printChar_52 = _zz__zz_printChar_52_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_53 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_53};
-  assign when_Ddr3MemtestEngine_l62_53 = (_zz_when_Ddr3MemtestEngine_l62_53 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_53 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_53};
+  assign when_Ddr3MemtestEngine_l65_53 = (_zz_when_Ddr3MemtestEngine_l65_53 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_53) begin
+    if(when_Ddr3MemtestEngine_l65_53) begin
       _zz_printChar_53 = _zz__zz_printChar_53;
     end else begin
       _zz_printChar_53 = _zz__zz_printChar_53_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_54 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_54};
-  assign when_Ddr3MemtestEngine_l62_54 = (_zz_when_Ddr3MemtestEngine_l62_54 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_54 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_54};
+  assign when_Ddr3MemtestEngine_l65_54 = (_zz_when_Ddr3MemtestEngine_l65_54 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_54) begin
+    if(when_Ddr3MemtestEngine_l65_54) begin
       _zz_printChar_54 = _zz__zz_printChar_54;
     end else begin
       _zz_printChar_54 = _zz__zz_printChar_54_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_55 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_55};
-  assign when_Ddr3MemtestEngine_l62_55 = (_zz_when_Ddr3MemtestEngine_l62_55 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_55 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_55};
+  assign when_Ddr3MemtestEngine_l65_55 = (_zz_when_Ddr3MemtestEngine_l65_55 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_55) begin
+    if(when_Ddr3MemtestEngine_l65_55) begin
       _zz_printChar_55 = _zz__zz_printChar_55;
     end else begin
       _zz_printChar_55 = _zz__zz_printChar_55_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_56 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_56};
-  assign when_Ddr3MemtestEngine_l62_56 = (_zz_when_Ddr3MemtestEngine_l62_56 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_56 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_56};
+  assign when_Ddr3MemtestEngine_l65_56 = (_zz_when_Ddr3MemtestEngine_l65_56 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_56) begin
+    if(when_Ddr3MemtestEngine_l65_56) begin
       _zz_printChar_56 = _zz__zz_printChar_56;
     end else begin
       _zz_printChar_56 = _zz__zz_printChar_56_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_57 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_57};
-  assign when_Ddr3MemtestEngine_l62_57 = (_zz_when_Ddr3MemtestEngine_l62_57 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_57 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_57};
+  assign when_Ddr3MemtestEngine_l65_57 = (_zz_when_Ddr3MemtestEngine_l65_57 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_57) begin
+    if(when_Ddr3MemtestEngine_l65_57) begin
       _zz_printChar_57 = _zz__zz_printChar_57;
     end else begin
       _zz_printChar_57 = _zz__zz_printChar_57_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_58 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_58};
-  assign when_Ddr3MemtestEngine_l62_58 = (_zz_when_Ddr3MemtestEngine_l62_58 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_58 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_58};
+  assign when_Ddr3MemtestEngine_l65_58 = (_zz_when_Ddr3MemtestEngine_l65_58 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_58) begin
+    if(when_Ddr3MemtestEngine_l65_58) begin
       _zz_printChar_58 = _zz__zz_printChar_58;
     end else begin
       _zz_printChar_58 = _zz__zz_printChar_58_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_59 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_59};
-  assign when_Ddr3MemtestEngine_l62_59 = (_zz_when_Ddr3MemtestEngine_l62_59 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_59 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_59};
+  assign when_Ddr3MemtestEngine_l65_59 = (_zz_when_Ddr3MemtestEngine_l65_59 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_59) begin
+    if(when_Ddr3MemtestEngine_l65_59) begin
       _zz_printChar_59 = _zz__zz_printChar_59;
     end else begin
       _zz_printChar_59 = _zz__zz_printChar_59_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_60 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_60};
-  assign when_Ddr3MemtestEngine_l62_60 = (_zz_when_Ddr3MemtestEngine_l62_60 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_60 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_60};
+  assign when_Ddr3MemtestEngine_l65_60 = (_zz_when_Ddr3MemtestEngine_l65_60 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_60) begin
+    if(when_Ddr3MemtestEngine_l65_60) begin
       _zz_printChar_60 = _zz__zz_printChar_60;
     end else begin
       _zz_printChar_60 = _zz__zz_printChar_60_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_61 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_61};
-  assign when_Ddr3MemtestEngine_l62_61 = (_zz_when_Ddr3MemtestEngine_l62_61 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_61 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_61};
+  assign when_Ddr3MemtestEngine_l65_61 = (_zz_when_Ddr3MemtestEngine_l65_61 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_61) begin
+    if(when_Ddr3MemtestEngine_l65_61) begin
       _zz_printChar_61 = _zz__zz_printChar_61;
     end else begin
       _zz_printChar_61 = _zz__zz_printChar_61_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_62 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_62};
-  assign when_Ddr3MemtestEngine_l62_62 = (_zz_when_Ddr3MemtestEngine_l62_62 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_62 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_62};
+  assign when_Ddr3MemtestEngine_l65_62 = (_zz_when_Ddr3MemtestEngine_l65_62 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_62) begin
+    if(when_Ddr3MemtestEngine_l65_62) begin
       _zz_printChar_62 = _zz__zz_printChar_62;
     end else begin
       _zz_printChar_62 = _zz__zz_printChar_62_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_63 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_63};
-  assign when_Ddr3MemtestEngine_l62_63 = (_zz_when_Ddr3MemtestEngine_l62_63 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_63 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_63};
+  assign when_Ddr3MemtestEngine_l65_63 = (_zz_when_Ddr3MemtestEngine_l65_63 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_63) begin
+    if(when_Ddr3MemtestEngine_l65_63) begin
       _zz_printChar_63 = _zz__zz_printChar_63;
     end else begin
       _zz_printChar_63 = _zz__zz_printChar_63_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_64 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_64};
-  assign when_Ddr3MemtestEngine_l62_64 = (_zz_when_Ddr3MemtestEngine_l62_64 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_64 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_64};
+  assign when_Ddr3MemtestEngine_l65_64 = (_zz_when_Ddr3MemtestEngine_l65_64 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_64) begin
+    if(when_Ddr3MemtestEngine_l65_64) begin
       _zz_printChar_64 = _zz__zz_printChar_64;
     end else begin
       _zz_printChar_64 = _zz__zz_printChar_64_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_65 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_65};
-  assign when_Ddr3MemtestEngine_l62_65 = (_zz_when_Ddr3MemtestEngine_l62_65 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_65 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_65};
+  assign when_Ddr3MemtestEngine_l65_65 = (_zz_when_Ddr3MemtestEngine_l65_65 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_65) begin
+    if(when_Ddr3MemtestEngine_l65_65) begin
       _zz_printChar_65 = _zz__zz_printChar_65;
     end else begin
       _zz_printChar_65 = _zz__zz_printChar_65_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_66 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_66};
-  assign when_Ddr3MemtestEngine_l62_66 = (_zz_when_Ddr3MemtestEngine_l62_66 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_66 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_66};
+  assign when_Ddr3MemtestEngine_l65_66 = (_zz_when_Ddr3MemtestEngine_l65_66 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_66) begin
+    if(when_Ddr3MemtestEngine_l65_66) begin
       _zz_printChar_66 = _zz__zz_printChar_66;
     end else begin
       _zz_printChar_66 = _zz__zz_printChar_66_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_67 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_67};
-  assign when_Ddr3MemtestEngine_l62_67 = (_zz_when_Ddr3MemtestEngine_l62_67 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_67 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_67};
+  assign when_Ddr3MemtestEngine_l65_67 = (_zz_when_Ddr3MemtestEngine_l65_67 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_67) begin
+    if(when_Ddr3MemtestEngine_l65_67) begin
       _zz_printChar_67 = _zz__zz_printChar_67;
     end else begin
       _zz_printChar_67 = _zz__zz_printChar_67_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_68 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_68};
-  assign when_Ddr3MemtestEngine_l62_68 = (_zz_when_Ddr3MemtestEngine_l62_68 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_68 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_68};
+  assign when_Ddr3MemtestEngine_l65_68 = (_zz_when_Ddr3MemtestEngine_l65_68 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_68) begin
+    if(when_Ddr3MemtestEngine_l65_68) begin
       _zz_printChar_68 = _zz__zz_printChar_68;
     end else begin
       _zz_printChar_68 = _zz__zz_printChar_68_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_69 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_69};
-  assign when_Ddr3MemtestEngine_l62_69 = (_zz_when_Ddr3MemtestEngine_l62_69 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_69 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_69};
+  assign when_Ddr3MemtestEngine_l65_69 = (_zz_when_Ddr3MemtestEngine_l65_69 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_69) begin
+    if(when_Ddr3MemtestEngine_l65_69) begin
       _zz_printChar_69 = _zz__zz_printChar_69;
     end else begin
       _zz_printChar_69 = _zz__zz_printChar_69_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_70 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_70};
-  assign when_Ddr3MemtestEngine_l62_70 = (_zz_when_Ddr3MemtestEngine_l62_70 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_70 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_70};
+  assign when_Ddr3MemtestEngine_l65_70 = (_zz_when_Ddr3MemtestEngine_l65_70 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_70) begin
+    if(when_Ddr3MemtestEngine_l65_70) begin
       _zz_printChar_70 = _zz__zz_printChar_70;
     end else begin
       _zz_printChar_70 = _zz__zz_printChar_70_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_71 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_71};
-  assign when_Ddr3MemtestEngine_l62_71 = (_zz_when_Ddr3MemtestEngine_l62_71 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_71 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_71};
+  assign when_Ddr3MemtestEngine_l65_71 = (_zz_when_Ddr3MemtestEngine_l65_71 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_71) begin
+    if(when_Ddr3MemtestEngine_l65_71) begin
       _zz_printChar_71 = _zz__zz_printChar_71;
     end else begin
       _zz_printChar_71 = _zz__zz_printChar_71_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_72 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_72};
-  assign when_Ddr3MemtestEngine_l62_72 = (_zz_when_Ddr3MemtestEngine_l62_72 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_72 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_72};
+  assign when_Ddr3MemtestEngine_l65_72 = (_zz_when_Ddr3MemtestEngine_l65_72 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_72) begin
+    if(when_Ddr3MemtestEngine_l65_72) begin
       _zz_printChar_72 = _zz__zz_printChar_72;
     end else begin
       _zz_printChar_72 = _zz__zz_printChar_72_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_73 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_73};
-  assign when_Ddr3MemtestEngine_l62_73 = (_zz_when_Ddr3MemtestEngine_l62_73 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_73 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_73};
+  assign when_Ddr3MemtestEngine_l65_73 = (_zz_when_Ddr3MemtestEngine_l65_73 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_73) begin
+    if(when_Ddr3MemtestEngine_l65_73) begin
       _zz_printChar_73 = _zz__zz_printChar_73;
     end else begin
       _zz_printChar_73 = _zz__zz_printChar_73_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_74 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_74};
-  assign when_Ddr3MemtestEngine_l62_74 = (_zz_when_Ddr3MemtestEngine_l62_74 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_74 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_74};
+  assign when_Ddr3MemtestEngine_l65_74 = (_zz_when_Ddr3MemtestEngine_l65_74 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_74) begin
+    if(when_Ddr3MemtestEngine_l65_74) begin
       _zz_printChar_74 = _zz__zz_printChar_74;
     end else begin
       _zz_printChar_74 = _zz__zz_printChar_74_1;
     end
   end
 
-  assign _zz_when_Ddr3MemtestEngine_l62_75 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l62_75};
-  assign when_Ddr3MemtestEngine_l62_75 = (_zz_when_Ddr3MemtestEngine_l62_75 < 8'h0a);
+  assign _zz_when_Ddr3MemtestEngine_l65_75 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_75};
+  assign when_Ddr3MemtestEngine_l65_75 = (_zz_when_Ddr3MemtestEngine_l65_75 < 8'h0a);
   always @(*) begin
-    if(when_Ddr3MemtestEngine_l62_75) begin
+    if(when_Ddr3MemtestEngine_l65_75) begin
       _zz_printChar_75 = _zz__zz_printChar_75;
     end else begin
       _zz_printChar_75 = _zz__zz_printChar_75_1;
     end
   end
 
-  assign when_Ddr3MemtestEngine_l634 = (fsm_delayCounter == 28'h00f3110);
+  assign _zz_when_Ddr3MemtestEngine_l65_76 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_76};
+  assign when_Ddr3MemtestEngine_l65_76 = (_zz_when_Ddr3MemtestEngine_l65_76 < 8'h0a);
+  always @(*) begin
+    if(when_Ddr3MemtestEngine_l65_76) begin
+      _zz_printChar_76 = _zz__zz_printChar_76;
+    end else begin
+      _zz_printChar_76 = _zz__zz_printChar_76_1;
+    end
+  end
+
+  assign _zz_when_Ddr3MemtestEngine_l65_77 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_77};
+  assign when_Ddr3MemtestEngine_l65_77 = (_zz_when_Ddr3MemtestEngine_l65_77 < 8'h0a);
+  always @(*) begin
+    if(when_Ddr3MemtestEngine_l65_77) begin
+      _zz_printChar_77 = _zz__zz_printChar_77;
+    end else begin
+      _zz_printChar_77 = _zz__zz_printChar_77_1;
+    end
+  end
+
+  assign _zz_when_Ddr3MemtestEngine_l65_78 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_78};
+  assign when_Ddr3MemtestEngine_l65_78 = (_zz_when_Ddr3MemtestEngine_l65_78 < 8'h0a);
+  always @(*) begin
+    if(when_Ddr3MemtestEngine_l65_78) begin
+      _zz_printChar_78 = _zz__zz_printChar_78;
+    end else begin
+      _zz_printChar_78 = _zz__zz_printChar_78_1;
+    end
+  end
+
+  assign _zz_when_Ddr3MemtestEngine_l65_79 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_79};
+  assign when_Ddr3MemtestEngine_l65_79 = (_zz_when_Ddr3MemtestEngine_l65_79 < 8'h0a);
+  always @(*) begin
+    if(when_Ddr3MemtestEngine_l65_79) begin
+      _zz_printChar_79 = _zz__zz_printChar_79;
+    end else begin
+      _zz_printChar_79 = _zz__zz_printChar_79_1;
+    end
+  end
+
+  assign _zz_when_Ddr3MemtestEngine_l65_80 = {4'd0, _zz__zz_when_Ddr3MemtestEngine_l65_80};
+  assign when_Ddr3MemtestEngine_l65_80 = (_zz_when_Ddr3MemtestEngine_l65_80 < 8'h0a);
+  always @(*) begin
+    if(when_Ddr3MemtestEngine_l65_80) begin
+      _zz_printChar_80 = _zz__zz_printChar_80;
+    end else begin
+      _zz_printChar_80 = _zz__zz_printChar_80_1;
+    end
+  end
+
+  assign when_Ddr3MemtestEngine_l673 = (fsm_delayCounter == 28'h00b964f);
   always @(posedge clkoutd or posedge _zz_1) begin
     if(_zz_1) begin
       printValid <= 1'b0;
@@ -3169,13 +3464,13 @@ module Ddr3MemtestEngine (
         printValid <= 1'b0;
       end
       hbCounter <= (hbCounter + 25'h0000001);
-      if(when_Ddr3MemtestEngine_l98) begin
+      if(when_Ddr3MemtestEngine_l101) begin
         hbReg <= (! hbReg);
       end
       fsm_stateReg <= fsm_stateNext;
       case(fsm_stateReg)
         fsm_sBootBanner : begin
-          if(when_Ddr3MemtestEngine_l187) begin
+          if(when_Ddr3MemtestEngine_l193) begin
             case(fsm_msgIndex)
               7'h0 : begin
                 printChar <= 8'h0d;
@@ -3285,18 +3580,18 @@ module Ddr3MemtestEngine (
           end
         end
         fsm_sWaitCalib : begin
-          if(when_Ddr3MemtestEngine_l219) begin
+          if(when_Ddr3MemtestEngine_l225) begin
             fsm_msgIndex <= 7'h0;
           end else begin
             fsm_delayCounter <= (fsm_delayCounter + 28'h0000001);
-            if(when_Ddr3MemtestEngine_l227) begin
+            if(when_Ddr3MemtestEngine_l233) begin
               fsm_delayCounter <= 28'h0;
               fsm_msgIndex <= 7'h0;
             end
           end
         end
         fsm_sPrintCalib : begin
-          if(when_Ddr3MemtestEngine_l238) begin
+          if(when_Ddr3MemtestEngine_l244) begin
             case(fsm_msgIndex)
               7'h0 : begin
                 printChar <= 8'h5b;
@@ -3380,7 +3675,7 @@ module Ddr3MemtestEngine (
           end
         end
         fsm_sPrintBanner : begin
-          if(when_Ddr3MemtestEngine_l265) begin
+          if(when_Ddr3MemtestEngine_l271) begin
             case(fsm_msgIndex)
               7'h0 : begin
                 printChar <= 8'h0d;
@@ -3559,7 +3854,7 @@ module Ddr3MemtestEngine (
           end
         end
         fsm_sPrintWlmap : begin
-          if(when_Ddr3MemtestEngine_l313) begin
+          if(when_Ddr3MemtestEngine_l319) begin
             case(fsm_msgIndex)
               7'h0 : begin
                 printChar <= 8'h0d;
@@ -3709,6 +4004,127 @@ module Ddr3MemtestEngine (
             endcase
           end
         end
+        fsm_sPrintLatch : begin
+          if(when_Ddr3MemtestEngine_l359) begin
+            case(fsm_msgIndex)
+              7'h0 : begin
+                printChar <= 8'h5b;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h01 : begin
+                printChar <= 8'h4c;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h02 : begin
+                printChar <= 8'h41;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h03 : begin
+                printChar <= 8'h54;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h04 : begin
+                printChar <= 8'h43;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h05 : begin
+                printChar <= 8'h48;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h06 : begin
+                printChar <= 8'h5d;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h07 : begin
+                printChar <= 8'h20;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h08 : begin
+                printChar <= 8'h41;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h09 : begin
+                printChar <= 8'h3d;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h0a : begin
+                printChar <= _zz_printChar_16;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h0b : begin
+                printChar <= 8'h20;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h0c : begin
+                printChar <= 8'h53;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h0d : begin
+                printChar <= 8'h3d;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h0e : begin
+                printChar <= _zz_printChar_17;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h0f : begin
+                printChar <= _zz_printChar_18;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h10 : begin
+                printChar <= _zz_printChar_19;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h11 : begin
+                printChar <= 8'h20;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h12 : begin
+                printChar <= 8'h4c;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h13 : begin
+                printChar <= 8'h3d;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h34 : begin
+                printChar <= 8'h0d;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h35 : begin
+                printChar <= 8'h0a;
+                printValid <= 1'b1;
+                fsm_msgIndex <= 7'h0;
+              end
+              default : begin
+                printChar <= _zz_printChar_20;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+            endcase
+          end
+        end
         fsm_sSingleWriteAW : begin
         end
         fsm_sSingleWriteW0 : begin
@@ -3721,7 +4137,7 @@ module Ddr3MemtestEngine (
         end
         fsm_sSingleReadR0 : begin
           if(io_axi_r_valid) begin
-            if(when_Ddr3MemtestEngine_l397) begin
+            if(when_Ddr3MemtestEngine_l436) begin
               errorReg <= 1'b1;
               errAddr <= 32'h0;
               errExpected <= 64'h0123456789abcdef;
@@ -3734,13 +4150,13 @@ module Ddr3MemtestEngine (
             if(errorReg) begin
               errActual1 <= io_axi_r_payload_data;
             end
-            if(when_Ddr3MemtestEngine_l413) begin
+            if(when_Ddr3MemtestEngine_l452) begin
               errorReg <= 1'b1;
               errAddr <= 32'h00000008;
               errExpected <= 64'hfedcba9876543210;
               errActual <= io_axi_r_payload_data;
             end
-            if(when_Ddr3MemtestEngine_l419) begin
+            if(when_Ddr3MemtestEngine_l458) begin
               fsm_msgIndex <= 7'h0;
             end else begin
               burstIndex <= 11'h0;
@@ -3755,7 +4171,7 @@ module Ddr3MemtestEngine (
         end
         fsm_sBulkWriteB : begin
           if(io_axi_b_valid) begin
-            if(when_Ddr3MemtestEngine_l460) begin
+            if(when_Ddr3MemtestEngine_l499) begin
               burstIndex <= 11'h0;
             end else begin
               burstIndex <= (burstIndex + 11'h001);
@@ -3766,7 +4182,7 @@ module Ddr3MemtestEngine (
         end
         fsm_sBulkReadR0 : begin
           if(io_axi_r_valid) begin
-            if(when_Ddr3MemtestEngine_l482) begin
+            if(when_Ddr3MemtestEngine_l521) begin
               errorReg <= 1'b1;
               errAddr <= currentByteAddr;
               errExpected <= _zz_errExpected;
@@ -3776,16 +4192,16 @@ module Ddr3MemtestEngine (
         end
         fsm_sBulkReadR1 : begin
           if(io_axi_r_valid) begin
-            if(when_Ddr3MemtestEngine_l496) begin
+            if(when_Ddr3MemtestEngine_l535) begin
               errorReg <= 1'b1;
               errAddr <= (currentByteAddr + 32'h00000008);
               errExpected <= _zz_errExpected_1;
               errActual <= io_axi_r_payload_data;
             end
-            if(when_Ddr3MemtestEngine_l502) begin
+            if(when_Ddr3MemtestEngine_l541) begin
               fsm_msgIndex <= 7'h0;
             end else begin
-              if(when_Ddr3MemtestEngine_l506) begin
+              if(when_Ddr3MemtestEngine_l545) begin
                 fsm_msgIndex <= 7'h0;
               end else begin
                 burstIndex <= (burstIndex + 11'h001);
@@ -3795,7 +4211,7 @@ module Ddr3MemtestEngine (
         end
         fsm_sReportPass : begin
           passReg <= 1'b1;
-          if(when_Ddr3MemtestEngine_l520) begin
+          if(when_Ddr3MemtestEngine_l559) begin
             case(fsm_msgIndex)
               7'h0 : begin
                 printChar <= 8'h5b;
@@ -3833,22 +4249,22 @@ module Ddr3MemtestEngine (
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
               7'h07 : begin
-                printChar <= _zz_printChar_16;
+                printChar <= _zz_printChar_21;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
               7'h08 : begin
-                printChar <= _zz_printChar_17;
+                printChar <= _zz_printChar_22;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
               7'h09 : begin
-                printChar <= _zz_printChar_18;
+                printChar <= _zz_printChar_23;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
               7'h0a : begin
-                printChar <= _zz_printChar_19;
+                printChar <= _zz_printChar_24;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
@@ -3870,7 +4286,7 @@ module Ddr3MemtestEngine (
           end
         end
         fsm_sReportFail : begin
-          if(when_Ddr3MemtestEngine_l546) begin
+          if(when_Ddr3MemtestEngine_l585) begin
             case(fsm_msgIndex)
               7'h0 : begin
                 printChar <= 8'h5b;
@@ -3918,42 +4334,42 @@ module Ddr3MemtestEngine (
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
               7'h09 : begin
-                printChar <= _zz_printChar_20;
-                printValid <= 1'b1;
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h0a : begin
-                printChar <= _zz_printChar_21;
-                printValid <= 1'b1;
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h0b : begin
-                printChar <= _zz_printChar_22;
-                printValid <= 1'b1;
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h0c : begin
-                printChar <= _zz_printChar_23;
-                printValid <= 1'b1;
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h0d : begin
-                printChar <= _zz_printChar_24;
-                printValid <= 1'b1;
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h0e : begin
                 printChar <= _zz_printChar_25;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h0f : begin
+              7'h0a : begin
                 printChar <= _zz_printChar_26;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h10 : begin
+              7'h0b : begin
                 printChar <= _zz_printChar_27;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h0c : begin
+                printChar <= _zz_printChar_28;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h0d : begin
+                printChar <= _zz_printChar_29;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h0e : begin
+                printChar <= _zz_printChar_30;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h0f : begin
+                printChar <= _zz_printChar_31;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h10 : begin
+                printChar <= _zz_printChar_32;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
@@ -3973,82 +4389,82 @@ module Ddr3MemtestEngine (
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
               7'h14 : begin
-                printChar <= _zz_printChar_28;
-                printValid <= 1'b1;
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h15 : begin
-                printChar <= _zz_printChar_29;
-                printValid <= 1'b1;
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h16 : begin
-                printChar <= _zz_printChar_30;
-                printValid <= 1'b1;
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h17 : begin
-                printChar <= _zz_printChar_31;
-                printValid <= 1'b1;
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h18 : begin
-                printChar <= _zz_printChar_32;
-                printValid <= 1'b1;
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h19 : begin
                 printChar <= _zz_printChar_33;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h1a : begin
+              7'h15 : begin
                 printChar <= _zz_printChar_34;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h1b : begin
+              7'h16 : begin
                 printChar <= _zz_printChar_35;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h1c : begin
+              7'h17 : begin
                 printChar <= _zz_printChar_36;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h1d : begin
+              7'h18 : begin
                 printChar <= _zz_printChar_37;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h1e : begin
+              7'h19 : begin
                 printChar <= _zz_printChar_38;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h1f : begin
+              7'h1a : begin
                 printChar <= _zz_printChar_39;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h20 : begin
+              7'h1b : begin
                 printChar <= _zz_printChar_40;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h21 : begin
+              7'h1c : begin
                 printChar <= _zz_printChar_41;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h22 : begin
+              7'h1d : begin
                 printChar <= _zz_printChar_42;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h23 : begin
+              7'h1e : begin
                 printChar <= _zz_printChar_43;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h1f : begin
+                printChar <= _zz_printChar_44;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h20 : begin
+                printChar <= _zz_printChar_45;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h21 : begin
+                printChar <= _zz_printChar_46;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h22 : begin
+                printChar <= _zz_printChar_47;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h23 : begin
+                printChar <= _zz_printChar_48;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
@@ -4068,82 +4484,82 @@ module Ddr3MemtestEngine (
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
               7'h27 : begin
-                printChar <= _zz_printChar_44;
-                printValid <= 1'b1;
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h28 : begin
-                printChar <= _zz_printChar_45;
-                printValid <= 1'b1;
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h29 : begin
-                printChar <= _zz_printChar_46;
-                printValid <= 1'b1;
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h2a : begin
-                printChar <= _zz_printChar_47;
-                printValid <= 1'b1;
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h2b : begin
-                printChar <= _zz_printChar_48;
-                printValid <= 1'b1;
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h2c : begin
                 printChar <= _zz_printChar_49;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h2d : begin
+              7'h28 : begin
                 printChar <= _zz_printChar_50;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h2e : begin
+              7'h29 : begin
                 printChar <= _zz_printChar_51;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h2f : begin
+              7'h2a : begin
                 printChar <= _zz_printChar_52;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h30 : begin
+              7'h2b : begin
                 printChar <= _zz_printChar_53;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h31 : begin
+              7'h2c : begin
                 printChar <= _zz_printChar_54;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h32 : begin
+              7'h2d : begin
                 printChar <= _zz_printChar_55;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h33 : begin
+              7'h2e : begin
                 printChar <= _zz_printChar_56;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h34 : begin
+              7'h2f : begin
                 printChar <= _zz_printChar_57;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h35 : begin
+              7'h30 : begin
                 printChar <= _zz_printChar_58;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h36 : begin
+              7'h31 : begin
                 printChar <= _zz_printChar_59;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h32 : begin
+                printChar <= _zz_printChar_60;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h33 : begin
+                printChar <= _zz_printChar_61;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h34 : begin
+                printChar <= _zz_printChar_62;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h35 : begin
+                printChar <= _zz_printChar_63;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h36 : begin
+                printChar <= _zz_printChar_64;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
@@ -4163,82 +4579,82 @@ module Ddr3MemtestEngine (
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
               7'h3a : begin
-                printChar <= _zz_printChar_60;
-                printValid <= 1'b1;
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h3b : begin
-                printChar <= _zz_printChar_61;
-                printValid <= 1'b1;
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h3c : begin
-                printChar <= _zz_printChar_62;
-                printValid <= 1'b1;
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h3d : begin
-                printChar <= _zz_printChar_63;
-                printValid <= 1'b1;
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h3e : begin
-                printChar <= _zz_printChar_64;
-                printValid <= 1'b1;
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h3f : begin
                 printChar <= _zz_printChar_65;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h40 : begin
+              7'h3b : begin
                 printChar <= _zz_printChar_66;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h41 : begin
+              7'h3c : begin
                 printChar <= _zz_printChar_67;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h42 : begin
+              7'h3d : begin
                 printChar <= _zz_printChar_68;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h43 : begin
+              7'h3e : begin
                 printChar <= _zz_printChar_69;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h44 : begin
+              7'h3f : begin
                 printChar <= _zz_printChar_70;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h45 : begin
+              7'h40 : begin
                 printChar <= _zz_printChar_71;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h46 : begin
+              7'h41 : begin
                 printChar <= _zz_printChar_72;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h47 : begin
+              7'h42 : begin
                 printChar <= _zz_printChar_73;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h48 : begin
+              7'h43 : begin
                 printChar <= _zz_printChar_74;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
-              7'h49 : begin
+              7'h44 : begin
                 printChar <= _zz_printChar_75;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h45 : begin
+                printChar <= _zz_printChar_76;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h46 : begin
+                printChar <= _zz_printChar_77;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h47 : begin
+                printChar <= _zz_printChar_78;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h48 : begin
+                printChar <= _zz_printChar_79;
+                printValid <= 1'b1;
+                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
+              end
+              7'h49 : begin
+                printChar <= _zz_printChar_80;
                 printValid <= 1'b1;
                 fsm_msgIndex <= (fsm_msgIndex + 7'h01);
               end
@@ -4259,7 +4675,7 @@ module Ddr3MemtestEngine (
         end
         fsm_sLoopDelay : begin
           fsm_delayCounter <= (fsm_delayCounter + 28'h0000001);
-          if(when_Ddr3MemtestEngine_l634) begin
+          if(when_Ddr3MemtestEngine_l673) begin
             burstIndex <= 11'h0;
           end
         end
@@ -4329,6 +4745,9 @@ module Ddr3Axi4 (
   output wire [7:0]    io_wlFirst,
   output wire [7:0]    io_wlLast,
   output wire [7:0]    io_wlMatchN,
+  output wire [1:0]    io_wr_adv,
+  output wire [11:0]   io_w_scores,
+  output wire [127:0]  io_train_latch,
   inout  wire [15:0]   io_pad_DDR3_DQ,
   inout  wire [1:0]    io_pad_DDR3_DQS,
   output wire [1:0]    io_pad_DDR3_DM,
@@ -4376,6 +4795,9 @@ module Ddr3Axi4 (
   wire       [7:0]    area_ctrl_io_wlFirst;
   wire       [7:0]    area_ctrl_io_wlLast;
   wire       [7:0]    area_ctrl_io_wlMatchN;
+  wire       [1:0]    area_ctrl_io_wr_adv;
+  wire       [11:0]   area_ctrl_io_w_scores;
+  wire       [127:0]  area_ctrl_io_train_latch;
   wire       [1:0]    area_ctrl_io_pad_DDR3_DM;
   wire       [13:0]   area_ctrl_io_pad_DDR3_A;
   wire       [2:0]    area_ctrl_io_pad_DDR3_BA;
@@ -4467,6 +4889,9 @@ module Ddr3Axi4 (
     .io_wlFirst           (area_ctrl_io_wlFirst[7:0]              ), //o
     .io_wlLast            (area_ctrl_io_wlLast[7:0]               ), //o
     .io_wlMatchN          (area_ctrl_io_wlMatchN[7:0]             ), //o
+    .io_wr_adv            (area_ctrl_io_wr_adv[1:0]               ), //o
+    .io_w_scores          (area_ctrl_io_w_scores[11:0]            ), //o
+    .io_train_latch       (area_ctrl_io_train_latch[127:0]        ), //o
     .io_pad_DDR3_DQ       (io_pad_DDR3_DQ                         ), //~
     .io_pad_DDR3_DQS      (io_pad_DDR3_DQS                        ), //~
     .io_pad_DDR3_DM       (area_ctrl_io_pad_DDR3_DM[1:0]          ), //o
@@ -4517,6 +4942,9 @@ module Ddr3Axi4 (
   assign io_wlFirst = area_ctrl_io_wlFirst;
   assign io_wlLast = area_ctrl_io_wlLast;
   assign io_wlMatchN = area_ctrl_io_wlMatchN;
+  assign io_wr_adv = area_ctrl_io_wr_adv;
+  assign io_w_scores = area_ctrl_io_w_scores;
+  assign io_train_latch = area_ctrl_io_train_latch;
 
 endmodule
 
@@ -4537,7 +4965,7 @@ module UartTx (
   reg                 txdReg;
   wire                when_UartTx_l40;
 
-  assign bitTick = (bitCounter == 10'h35f);
+  assign bitTick = (bitCounter == 10'h292);
   assign io_busy = (state != 4'b0000);
   assign io_write_ready = (state == 4'b0000);
   assign io_txd = txdReg;
@@ -4641,6 +5069,9 @@ module Ddr3Controller (
   output wire [7:0]    io_wlFirst,
   output wire [7:0]    io_wlLast,
   output wire [7:0]    io_wlMatchN,
+  output wire [1:0]    io_wr_adv,
+  output wire [11:0]   io_w_scores,
+  output wire [127:0]  io_train_latch,
   inout  wire [15:0]   io_pad_DDR3_DQ,
   inout  wire [1:0]    io_pad_DDR3_DQS,
   output wire [1:0]    io_pad_DDR3_DM,
@@ -4672,6 +5103,9 @@ module Ddr3Controller (
   wire       [7:0]    coreArea_core_io_wlFirst;
   wire       [7:0]    coreArea_core_io_wlLast;
   wire       [7:0]    coreArea_core_io_wlMatchN;
+  wire       [1:0]    coreArea_core_io_wr_adv;
+  wire       [11:0]   coreArea_core_io_w_scores;
+  wire       [127:0]  coreArea_core_io_train_latch;
   wire                coreArea_core_io_phy_dqs_hold;
   wire       [7:0]    coreArea_core_io_phy_wstep;
   wire                coreArea_core_io_phy_rloadn;
@@ -4717,6 +5151,11 @@ module Ddr3Controller (
   wire                phy_io_dlllock;
   wire                phy_io_rst_lock_n;
   wire       [1:0]    phy_io_rburst;
+  wire       [1:0]    phy_io_rvalid;
+  wire       [2:0]    phy_io_wpoint_0;
+  wire       [2:0]    phy_io_wpoint_1;
+  wire       [2:0]    phy_io_rpoint_0;
+  wire       [2:0]    phy_io_rpoint_1;
   wire       [15:0]   phy_io_dq_in_0;
   wire       [15:0]   phy_io_dq_in_1;
   wire       [15:0]   phy_io_dq_in_2;
@@ -4737,7 +5176,7 @@ module Ddr3Controller (
   wire                phy_io_pad_DDR3_CKE;
   wire                phy_io_pad_DDR3_nRESET;
   wire                phy_io_pad_DDR3_ODT;
-  wire                _zz_when_Ddr3ControllerCore_l1688;
+  wire                _zz_when_Ddr3ControllerCore_l1914;
 
   Ddr3ControllerCore coreArea_core (
     .io_req_valid                      (io_req_valid                             ), //i
@@ -4761,9 +5200,17 @@ module Ddr3Controller (
     .io_wlFirst                        (coreArea_core_io_wlFirst[7:0]            ), //o
     .io_wlLast                         (coreArea_core_io_wlLast[7:0]             ), //o
     .io_wlMatchN                       (coreArea_core_io_wlMatchN[7:0]           ), //o
+    .io_wr_adv                         (coreArea_core_io_wr_adv[1:0]             ), //o
+    .io_w_scores                       (coreArea_core_io_w_scores[11:0]          ), //o
+    .io_train_latch                    (coreArea_core_io_train_latch[127:0]      ), //o
     .io_phy_dlllock                    (phy_io_dlllock                           ), //i
     .io_phy_rst_lock_n                 (phy_io_rst_lock_n                        ), //i
     .io_phy_rburst                     (phy_io_rburst[1:0]                       ), //i
+    .io_phy_rvalid                     (phy_io_rvalid[1:0]                       ), //i
+    .io_phy_wpoint_0                   (phy_io_wpoint_0[2:0]                     ), //i
+    .io_phy_wpoint_1                   (phy_io_wpoint_1[2:0]                     ), //i
+    .io_phy_rpoint_0                   (phy_io_rpoint_0[2:0]                     ), //i
+    .io_phy_rpoint_1                   (phy_io_rpoint_1[2:0]                     ), //i
     .io_phy_dq_in_0                    (phy_io_dq_in_0[15:0]                     ), //i
     .io_phy_dq_in_1                    (phy_io_dq_in_1[15:0]                     ), //i
     .io_phy_dq_in_2                    (phy_io_dq_in_2[15:0]                     ), //i
@@ -4815,7 +5262,7 @@ module Ddr3Controller (
     .io_phy_BA_3                       (coreArea_core_io_phy_BA_3[2:0]           ), //o
     .io_phy_CKE                        (coreArea_core_io_phy_CKE                 ), //o
     .io_phy_resetn_delay               (coreArea_core_io_phy_resetn_delay        ), //o
-    ._zz_when_Ddr3ControllerCore_l1688 (_zz_when_Ddr3ControllerCore_l1688        ), //i
+    ._zz_when_Ddr3ControllerCore_l1914 (_zz_when_Ddr3ControllerCore_l1914        ), //i
     .io_pclk                           (io_pclk                                  )  //i
   );
   GowinDdr3Phy phy (
@@ -4868,6 +5315,11 @@ module Ddr3Controller (
     .io_dlllock         (phy_io_dlllock                     ), //o
     .io_rst_lock_n      (phy_io_rst_lock_n                  ), //o
     .io_rburst          (phy_io_rburst[1:0]                 ), //o
+    .io_rvalid          (phy_io_rvalid[1:0]                 ), //o
+    .io_wpoint_0        (phy_io_wpoint_0[2:0]               ), //o
+    .io_wpoint_1        (phy_io_wpoint_1[2:0]               ), //o
+    .io_rpoint_0        (phy_io_rpoint_0[2:0]               ), //o
+    .io_rpoint_1        (phy_io_rpoint_1[2:0]               ), //o
     .io_dq_in_0         (phy_io_dq_in_0[15:0]               ), //o
     .io_dq_in_1         (phy_io_dq_in_1[15:0]               ), //o
     .io_dq_in_2         (phy_io_dq_in_2[15:0]               ), //o
@@ -4891,7 +5343,7 @@ module Ddr3Controller (
     .io_pad_DDR3_nRESET (phy_io_pad_DDR3_nRESET             ), //o
     .io_pad_DDR3_ODT    (phy_io_pad_DDR3_ODT                )  //o
   );
-  assign _zz_when_Ddr3ControllerCore_l1688 = (! io_resetn);
+  assign _zz_when_Ddr3ControllerCore_l1914 = (! io_resetn);
   assign io_pad_DDR3_DM = phy_io_pad_DDR3_DM;
   assign io_pad_DDR3_A = phy_io_pad_DDR3_A;
   assign io_pad_DDR3_BA = phy_io_pad_DDR3_BA;
@@ -4919,6 +5371,9 @@ module Ddr3Controller (
   assign io_wlFirst = coreArea_core_io_wlFirst;
   assign io_wlLast = coreArea_core_io_wlLast;
   assign io_wlMatchN = coreArea_core_io_wlMatchN;
+  assign io_wr_adv = coreArea_core_io_wr_adv;
+  assign io_w_scores = coreArea_core_io_w_scores;
+  assign io_train_latch = coreArea_core_io_train_latch;
 
 endmodule
 
@@ -5406,6 +5861,11 @@ module GowinDdr3Phy (
   output wire          io_dlllock,
   output wire          io_rst_lock_n,
   output wire [1:0]    io_rburst,
+  output wire [1:0]    io_rvalid,
+  output wire [2:0]    io_wpoint_0,
+  output wire [2:0]    io_wpoint_1,
+  output wire [2:0]    io_rpoint_0,
+  output wire [2:0]    io_rpoint_1,
   output reg  [15:0]   io_dq_in_0,
   output reg  [15:0]   io_dq_in_1,
   output reg  [15:0]   io_dq_in_2,
@@ -5919,6 +6379,7 @@ module GowinDdr3Phy (
   wire                dQS_1_DQSW0;
   wire                dQS_1_DQSW270;
   wire                dQS_1_RBURST;
+  wire                dQS_1_RVALID;
   wire                oSER8_MEM_1_Q0;
   wire                oSER8_MEM_1_Q1;
   wire                iOBUF_1_O;
@@ -5930,6 +6391,7 @@ module GowinDdr3Phy (
   wire                dQS_2_DQSW0;
   wire                dQS_2_DQSW270;
   wire                dQS_2_RBURST;
+  wire                dQS_2_RVALID;
   wire                oSER8_MEM_3_Q0;
   wire                oSER8_MEM_3_Q1;
   wire                iOBUF_2_O;
@@ -6151,7 +6613,18 @@ module GowinDdr3Phy (
   wire                oSER8_19_Q1;
   wire                oSER8_20_Q0;
   wire                oSER8_20_Q1;
-  wire                rst_lock_n;
+  wire                raw_rst_n;
+  wire                _zz_1;
+  reg        [3:0]    pclkRstArea_holdCnt;
+  wire                when_GowinDdr3Phy_l92;
+  reg                 pclkRstArea_rst_pclk_n;
+  wire                _zz_2;
+  (* async_reg = "true" *) reg                 fclkRstArea_s0;
+  reg                 fclkRstArea_s1;
+  (* syn_keep = 1 *) reg                 fclkRstArea_rst_dqs;
+  (* syn_keep = 1 *) reg                 fclkRstArea_rst_dq0;
+  (* syn_keep = 1 *) reg                 fclkRstArea_rst_dq1;
+  (* syn_keep = 1 *) reg                 fclkRstArea_rst_cmd;
   wire       [2:0]    dqs_waddr_0;
   wire       [2:0]    dqs_waddr_1;
   wire       [2:0]    dqs_raddr_0;
@@ -6163,6 +6636,7 @@ module GowinDdr3Phy (
   wire                clk_dqsw270_0;
   wire                clk_dqsw270_1;
   reg        [1:0]    rburst;
+  reg        [1:0]    rvalid;
   reg        [1:0]    dqs_pad_in;
   reg        [1:0]    dqs_buf;
   reg        [1:0]    dqs_buf_oen;
@@ -6204,7 +6678,8 @@ module GowinDdr3Phy (
     .RPOINT  (dQS_1_RPOINT[2:0]), //o
     .DQSW0   (dQS_1_DQSW0      ), //o
     .DQSW270 (dQS_1_DQSW270    ), //o
-    .RBURST  (dQS_1_RBURST     )  //o
+    .RBURST  (dQS_1_RBURST     ), //o
+    .RVALID  (dQS_1_RVALID     )  //o
   );
   OSER8_MEM oSER8_MEM_1 (
     .D0    (oSER8_MEM_1_D0   ), //i
@@ -6277,7 +6752,8 @@ module GowinDdr3Phy (
     .RPOINT  (dQS_2_RPOINT[2:0]), //o
     .DQSW0   (dQS_2_DQSW0      ), //o
     .DQSW270 (dQS_2_DQSW270    ), //o
-    .RBURST  (dQS_2_RBURST     )  //o
+    .RBURST  (dQS_2_RBURST     ), //o
+    .RVALID  (dQS_2_RVALID     )  //o
   );
   OSER8_MEM oSER8_MEM_3 (
     .D0    (oSER8_MEM_3_D0   ), //i
@@ -7445,15 +7921,18 @@ module GowinDdr3Phy (
   );
   assign dll_1_RESET = (! io_resetn);
   assign io_dlllock = dll_1_LOCK;
-  assign rst_lock_n = (io_resetn && dll_1_LOCK);
-  assign io_rst_lock_n = rst_lock_n;
-  assign io_pad_DDR3_nRESET = (rst_lock_n && io_resetn_delay);
+  assign raw_rst_n = (io_resetn && dll_1_LOCK);
+  assign _zz_1 = (! raw_rst_n);
+  assign when_GowinDdr3Phy_l92 = (pclkRstArea_holdCnt != 4'b1111);
+  assign _zz_2 = (! raw_rst_n);
+  assign io_rst_lock_n = pclkRstArea_rst_pclk_n;
+  assign io_pad_DDR3_nRESET = (pclkRstArea_rst_pclk_n && io_resetn_delay);
   assign io_pad_DDR3_ODT = 1'b1;
   assign io_pad_DDR3_CK = io_ck;
   assign io_pad_DDR3_nCS = 1'b0;
   assign io_pad_DDR3_CKE = io_CKE;
   assign dQS_1_DQSIN = dqs_pad_in[0];
-  assign dQS_1_RESET = (! rst_lock_n);
+  assign dQS_1_RESET = (! fclkRstArea_rst_dqs);
   assign clk_dqsr_0 = dQS_1_DQSR90;
   assign dqs_waddr_0 = dQS_1_WPOINT;
   assign dqs_raddr_0 = dQS_1_RPOINT;
@@ -7462,6 +7941,11 @@ module GowinDdr3Phy (
   always @(*) begin
     rburst[0] = dQS_1_RBURST;
     rburst[1] = dQS_2_RBURST;
+  end
+
+  always @(*) begin
+    rvalid[0] = dQS_1_RVALID;
+    rvalid[1] = dQS_2_RVALID;
   end
 
   assign oSER8_MEM_1_D0 = io_dqs_out[0];
@@ -7476,7 +7960,7 @@ module GowinDdr3Phy (
   assign oSER8_MEM_1_TX1 = io_dqs_oen[1];
   assign oSER8_MEM_1_TX2 = io_dqs_oen[2];
   assign oSER8_MEM_1_TX3 = io_dqs_oen[3];
-  assign oSER8_MEM_1_RESET = (! rst_lock_n);
+  assign oSER8_MEM_1_RESET = (! fclkRstArea_rst_dqs);
   always @(*) begin
     dqs_buf[0] = oSER8_MEM_1_Q0;
     dqs_buf[1] = oSER8_MEM_3_Q0;
@@ -7502,14 +7986,14 @@ module GowinDdr3Phy (
   assign oSER8_MEM_2_D5 = io_dm_out[5];
   assign oSER8_MEM_2_D6 = io_dm_out[6];
   assign oSER8_MEM_2_D7 = io_dm_out[7];
-  assign oSER8_MEM_2_RESET = (! rst_lock_n);
+  assign oSER8_MEM_2_RESET = (! fclkRstArea_rst_dqs);
   always @(*) begin
     io_pad_DDR3_DM[0] = oSER8_MEM_2_Q0;
     io_pad_DDR3_DM[1] = oSER8_MEM_4_Q0;
   end
 
   assign dQS_2_DQSIN = dqs_pad_in[1];
-  assign dQS_2_RESET = (! rst_lock_n);
+  assign dQS_2_RESET = (! fclkRstArea_rst_dqs);
   assign clk_dqsr_1 = dQS_2_DQSR90;
   assign dqs_waddr_1 = dQS_2_WPOINT;
   assign dqs_raddr_1 = dQS_2_RPOINT;
@@ -7527,7 +8011,7 @@ module GowinDdr3Phy (
   assign oSER8_MEM_3_TX1 = io_dqs_oen[1];
   assign oSER8_MEM_3_TX2 = io_dqs_oen[2];
   assign oSER8_MEM_3_TX3 = io_dqs_oen[3];
-  assign oSER8_MEM_3_RESET = (! rst_lock_n);
+  assign oSER8_MEM_3_RESET = (! fclkRstArea_rst_dqs);
   assign iOBUF_2_I = dqs_buf[1];
   assign iOBUF_2_OEN = dqs_buf_oen[1];
   assign oSER8_MEM_4_D0 = io_dm_out[0];
@@ -7538,8 +8022,13 @@ module GowinDdr3Phy (
   assign oSER8_MEM_4_D5 = io_dm_out[5];
   assign oSER8_MEM_4_D6 = io_dm_out[6];
   assign oSER8_MEM_4_D7 = io_dm_out[7];
-  assign oSER8_MEM_4_RESET = (! rst_lock_n);
+  assign oSER8_MEM_4_RESET = (! fclkRstArea_rst_dqs);
   assign io_rburst = rburst;
+  assign io_rvalid = rvalid;
+  assign io_wpoint_0 = dqs_waddr_0;
+  assign io_wpoint_1 = dqs_waddr_1;
+  assign io_rpoint_0 = dqs_raddr_0;
+  assign io_rpoint_1 = dqs_raddr_1;
   assign oSER8_MEM_5_D0 = io_dq_out_0[0];
   assign oSER8_MEM_5_D1 = io_dq_out_1[0];
   assign oSER8_MEM_5_D2 = io_dq_out_2[0];
@@ -7552,7 +8041,7 @@ module GowinDdr3Phy (
   assign oSER8_MEM_5_TX1 = io_dq_oen[1];
   assign oSER8_MEM_5_TX2 = io_dq_oen[2];
   assign oSER8_MEM_5_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_5_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
+  assign oSER8_MEM_5_RESET = (! fclkRstArea_rst_dq0);
   always @(*) begin
     dq_buf[0] = oSER8_MEM_5_Q0;
     dq_buf[1] = oSER8_MEM_6_Q0;
@@ -7613,7 +8102,7 @@ module GowinDdr3Phy (
   end
 
   assign iDES8_MEM_1_D = dq_pad_in[0];
-  assign iDES8_MEM_1_RESET = (! rst_lock_n);
+  assign iDES8_MEM_1_RESET = (! fclkRstArea_rst_dq0);
   always @(*) begin
     io_dq_in_0[0] = iDES8_MEM_1_Q0;
     io_dq_in_0[1] = iDES8_MEM_2_Q0;
@@ -7778,11 +8267,11 @@ module GowinDdr3Phy (
   assign oSER8_MEM_6_TX1 = io_dq_oen[1];
   assign oSER8_MEM_6_TX2 = io_dq_oen[2];
   assign oSER8_MEM_6_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_6_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
+  assign oSER8_MEM_6_RESET = (! fclkRstArea_rst_dq0);
   assign iOBUF_4_I = dq_buf[1];
   assign iOBUF_4_OEN = dq_buf_oen[1];
   assign iDES8_MEM_2_D = dq_pad_in[1];
-  assign iDES8_MEM_2_RESET = (! rst_lock_n);
+  assign iDES8_MEM_2_RESET = (! fclkRstArea_rst_dq0);
   assign oSER8_MEM_7_D0 = io_dq_out_0[2];
   assign oSER8_MEM_7_D1 = io_dq_out_1[2];
   assign oSER8_MEM_7_D2 = io_dq_out_2[2];
@@ -7795,11 +8284,11 @@ module GowinDdr3Phy (
   assign oSER8_MEM_7_TX1 = io_dq_oen[1];
   assign oSER8_MEM_7_TX2 = io_dq_oen[2];
   assign oSER8_MEM_7_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_7_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
+  assign oSER8_MEM_7_RESET = (! fclkRstArea_rst_dq0);
   assign iOBUF_5_I = dq_buf[2];
   assign iOBUF_5_OEN = dq_buf_oen[2];
   assign iDES8_MEM_3_D = dq_pad_in[2];
-  assign iDES8_MEM_3_RESET = (! rst_lock_n);
+  assign iDES8_MEM_3_RESET = (! fclkRstArea_rst_dq0);
   assign oSER8_MEM_8_D0 = io_dq_out_0[3];
   assign oSER8_MEM_8_D1 = io_dq_out_1[3];
   assign oSER8_MEM_8_D2 = io_dq_out_2[3];
@@ -7812,11 +8301,11 @@ module GowinDdr3Phy (
   assign oSER8_MEM_8_TX1 = io_dq_oen[1];
   assign oSER8_MEM_8_TX2 = io_dq_oen[2];
   assign oSER8_MEM_8_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_8_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
+  assign oSER8_MEM_8_RESET = (! fclkRstArea_rst_dq0);
   assign iOBUF_6_I = dq_buf[3];
   assign iOBUF_6_OEN = dq_buf_oen[3];
   assign iDES8_MEM_4_D = dq_pad_in[3];
-  assign iDES8_MEM_4_RESET = (! rst_lock_n);
+  assign iDES8_MEM_4_RESET = (! fclkRstArea_rst_dq0);
   assign oSER8_MEM_9_D0 = io_dq_out_0[4];
   assign oSER8_MEM_9_D1 = io_dq_out_1[4];
   assign oSER8_MEM_9_D2 = io_dq_out_2[4];
@@ -7829,11 +8318,11 @@ module GowinDdr3Phy (
   assign oSER8_MEM_9_TX1 = io_dq_oen[1];
   assign oSER8_MEM_9_TX2 = io_dq_oen[2];
   assign oSER8_MEM_9_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_9_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
+  assign oSER8_MEM_9_RESET = (! fclkRstArea_rst_dq0);
   assign iOBUF_7_I = dq_buf[4];
   assign iOBUF_7_OEN = dq_buf_oen[4];
   assign iDES8_MEM_5_D = dq_pad_in[4];
-  assign iDES8_MEM_5_RESET = (! rst_lock_n);
+  assign iDES8_MEM_5_RESET = (! fclkRstArea_rst_dq0);
   assign oSER8_MEM_10_D0 = io_dq_out_0[5];
   assign oSER8_MEM_10_D1 = io_dq_out_1[5];
   assign oSER8_MEM_10_D2 = io_dq_out_2[5];
@@ -7846,11 +8335,11 @@ module GowinDdr3Phy (
   assign oSER8_MEM_10_TX1 = io_dq_oen[1];
   assign oSER8_MEM_10_TX2 = io_dq_oen[2];
   assign oSER8_MEM_10_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_10_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
+  assign oSER8_MEM_10_RESET = (! fclkRstArea_rst_dq0);
   assign iOBUF_8_I = dq_buf[5];
   assign iOBUF_8_OEN = dq_buf_oen[5];
   assign iDES8_MEM_6_D = dq_pad_in[5];
-  assign iDES8_MEM_6_RESET = (! rst_lock_n);
+  assign iDES8_MEM_6_RESET = (! fclkRstArea_rst_dq0);
   assign oSER8_MEM_11_D0 = io_dq_out_0[6];
   assign oSER8_MEM_11_D1 = io_dq_out_1[6];
   assign oSER8_MEM_11_D2 = io_dq_out_2[6];
@@ -7863,11 +8352,11 @@ module GowinDdr3Phy (
   assign oSER8_MEM_11_TX1 = io_dq_oen[1];
   assign oSER8_MEM_11_TX2 = io_dq_oen[2];
   assign oSER8_MEM_11_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_11_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
+  assign oSER8_MEM_11_RESET = (! fclkRstArea_rst_dq0);
   assign iOBUF_9_I = dq_buf[6];
   assign iOBUF_9_OEN = dq_buf_oen[6];
   assign iDES8_MEM_7_D = dq_pad_in[6];
-  assign iDES8_MEM_7_RESET = (! rst_lock_n);
+  assign iDES8_MEM_7_RESET = (! fclkRstArea_rst_dq0);
   assign oSER8_MEM_12_D0 = io_dq_out_0[7];
   assign oSER8_MEM_12_D1 = io_dq_out_1[7];
   assign oSER8_MEM_12_D2 = io_dq_out_2[7];
@@ -7880,11 +8369,11 @@ module GowinDdr3Phy (
   assign oSER8_MEM_12_TX1 = io_dq_oen[1];
   assign oSER8_MEM_12_TX2 = io_dq_oen[2];
   assign oSER8_MEM_12_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_12_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
+  assign oSER8_MEM_12_RESET = (! fclkRstArea_rst_dq0);
   assign iOBUF_10_I = dq_buf[7];
   assign iOBUF_10_OEN = dq_buf_oen[7];
   assign iDES8_MEM_8_D = dq_pad_in[7];
-  assign iDES8_MEM_8_RESET = (! rst_lock_n);
+  assign iDES8_MEM_8_RESET = (! fclkRstArea_rst_dq0);
   assign oSER8_MEM_13_D0 = io_dq_out_0[8];
   assign oSER8_MEM_13_D1 = io_dq_out_1[8];
   assign oSER8_MEM_13_D2 = io_dq_out_2[8];
@@ -7897,11 +8386,11 @@ module GowinDdr3Phy (
   assign oSER8_MEM_13_TX1 = io_dq_oen[1];
   assign oSER8_MEM_13_TX2 = io_dq_oen[2];
   assign oSER8_MEM_13_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_13_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
+  assign oSER8_MEM_13_RESET = (! fclkRstArea_rst_dq1);
   assign iOBUF_11_I = dq_buf[8];
   assign iOBUF_11_OEN = dq_buf_oen[8];
   assign iDES8_MEM_9_D = dq_pad_in[8];
-  assign iDES8_MEM_9_RESET = (! rst_lock_n);
+  assign iDES8_MEM_9_RESET = (! fclkRstArea_rst_dq1);
   assign oSER8_MEM_14_D0 = io_dq_out_0[9];
   assign oSER8_MEM_14_D1 = io_dq_out_1[9];
   assign oSER8_MEM_14_D2 = io_dq_out_2[9];
@@ -7914,11 +8403,11 @@ module GowinDdr3Phy (
   assign oSER8_MEM_14_TX1 = io_dq_oen[1];
   assign oSER8_MEM_14_TX2 = io_dq_oen[2];
   assign oSER8_MEM_14_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_14_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
+  assign oSER8_MEM_14_RESET = (! fclkRstArea_rst_dq1);
   assign iOBUF_12_I = dq_buf[9];
   assign iOBUF_12_OEN = dq_buf_oen[9];
   assign iDES8_MEM_10_D = dq_pad_in[9];
-  assign iDES8_MEM_10_RESET = (! rst_lock_n);
+  assign iDES8_MEM_10_RESET = (! fclkRstArea_rst_dq1);
   assign oSER8_MEM_15_D0 = io_dq_out_0[10];
   assign oSER8_MEM_15_D1 = io_dq_out_1[10];
   assign oSER8_MEM_15_D2 = io_dq_out_2[10];
@@ -7931,11 +8420,11 @@ module GowinDdr3Phy (
   assign oSER8_MEM_15_TX1 = io_dq_oen[1];
   assign oSER8_MEM_15_TX2 = io_dq_oen[2];
   assign oSER8_MEM_15_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_15_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
+  assign oSER8_MEM_15_RESET = (! fclkRstArea_rst_dq1);
   assign iOBUF_13_I = dq_buf[10];
   assign iOBUF_13_OEN = dq_buf_oen[10];
   assign iDES8_MEM_11_D = dq_pad_in[10];
-  assign iDES8_MEM_11_RESET = (! rst_lock_n);
+  assign iDES8_MEM_11_RESET = (! fclkRstArea_rst_dq1);
   assign oSER8_MEM_16_D0 = io_dq_out_0[11];
   assign oSER8_MEM_16_D1 = io_dq_out_1[11];
   assign oSER8_MEM_16_D2 = io_dq_out_2[11];
@@ -7948,11 +8437,11 @@ module GowinDdr3Phy (
   assign oSER8_MEM_16_TX1 = io_dq_oen[1];
   assign oSER8_MEM_16_TX2 = io_dq_oen[2];
   assign oSER8_MEM_16_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_16_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
+  assign oSER8_MEM_16_RESET = (! fclkRstArea_rst_dq1);
   assign iOBUF_14_I = dq_buf[11];
   assign iOBUF_14_OEN = dq_buf_oen[11];
   assign iDES8_MEM_12_D = dq_pad_in[11];
-  assign iDES8_MEM_12_RESET = (! rst_lock_n);
+  assign iDES8_MEM_12_RESET = (! fclkRstArea_rst_dq1);
   assign oSER8_MEM_17_D0 = io_dq_out_0[12];
   assign oSER8_MEM_17_D1 = io_dq_out_1[12];
   assign oSER8_MEM_17_D2 = io_dq_out_2[12];
@@ -7965,11 +8454,11 @@ module GowinDdr3Phy (
   assign oSER8_MEM_17_TX1 = io_dq_oen[1];
   assign oSER8_MEM_17_TX2 = io_dq_oen[2];
   assign oSER8_MEM_17_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_17_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
+  assign oSER8_MEM_17_RESET = (! fclkRstArea_rst_dq1);
   assign iOBUF_15_I = dq_buf[12];
   assign iOBUF_15_OEN = dq_buf_oen[12];
   assign iDES8_MEM_13_D = dq_pad_in[12];
-  assign iDES8_MEM_13_RESET = (! rst_lock_n);
+  assign iDES8_MEM_13_RESET = (! fclkRstArea_rst_dq1);
   assign oSER8_MEM_18_D0 = io_dq_out_0[13];
   assign oSER8_MEM_18_D1 = io_dq_out_1[13];
   assign oSER8_MEM_18_D2 = io_dq_out_2[13];
@@ -7982,11 +8471,11 @@ module GowinDdr3Phy (
   assign oSER8_MEM_18_TX1 = io_dq_oen[1];
   assign oSER8_MEM_18_TX2 = io_dq_oen[2];
   assign oSER8_MEM_18_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_18_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
+  assign oSER8_MEM_18_RESET = (! fclkRstArea_rst_dq1);
   assign iOBUF_16_I = dq_buf[13];
   assign iOBUF_16_OEN = dq_buf_oen[13];
   assign iDES8_MEM_14_D = dq_pad_in[13];
-  assign iDES8_MEM_14_RESET = (! rst_lock_n);
+  assign iDES8_MEM_14_RESET = (! fclkRstArea_rst_dq1);
   assign oSER8_MEM_19_D0 = io_dq_out_0[14];
   assign oSER8_MEM_19_D1 = io_dq_out_1[14];
   assign oSER8_MEM_19_D2 = io_dq_out_2[14];
@@ -7999,11 +8488,11 @@ module GowinDdr3Phy (
   assign oSER8_MEM_19_TX1 = io_dq_oen[1];
   assign oSER8_MEM_19_TX2 = io_dq_oen[2];
   assign oSER8_MEM_19_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_19_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
+  assign oSER8_MEM_19_RESET = (! fclkRstArea_rst_dq1);
   assign iOBUF_17_I = dq_buf[14];
   assign iOBUF_17_OEN = dq_buf_oen[14];
   assign iDES8_MEM_15_D = dq_pad_in[14];
-  assign iDES8_MEM_15_RESET = (! rst_lock_n);
+  assign iDES8_MEM_15_RESET = (! fclkRstArea_rst_dq1);
   assign oSER8_MEM_20_D0 = io_dq_out_0[15];
   assign oSER8_MEM_20_D1 = io_dq_out_1[15];
   assign oSER8_MEM_20_D2 = io_dq_out_2[15];
@@ -8016,17 +8505,17 @@ module GowinDdr3Phy (
   assign oSER8_MEM_20_TX1 = io_dq_oen[1];
   assign oSER8_MEM_20_TX2 = io_dq_oen[2];
   assign oSER8_MEM_20_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_20_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
+  assign oSER8_MEM_20_RESET = (! fclkRstArea_rst_dq1);
   assign iOBUF_18_I = dq_buf[15];
   assign iOBUF_18_OEN = dq_buf_oen[15];
   assign iDES8_MEM_16_D = dq_pad_in[15];
-  assign iDES8_MEM_16_RESET = (! rst_lock_n);
+  assign iDES8_MEM_16_RESET = (! fclkRstArea_rst_dq1);
   assign io_dq_raw = dq_pad_in;
-  assign oSER8_1_RESET = (! rst_lock_n);
+  assign oSER8_1_RESET = (! fclkRstArea_rst_cmd);
   assign io_pad_DDR3_nRAS = oSER8_1_Q0;
-  assign oSER8_2_RESET = (! rst_lock_n);
+  assign oSER8_2_RESET = (! fclkRstArea_rst_cmd);
   assign io_pad_DDR3_nCAS = oSER8_2_Q0;
-  assign oSER8_3_RESET = (! rst_lock_n);
+  assign oSER8_3_RESET = (! fclkRstArea_rst_cmd);
   assign io_pad_DDR3_nWE = oSER8_3_Q0;
   assign oSER8_4_D0 = io_A_0[0];
   assign oSER8_4_D1 = io_A_0[0];
@@ -8036,7 +8525,7 @@ module GowinDdr3Phy (
   assign oSER8_4_D5 = io_A_2[0];
   assign oSER8_4_D6 = io_A_3[0];
   assign oSER8_4_D7 = io_A_3[0];
-  assign oSER8_4_RESET = (! rst_lock_n);
+  assign oSER8_4_RESET = (! fclkRstArea_rst_cmd);
   always @(*) begin
     io_pad_DDR3_A[0] = oSER8_4_Q0;
     io_pad_DDR3_A[1] = oSER8_5_Q0;
@@ -8062,7 +8551,7 @@ module GowinDdr3Phy (
   assign oSER8_5_D5 = io_A_2[1];
   assign oSER8_5_D6 = io_A_3[1];
   assign oSER8_5_D7 = io_A_3[1];
-  assign oSER8_5_RESET = (! rst_lock_n);
+  assign oSER8_5_RESET = (! fclkRstArea_rst_cmd);
   assign oSER8_6_D0 = io_A_0[2];
   assign oSER8_6_D1 = io_A_0[2];
   assign oSER8_6_D2 = io_A_1[2];
@@ -8071,7 +8560,7 @@ module GowinDdr3Phy (
   assign oSER8_6_D5 = io_A_2[2];
   assign oSER8_6_D6 = io_A_3[2];
   assign oSER8_6_D7 = io_A_3[2];
-  assign oSER8_6_RESET = (! rst_lock_n);
+  assign oSER8_6_RESET = (! fclkRstArea_rst_cmd);
   assign oSER8_7_D0 = io_A_0[3];
   assign oSER8_7_D1 = io_A_0[3];
   assign oSER8_7_D2 = io_A_1[3];
@@ -8080,7 +8569,7 @@ module GowinDdr3Phy (
   assign oSER8_7_D5 = io_A_2[3];
   assign oSER8_7_D6 = io_A_3[3];
   assign oSER8_7_D7 = io_A_3[3];
-  assign oSER8_7_RESET = (! rst_lock_n);
+  assign oSER8_7_RESET = (! fclkRstArea_rst_cmd);
   assign oSER8_8_D0 = io_A_0[4];
   assign oSER8_8_D1 = io_A_0[4];
   assign oSER8_8_D2 = io_A_1[4];
@@ -8089,7 +8578,7 @@ module GowinDdr3Phy (
   assign oSER8_8_D5 = io_A_2[4];
   assign oSER8_8_D6 = io_A_3[4];
   assign oSER8_8_D7 = io_A_3[4];
-  assign oSER8_8_RESET = (! rst_lock_n);
+  assign oSER8_8_RESET = (! fclkRstArea_rst_cmd);
   assign oSER8_9_D0 = io_A_0[5];
   assign oSER8_9_D1 = io_A_0[5];
   assign oSER8_9_D2 = io_A_1[5];
@@ -8098,7 +8587,7 @@ module GowinDdr3Phy (
   assign oSER8_9_D5 = io_A_2[5];
   assign oSER8_9_D6 = io_A_3[5];
   assign oSER8_9_D7 = io_A_3[5];
-  assign oSER8_9_RESET = (! rst_lock_n);
+  assign oSER8_9_RESET = (! fclkRstArea_rst_cmd);
   assign oSER8_10_D0 = io_A_0[6];
   assign oSER8_10_D1 = io_A_0[6];
   assign oSER8_10_D2 = io_A_1[6];
@@ -8107,7 +8596,7 @@ module GowinDdr3Phy (
   assign oSER8_10_D5 = io_A_2[6];
   assign oSER8_10_D6 = io_A_3[6];
   assign oSER8_10_D7 = io_A_3[6];
-  assign oSER8_10_RESET = (! rst_lock_n);
+  assign oSER8_10_RESET = (! fclkRstArea_rst_cmd);
   assign oSER8_11_D0 = io_A_0[7];
   assign oSER8_11_D1 = io_A_0[7];
   assign oSER8_11_D2 = io_A_1[7];
@@ -8116,7 +8605,7 @@ module GowinDdr3Phy (
   assign oSER8_11_D5 = io_A_2[7];
   assign oSER8_11_D6 = io_A_3[7];
   assign oSER8_11_D7 = io_A_3[7];
-  assign oSER8_11_RESET = (! rst_lock_n);
+  assign oSER8_11_RESET = (! fclkRstArea_rst_cmd);
   assign oSER8_12_D0 = io_A_0[8];
   assign oSER8_12_D1 = io_A_0[8];
   assign oSER8_12_D2 = io_A_1[8];
@@ -8125,7 +8614,7 @@ module GowinDdr3Phy (
   assign oSER8_12_D5 = io_A_2[8];
   assign oSER8_12_D6 = io_A_3[8];
   assign oSER8_12_D7 = io_A_3[8];
-  assign oSER8_12_RESET = (! rst_lock_n);
+  assign oSER8_12_RESET = (! fclkRstArea_rst_cmd);
   assign oSER8_13_D0 = io_A_0[9];
   assign oSER8_13_D1 = io_A_0[9];
   assign oSER8_13_D2 = io_A_1[9];
@@ -8134,7 +8623,7 @@ module GowinDdr3Phy (
   assign oSER8_13_D5 = io_A_2[9];
   assign oSER8_13_D6 = io_A_3[9];
   assign oSER8_13_D7 = io_A_3[9];
-  assign oSER8_13_RESET = (! rst_lock_n);
+  assign oSER8_13_RESET = (! fclkRstArea_rst_cmd);
   assign oSER8_14_D0 = io_A_0[10];
   assign oSER8_14_D1 = io_A_0[10];
   assign oSER8_14_D2 = io_A_1[10];
@@ -8143,7 +8632,7 @@ module GowinDdr3Phy (
   assign oSER8_14_D5 = io_A_2[10];
   assign oSER8_14_D6 = io_A_3[10];
   assign oSER8_14_D7 = io_A_3[10];
-  assign oSER8_14_RESET = (! rst_lock_n);
+  assign oSER8_14_RESET = (! fclkRstArea_rst_cmd);
   assign oSER8_15_D0 = io_A_0[11];
   assign oSER8_15_D1 = io_A_0[11];
   assign oSER8_15_D2 = io_A_1[11];
@@ -8152,7 +8641,7 @@ module GowinDdr3Phy (
   assign oSER8_15_D5 = io_A_2[11];
   assign oSER8_15_D6 = io_A_3[11];
   assign oSER8_15_D7 = io_A_3[11];
-  assign oSER8_15_RESET = (! rst_lock_n);
+  assign oSER8_15_RESET = (! fclkRstArea_rst_cmd);
   assign oSER8_16_D0 = io_A_0[12];
   assign oSER8_16_D1 = io_A_0[12];
   assign oSER8_16_D2 = io_A_1[12];
@@ -8161,7 +8650,7 @@ module GowinDdr3Phy (
   assign oSER8_16_D5 = io_A_2[12];
   assign oSER8_16_D6 = io_A_3[12];
   assign oSER8_16_D7 = io_A_3[12];
-  assign oSER8_16_RESET = (! rst_lock_n);
+  assign oSER8_16_RESET = (! fclkRstArea_rst_cmd);
   assign oSER8_17_D0 = io_A_0[13];
   assign oSER8_17_D1 = io_A_0[13];
   assign oSER8_17_D2 = io_A_1[13];
@@ -8170,7 +8659,7 @@ module GowinDdr3Phy (
   assign oSER8_17_D5 = io_A_2[13];
   assign oSER8_17_D6 = io_A_3[13];
   assign oSER8_17_D7 = io_A_3[13];
-  assign oSER8_17_RESET = (! rst_lock_n);
+  assign oSER8_17_RESET = (! fclkRstArea_rst_cmd);
   assign oSER8_18_D0 = io_BA_0[0];
   assign oSER8_18_D1 = io_BA_0[0];
   assign oSER8_18_D2 = io_BA_1[0];
@@ -8179,7 +8668,7 @@ module GowinDdr3Phy (
   assign oSER8_18_D5 = io_BA_2[0];
   assign oSER8_18_D6 = io_BA_3[0];
   assign oSER8_18_D7 = io_BA_3[0];
-  assign oSER8_18_RESET = (! rst_lock_n);
+  assign oSER8_18_RESET = (! fclkRstArea_rst_cmd);
   always @(*) begin
     io_pad_DDR3_BA[0] = oSER8_18_Q0;
     io_pad_DDR3_BA[1] = oSER8_19_Q0;
@@ -8194,7 +8683,7 @@ module GowinDdr3Phy (
   assign oSER8_19_D5 = io_BA_2[1];
   assign oSER8_19_D6 = io_BA_3[1];
   assign oSER8_19_D7 = io_BA_3[1];
-  assign oSER8_19_RESET = (! rst_lock_n);
+  assign oSER8_19_RESET = (! fclkRstArea_rst_cmd);
   assign oSER8_20_D0 = io_BA_0[2];
   assign oSER8_20_D1 = io_BA_0[2];
   assign oSER8_20_D2 = io_BA_1[2];
@@ -8203,7 +8692,37 @@ module GowinDdr3Phy (
   assign oSER8_20_D5 = io_BA_2[2];
   assign oSER8_20_D6 = io_BA_3[2];
   assign oSER8_20_D7 = io_BA_3[2];
-  assign oSER8_20_RESET = (! rst_lock_n);
+  assign oSER8_20_RESET = (! fclkRstArea_rst_cmd);
+  always @(posedge io_pclk or posedge _zz_1) begin
+    if(_zz_1) begin
+      pclkRstArea_holdCnt <= 4'b0000;
+      pclkRstArea_rst_pclk_n <= 1'b0;
+    end else begin
+      if(when_GowinDdr3Phy_l92) begin
+        pclkRstArea_holdCnt <= (pclkRstArea_holdCnt + 4'b0001);
+      end
+      pclkRstArea_rst_pclk_n <= (pclkRstArea_holdCnt == 4'b1111);
+    end
+  end
+
+  always @(posedge io_fclk or posedge _zz_2) begin
+    if(_zz_2) begin
+      fclkRstArea_s0 <= 1'b0;
+      fclkRstArea_s1 <= 1'b0;
+      fclkRstArea_rst_dqs <= 1'b0;
+      fclkRstArea_rst_dq0 <= 1'b0;
+      fclkRstArea_rst_dq1 <= 1'b0;
+      fclkRstArea_rst_cmd <= 1'b0;
+    end else begin
+      fclkRstArea_s0 <= pclkRstArea_rst_pclk_n;
+      fclkRstArea_s1 <= fclkRstArea_s0;
+      fclkRstArea_rst_dqs <= fclkRstArea_s1;
+      fclkRstArea_rst_dq0 <= fclkRstArea_s1;
+      fclkRstArea_rst_dq1 <= fclkRstArea_s1;
+      fclkRstArea_rst_cmd <= fclkRstArea_s1;
+    end
+  end
+
 
 endmodule
 
@@ -8229,9 +8748,17 @@ module Ddr3ControllerCore (
   output wire [7:0]    io_wlFirst,
   output wire [7:0]    io_wlLast,
   output wire [7:0]    io_wlMatchN,
+  output wire [1:0]    io_wr_adv,
+  output wire [11:0]   io_w_scores,
+  output wire [127:0]  io_train_latch,
   input  wire          io_phy_dlllock,
   input  wire          io_phy_rst_lock_n,
   input  wire [1:0]    io_phy_rburst,
+  input  wire [1:0]    io_phy_rvalid,
+  input  wire [2:0]    io_phy_wpoint_0,
+  input  wire [2:0]    io_phy_wpoint_1,
+  input  wire [2:0]    io_phy_rpoint_0,
+  input  wire [2:0]    io_phy_rpoint_1,
   input  wire [15:0]   io_phy_dq_in_0,
   input  wire [15:0]   io_phy_dq_in_1,
   input  wire [15:0]   io_phy_dq_in_2,
@@ -8283,7 +8810,7 @@ module Ddr3ControllerCore (
   output wire [2:0]    io_phy_BA_3,
   output wire          io_phy_CKE,
   output wire          io_phy_resetn_delay,
-  input  wire          _zz_when_Ddr3ControllerCore_l1688,
+  input  wire          _zz_when_Ddr3ControllerCore_l1914,
   input  wire          io_pclk
 );
   localparam Ddr3State_RST_WAIT = 4'd0;
@@ -8481,12 +9008,11 @@ module Ddr3ControllerCore (
   wire       [0:0]    _zz_rotScores_7_20;
   wire       [3:0]    _zz_rotScores_7_21;
   wire       [0:0]    _zz_rotScores_7_22;
+  wire       [2:0]    _zz__zz_1;
+  wire       [4:0]    _zz__zz_1_1;
   wire       [4:0]    _zz_rdCyc;
-  wire       [4:0]    _zz_rdCyc_1;
-  wire       [1:0]    _zz_rdCyc_2;
-  wire       [4:0]    _zz_when_Ddr3ControllerCore_l519;
-  wire       [4:0]    _zz_when_Ddr3ControllerCore_l519_1;
-  wire       [4:0]    _zz_when_Ddr3ControllerCore_l519_2;
+  wire       [1:0]    _zz_rdCyc_1;
+  wire       [4:0]    _zz_when_Ddr3ControllerCore_l589;
   wire       [4:0]    _zz_cycle;
   wire       [16:0]   _zz_tick_counter;
   wire       [12:0]   _zz_A_0_1;
@@ -8496,9 +9022,9 @@ module Ddr3ControllerCore (
   wire       [13:0]   _zz_A_0_5;
   wire       [0:0]    _zz_A_0_6;
   wire       [12:0]   _zz_A_0_7;
-  wire       [2:0]    _zz_when_Ddr3ControllerCore_l644;
-  wire       [2:0]    _zz_when_Ddr3ControllerCore_l644_1;
-  wire       [0:0]    _zz_when_Ddr3ControllerCore_l644_2;
+  wire       [2:0]    _zz_when_Ddr3ControllerCore_l712;
+  wire       [2:0]    _zz_when_Ddr3ControllerCore_l712_1;
+  wire       [0:0]    _zz_when_Ddr3ControllerCore_l712_2;
   wire       [12:0]   _zz_A_0_8;
   wire       [7:0]    _zz_wstep;
   wire       [7:0]    _zz_wstep_1;
@@ -8518,17 +9044,20 @@ module Ddr3ControllerCore (
   wire       [0:0]    _zz_A_0_13;
   wire       [2:0]    _zz_rclksel;
   wire       [1:0]    _zz_rclkpos_1;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1195;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1207;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1284;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1296;
+  wire       [7:0]    _zz_wstep_6;
+  wire       [7:0]    _zz_wstep_7;
   wire       [0:0]    _zz_A_0_14;
   wire       [0:0]    _zz_A_0_15;
   wire       [0:0]    _zz_A_0_16;
   wire       [0:0]    _zz_A_0_17;
+  wire       [0:0]    _zz_A_0_18;
   wire       [15:0]   _zz_A_2_5;
   wire       [15:0]   _zz_A_2_6;
   wire       [15:0]   _zz_A_2_7;
   wire       [15:0]   _zz_A_2_8;
-  wire       [0:0]    _zz_A_0_18;
+  wire       [0:0]    _zz_A_0_19;
   wire       [15:0]   _zz_A_2_9;
   wire       [15:0]   _zz_A_2_10;
   wire       [9:0]    _zz_A_2_11;
@@ -8564,6 +9093,8 @@ module Ddr3ControllerCore (
   wire       [2:0]    _zz_rdataVec_7_1;
   wire       [3:0]    _zz_rdataVec_7_2;
   wire       [3:0]    _zz_rdataVec_7_3;
+  wire       [87:0]   _zz_io_wlMap;
+  wire       [23:0]   _zz_io_wlMap_1;
   wire       [2:0]    CMD_SetModeReg;
   wire       [2:0]    CMD_AutoRefresh;
   wire       [2:0]    CMD_PreCharge;
@@ -8605,6 +9136,10 @@ module Ddr3ControllerCore (
   reg        [7:0]    wlMatchNR;
   reg        [2:0]    wlVoteN;
   reg        [2:0]    wlVoteCnt;
+  reg        [2:0]    wlVoteCnt0;
+  reg        [2:0]    wlVoteCnt1;
+  reg                 wlLockedR;
+  reg        [7:0]    wlLockedStepR;
   reg        [7:0]    wstep;
   reg                 rcalib_done;
   reg        [3:0]    rcalib_cnt;
@@ -8643,6 +9178,14 @@ module Ddr3ControllerCore (
   wire       [3:0]    rotScores_5;
   wire       [3:0]    rotScores_6;
   wire       [3:0]    rotScores_7;
+  reg        [3:0]    rotScoresReg_0;
+  reg        [3:0]    rotScoresReg_1;
+  reg        [3:0]    rotScoresReg_2;
+  reg        [3:0]    rotScoresReg_3;
+  reg        [3:0]    rotScoresReg_4;
+  reg        [3:0]    rotScoresReg_5;
+  reg        [3:0]    rotScoresReg_6;
+  reg        [3:0]    rotScoresReg_7;
   wire       [3:0]    rotScoreW_0;
   wire       [3:0]    rotScoreW_1;
   wire       [3:0]    rotScoreW_2;
@@ -8659,24 +9202,142 @@ module Ddr3ControllerCore (
   wire       [2:0]    rotIdxW_5;
   wire       [2:0]    rotIdxW_6;
   wire       [2:0]    rotIdxW_7;
-  wire                _zz_rotScoreW_1;
-  wire                _zz_rotScoreW_2;
-  wire                _zz_rotScoreW_3;
-  wire                _zz_rotScoreW_4;
-  wire                _zz_rotScoreW_5;
-  wire                _zz_rotScoreW_6;
+  wire       [3:0]    treeS1_0;
+  wire       [3:0]    treeS1_1;
+  wire       [3:0]    treeS1_2;
+  wire       [3:0]    treeS1_3;
+  wire       [2:0]    treeI1_0;
+  wire       [2:0]    treeI1_1;
+  wire       [2:0]    treeI1_2;
+  wire       [2:0]    treeI1_3;
+  wire                _zz_treeS1_0;
+  wire                _zz_treeS1_1;
+  wire                _zz_treeS1_2;
+  wire                _zz_treeS1_3;
+  wire       [3:0]    treeS2_0;
+  wire       [3:0]    treeS2_1;
+  wire       [2:0]    treeI2_0;
+  wire       [2:0]    treeI2_1;
+  wire                _zz_treeS2_0;
+  wire                _zz_treeS2_1;
   wire                _zz_rotScoreW_7;
+  reg        [3:0]    sweepScoreReg;
+  reg        [2:0]    sweepRotReg;
   reg        [3:0]    bestCnt;
   reg        [1:0]    bestPos;
   reg        [2:0]    bestSel;
   reg        [2:0]    bestRot;
-  reg                 wrAdv;
+  reg        [1:0]    wrMode;
   reg                 shiftCalDone;
-  reg                 shiftPhase;
+  reg        [1:0]    tryMode;
+  reg                 wCalDone;
+  reg        [1:0]    wTry;
+  reg        [7:0]    wBase;
+  reg        [7:0]    bestWstep;
   reg        [3:0]    best0;
   reg        [1:0]    best0Pos;
   reg        [2:0]    best0Sel;
   reg        [2:0]    best0Rot;
+  reg        [1:0]    bestMode;
+  reg        [127:0]  bestLatch;
+  reg        [31:0]   dqCyc10;
+  reg        [31:0]   dqCyc11;
+  reg        [3:0]    bestWCnt;
+  reg        [1:0]    bestWPos;
+  reg        [2:0]    bestWSel;
+  reg        [2:0]    bestWRot;
+  reg        [1:0]    bestWMode;
+  reg        [3:0]    wScores_0;
+  reg        [3:0]    wScores_1;
+  reg        [3:0]    wScores_2;
+  reg        [3:0]    grid0_0;
+  reg        [3:0]    grid0_1;
+  reg        [3:0]    grid0_2;
+  reg        [3:0]    grid0_3;
+  reg        [3:0]    grid0_4;
+  reg        [3:0]    grid0_5;
+  reg        [3:0]    grid0_6;
+  reg        [3:0]    grid0_7;
+  reg        [3:0]    grid0_8;
+  reg        [3:0]    grid0_9;
+  reg        [3:0]    grid0_10;
+  reg        [3:0]    grid0_11;
+  reg        [3:0]    grid0_12;
+  reg        [3:0]    grid0_13;
+  reg        [3:0]    grid0_14;
+  reg        [3:0]    grid0_15;
+  reg        [3:0]    grid0_16;
+  reg        [3:0]    grid0_17;
+  reg        [3:0]    grid0_18;
+  reg        [3:0]    grid0_19;
+  reg        [3:0]    grid0_20;
+  reg        [3:0]    grid0_21;
+  reg        [3:0]    grid0_22;
+  reg        [3:0]    grid0_23;
+  reg        [3:0]    grid0_24;
+  reg        [3:0]    grid0_25;
+  reg        [3:0]    grid0_26;
+  reg        [3:0]    grid0_27;
+  reg        [3:0]    grid0_28;
+  reg        [3:0]    grid0_29;
+  reg        [3:0]    grid0_30;
+  reg        [3:0]    grid0_31;
+  reg        [3:0]    gridF_0;
+  reg        [3:0]    gridF_1;
+  reg        [3:0]    gridF_2;
+  reg        [3:0]    gridF_3;
+  reg        [3:0]    gridF_4;
+  reg        [3:0]    gridF_5;
+  reg        [3:0]    gridF_6;
+  reg        [3:0]    gridF_7;
+  reg        [3:0]    gridF_8;
+  reg        [3:0]    gridF_9;
+  reg        [3:0]    gridF_10;
+  reg        [3:0]    gridF_11;
+  reg        [3:0]    gridF_12;
+  reg        [3:0]    gridF_13;
+  reg        [3:0]    gridF_14;
+  reg        [3:0]    gridF_15;
+  reg        [3:0]    gridF_16;
+  reg        [3:0]    gridF_17;
+  reg        [3:0]    gridF_18;
+  reg        [3:0]    gridF_19;
+  reg        [3:0]    gridF_20;
+  reg        [3:0]    gridF_21;
+  reg        [3:0]    gridF_22;
+  reg        [3:0]    gridF_23;
+  reg        [3:0]    gridF_24;
+  reg        [3:0]    gridF_25;
+  reg        [3:0]    gridF_26;
+  reg        [3:0]    gridF_27;
+  reg        [3:0]    gridF_28;
+  reg        [3:0]    gridF_29;
+  reg        [3:0]    gridF_30;
+  reg        [3:0]    gridF_31;
+  reg        [15:0]   dqsTrace_0;
+  reg        [15:0]   dqsTrace_1;
+  reg        [15:0]   dqsTrace_2;
+  reg        [15:0]   dqsTrace_3;
+  reg        [15:0]   dqsTrace_4;
+  reg        [15:0]   dqsTrace_5;
+  reg        [15:0]   dqsTrace_6;
+  reg        [15:0]   dqsTrace_7;
+  reg        [3:0]    wrModeMap_0;
+  reg        [3:0]    wrModeMap_1;
+  reg        [3:0]    wrModeMap_2;
+  reg        [3:0]    wrModeMap_3;
+  reg        [3:0]    wrModeMap_4;
+  reg        [3:0]    wrModeMap_5;
+  reg        [3:0]    wrModeMap_6;
+  reg        [3:0]    wrModeMap_7;
+  reg        [3:0]    wrModeMap_8;
+  reg        [3:0]    wrModeMap_9;
+  reg        [3:0]    wrModeMap_10;
+  reg        [3:0]    wrModeMap_11;
+  reg        [3:0]    wrModeMap_12;
+  reg        [3:0]    wrModeMap_13;
+  reg        [3:0]    wrModeMap_14;
+  reg        [3:0]    wrModeMap_15;
   reg                 dllSweepOn;
   reg                 dllSweepDone;
   reg        [3:0]    bestCntDll;
@@ -8711,8 +9372,8 @@ module Ddr3ControllerCore (
   reg                 rdir;
   reg        [10:0]   refresh_timer;
   reg                 refresh_due;
-  wire                when_Ddr3ControllerCore_l407;
-  wire                when_Ddr3ControllerCore_l408;
+  wire                when_Ddr3ControllerCore_l452;
+  wire                when_Ddr3ControllerCore_l453;
   reg                 reqReg_write;
   reg        [26:0]   reqReg_addr;
   reg        [127:0]  reqReg_wdata;
@@ -8749,75 +9410,98 @@ module Ddr3ControllerCore (
   reg        [7:0]    dqs_out;
   reg        [3:0]    dqs_oen;
   reg        [7:0]    dm_out;
-  wire                when_Ddr3ControllerCore_l491;
-  wire                when_Ddr3ControllerCore_l492;
+  wire                when_Ddr3ControllerCore_l536;
+  wire                when_Ddr3ControllerCore_l537;
+  wire                when_Ddr3ControllerCore_l540;
+  wire       [7:0]    _zz_1;
+  wire       [15:0]   _zz_dqsTrace_0;
+  wire       [31:0]   _zz_dqCyc10;
+  wire                when_Ddr3ControllerCore_l550;
+  wire                when_Ddr3ControllerCore_l551;
   wire       [4:0]    rdCyc;
   reg        [3:0]    dqs_read;
-  wire                when_Ddr3ControllerCore_l519;
-  wire                when_Ddr3ControllerCore_l522;
+  wire                when_Ddr3ControllerCore_l589;
   wire                acceptReq;
-  wire                when_Ddr3ControllerCore_l560;
+  wire                when_Ddr3ControllerCore_l628;
   wire       [15:0]   _zz_A_0;
-  wire                when_Ddr3ControllerCore_l685;
-  wire                when_Ddr3ControllerCore_l644;
-  wire                when_Ddr3ControllerCore_l637;
-  wire                when_Ddr3ControllerCore_l645;
-  wire                when_Ddr3ControllerCore_l650;
-  wire                when_Ddr3ControllerCore_l659;
-  wire                when_Ddr3ControllerCore_l674;
-  wire                when_Ddr3ControllerCore_l663;
-  wire                when_Ddr3ControllerCore_l802;
-  wire                when_Ddr3ControllerCore_l807;
-  wire                when_Ddr3ControllerCore_l827;
-  wire                when_Ddr3ControllerCore_l829;
-  wire                when_Ddr3ControllerCore_l841;
-  wire                when_Ddr3ControllerCore_l865;
-  wire                when_Ddr3ControllerCore_l866;
-  wire                when_Ddr3ControllerCore_l881;
-  wire                when_Ddr3ControllerCore_l906;
-  wire                when_Ddr3ControllerCore_l924;
-  wire                when_Ddr3ControllerCore_l949;
+  wire                when_Ddr3ControllerCore_l753;
+  wire                when_Ddr3ControllerCore_l712;
+  wire                when_Ddr3ControllerCore_l705;
+  wire                when_Ddr3ControllerCore_l713;
+  wire                when_Ddr3ControllerCore_l718;
+  wire                when_Ddr3ControllerCore_l727;
+  wire                when_Ddr3ControllerCore_l742;
+  wire                when_Ddr3ControllerCore_l731;
+  wire                when_Ddr3ControllerCore_l891;
+  wire                when_Ddr3ControllerCore_l896;
+  wire                when_Ddr3ControllerCore_l916;
+  wire                when_Ddr3ControllerCore_l918;
+  wire                when_Ddr3ControllerCore_l930;
   wire                when_Ddr3ControllerCore_l954;
-  wire                when_Ddr3ControllerCore_l964;
-  wire                when_Ddr3ControllerCore_l989;
-  wire                when_Ddr3ControllerCore_l1025;
-  wire                when_Ddr3ControllerCore_l1031;
-  wire                when_Ddr3ControllerCore_l1053;
-  wire                when_Ddr3ControllerCore_l1072;
-  wire                when_Ddr3ControllerCore_l1077;
-  wire                when_Ddr3ControllerCore_l1102;
-  wire                when_Ddr3ControllerCore_l1109;
-  wire                when_Ddr3ControllerCore_l1113;
-  wire                when_Ddr3ControllerCore_l1120;
-  wire                when_Ddr3ControllerCore_l1128;
-  wire                when_Ddr3ControllerCore_l1129;
-  wire                when_Ddr3ControllerCore_l1130;
-  wire                when_Ddr3ControllerCore_l1156;
-  wire                when_Ddr3ControllerCore_l1179;
-  wire                when_Ddr3ControllerCore_l1186;
-  wire                when_Ddr3ControllerCore_l1195;
-  wire       [6:0]    _zz_s0Mag;
-  wire                when_Ddr3ControllerCore_l1207;
-  wire       [6:0]    _zz_s0Mag_1;
-  wire                when_Ddr3ControllerCore_l1200;
+  wire                when_Ddr3ControllerCore_l955;
+  wire                when_Ddr3ControllerCore_l970;
+  wire                when_Ddr3ControllerCore_l995;
+  wire                when_Ddr3ControllerCore_l1013;
+  wire                when_Ddr3ControllerCore_l1038;
+  wire                when_Ddr3ControllerCore_l1043;
+  wire                when_Ddr3ControllerCore_l1054;
+  wire                when_Ddr3ControllerCore_l1079;
+  wire                when_Ddr3ControllerCore_l1115;
+  wire                when_Ddr3ControllerCore_l1121;
+  wire                when_Ddr3ControllerCore_l1143;
+  wire                when_Ddr3ControllerCore_l1162;
+  wire                when_Ddr3ControllerCore_l1167;
+  wire                when_Ddr3ControllerCore_l1192;
+  wire       [4:0]    _zz_2;
+  wire                when_Ddr3ControllerCore_l1194;
+  wire       [31:0]   _zz_3;
+  wire       [3:0]    _zz_grid0_0;
+  wire                when_Ddr3ControllerCore_l1197;
+  wire       [31:0]   _zz_4;
+  wire       [3:0]    _zz_gridF_0;
+  wire                when_Ddr3ControllerCore_l1201;
+  wire                when_Ddr3ControllerCore_l1209;
+  wire                when_Ddr3ControllerCore_l1213;
+  wire                when_Ddr3ControllerCore_l1220;
+  wire                when_Ddr3ControllerCore_l1228;
+  wire       [15:0]   _zz_5;
+  wire       [3:0]    _zz_wrModeMap_0;
+  wire                when_Ddr3ControllerCore_l1231;
   wire                when_Ddr3ControllerCore_l1236;
-  wire                when_Ddr3ControllerCore_l1273;
-  wire                when_Ddr3ControllerCore_l1318;
+  wire                when_Ddr3ControllerCore_l1243;
+  wire       [1:0]    _zz_wrMode;
+  wire                when_Ddr3ControllerCore_l1252;
+  wire                when_Ddr3ControllerCore_l1268;
+  wire                when_Ddr3ControllerCore_l1275;
+  wire                when_Ddr3ControllerCore_l1284;
+  wire       [6:0]    _zz_s0Mag;
+  wire                when_Ddr3ControllerCore_l1296;
+  wire       [6:0]    _zz_s0Mag_1;
+  wire                when_Ddr3ControllerCore_l1289;
+  wire                when_Ddr3ControllerCore_l1325;
+  wire                when_Ddr3ControllerCore_l1362;
+  wire                when_Ddr3ControllerCore_l1407;
+  wire       [3:0]    _zz_6;
+  wire                when_Ddr3ControllerCore_l1410;
+  wire                when_Ddr3ControllerCore_l1411;
+  wire                when_Ddr3ControllerCore_l1419;
+  wire                when_Ddr3ControllerCore_l1440;
   wire       [3:0]    _zz_state;
-  wire                when_Ddr3ControllerCore_l1406;
+  wire                when_Ddr3ControllerCore_l1538;
   wire       [9:0]    _zz_A_2;
   wire       [2:0]    _zz_BA_2;
-  wire                when_Ddr3ControllerCore_l1421;
-  wire                when_Ddr3ControllerCore_l1427;
-  wire                when_Ddr3ControllerCore_l1432;
-  wire                when_Ddr3ControllerCore_l1436;
-  wire                when_Ddr3ControllerCore_l1441;
-  wire                when_Ddr3ControllerCore_l1452;
-  wire                when_Ddr3ControllerCore_l1463;
-  wire                when_Ddr3ControllerCore_l1490;
-  wire                when_Ddr3ControllerCore_l1535;
-  wire                when_Ddr3ControllerCore_l1541;
-  wire                when_Ddr3ControllerCore_l1562;
+  wire                when_Ddr3ControllerCore_l1553;
+  wire                when_Ddr3ControllerCore_l1558;
+  wire                when_Ddr3ControllerCore_l1564;
+  wire                when_Ddr3ControllerCore_l1568;
+  wire                when_Ddr3ControllerCore_l1572;
+  wire                when_Ddr3ControllerCore_l1576;
+  wire                when_Ddr3ControllerCore_l1587;
+  wire                when_Ddr3ControllerCore_l1593;
+  wire                when_Ddr3ControllerCore_l1628;
+  wire                when_Ddr3ControllerCore_l1714;
+  wire                when_Ddr3ControllerCore_l1746;
+  wire                when_Ddr3ControllerCore_l1767;
   wire       [15:0]   rdataVec_0;
   wire       [15:0]   rdataVec_1;
   wire       [15:0]   rdataVec_2;
@@ -8826,7 +9510,7 @@ module Ddr3ControllerCore (
   wire       [15:0]   rdataVec_5;
   wire       [15:0]   rdataVec_6;
   wire       [15:0]   rdataVec_7;
-  wire                when_Ddr3ControllerCore_l1688;
+  wire                when_Ddr3ControllerCore_l1914;
   `ifndef SYNTHESIS
   reg [111:0] state_string;
   reg [111:0] _zz_state_string;
@@ -9017,12 +9701,11 @@ module Ddr3ControllerCore (
   assign _zz_rotScores_7_19 = {3'd0, _zz_rotScores_7_20};
   assign _zz_rotScores_7_22 = (latchBeats_7 == patBeats_6);
   assign _zz_rotScores_7_21 = {3'd0, _zz_rotScores_7_22};
-  assign _zz_rdCyc = (_zz_rdCyc_1 + 5'h01);
-  assign _zz_rdCyc_2 = rclkpos;
-  assign _zz_rdCyc_1 = {3'd0, _zz_rdCyc_2};
-  assign _zz_when_Ddr3ControllerCore_l519 = (rdCyc + 5'h01);
-  assign _zz_when_Ddr3ControllerCore_l519_1 = (rdCyc + 5'h02);
-  assign _zz_when_Ddr3ControllerCore_l519_2 = (rdCyc + 5'h03);
+  assign _zz__zz_1_1 = (cycle - 5'h05);
+  assign _zz__zz_1 = _zz__zz_1_1[2:0];
+  assign _zz_rdCyc_1 = rclkpos;
+  assign _zz_rdCyc = {3'd0, _zz_rdCyc_1};
+  assign _zz_when_Ddr3ControllerCore_l589 = (rdCyc + 5'h05);
   assign _zz_cycle = (cycle + 5'h01);
   assign _zz_tick_counter = (tick_counter - 17'h00001);
   assign _zz_A_0_1 = MR2[12 : 0];
@@ -9032,12 +9715,12 @@ module Ddr3ControllerCore (
   assign _zz_A_0_6 = 1'b1;
   assign _zz_A_0_5 = {13'd0, _zz_A_0_6};
   assign _zz_A_0_7 = _zz_A_0[12 : 0];
-  assign _zz_when_Ddr3ControllerCore_l644 = (wlVoteCnt + _zz_when_Ddr3ControllerCore_l644_1);
-  assign _zz_when_Ddr3ControllerCore_l644_2 = when_Ddr3ControllerCore_l685;
-  assign _zz_when_Ddr3ControllerCore_l644_1 = {2'd0, _zz_when_Ddr3ControllerCore_l644_2};
+  assign _zz_when_Ddr3ControllerCore_l712 = (wlVoteCnt + _zz_when_Ddr3ControllerCore_l712_1);
+  assign _zz_when_Ddr3ControllerCore_l712_2 = when_Ddr3ControllerCore_l753;
+  assign _zz_when_Ddr3ControllerCore_l712_1 = {2'd0, _zz_when_Ddr3ControllerCore_l712_2};
   assign _zz_A_0_8 = MR1[12 : 0];
   assign _zz_wstep = (wstep + 8'h01);
-  assign _zz_wstep_2 = ($signed(_zz_wstep_3) + $signed(9'h1ff));
+  assign _zz_wstep_2 = ($signed(_zz_wstep_3) + $signed(9'h0));
   assign _zz_wstep_1 = _zz_wstep_2[7 : 0];
   assign _zz_wstep_3 = _zz_wstep_4;
   assign _zz_wstep_5 = wstep;
@@ -9054,17 +9737,20 @@ module Ddr3ControllerCore (
   assign _zz_A_0_13 = 1'b0;
   assign _zz_rclksel = (rclksel + 3'b001);
   assign _zz_rclkpos_1 = (rclkpos + 2'b01);
-  assign _zz_when_Ddr3ControllerCore_l1195 = (scMag + 7'h02);
-  assign _zz_when_Ddr3ControllerCore_l1207 = (scMag + 7'h02);
+  assign _zz_when_Ddr3ControllerCore_l1284 = (scMag + 7'h02);
+  assign _zz_when_Ddr3ControllerCore_l1296 = (scMag + 7'h02);
+  assign _zz_wstep_6 = (wstep - 8'h06);
+  assign _zz_wstep_7 = (wBase + 8'h06);
   assign _zz_A_0_14 = 1'b0;
   assign _zz_A_0_15 = 1'b0;
   assign _zz_A_0_16 = 1'b0;
   assign _zz_A_0_17 = 1'b0;
+  assign _zz_A_0_18 = 1'b0;
   assign _zz_A_2_5 = (_zz_A_2_6 | 16'h1000);
   assign _zz_A_2_6 = {6'd0, _zz_A_2};
   assign _zz_A_2_7 = (_zz_A_2_8 | 16'h1000);
   assign _zz_A_2_8 = {6'd0, _zz_A_2};
-  assign _zz_A_0_18 = 1'b0;
+  assign _zz_A_0_19 = 1'b0;
   assign _zz_A_2_9 = (_zz_A_2_10 | 16'h1400);
   assign _zz_A_2_11 = {reqReg_addr[6 : 0],3'b000};
   assign _zz_A_2_10 = {6'd0, _zz_A_2_11};
@@ -9092,6 +9778,8 @@ module Ddr3ControllerCore (
   assign _zz_rdataVec_5_1 = _zz_rdataVec_5_2[2 : 0];
   assign _zz_rdataVec_6_1 = _zz_rdataVec_6_2[2 : 0];
   assign _zz_rdataVec_7_1 = _zz_rdataVec_7_2[2 : 0];
+  assign _zz_io_wlMap = {gridF_21,{gridF_20,{gridF_19,{gridF_18,{gridF_17,{gridF_16,{gridF_15,{gridF_14,{gridF_13,{gridF_12,{gridF_11,{gridF_10,{gridF_9,{gridF_8,{gridF_7,{gridF_6,_zz_io_wlMap_1}}}}}}}}}}}}}}}};
+  assign _zz_io_wlMap_1 = {gridF_5,{gridF_4,{gridF_3,{gridF_2,{gridF_1,gridF_0}}}}};
   always @(*) begin
     case(_zz_rdataVec_0_1)
       3'b000 : _zz_rdataVec_0 = io_phy_dq_in_0;
@@ -9251,7 +9939,7 @@ module Ddr3ControllerCore (
   assign MR2 = {{{3'b010,7'h0},M_CWL},3'b000};
   assign MR2_RTT_WR = {{{{{3'b010,2'b00},M_RTT_WR},3'b000},M_CWL},3'b000};
   assign MR3 = {3'b011,13'h0};
-  assign trainPat = 128'h10071006100510041003100210011000;
+  assign trainPat = 128'ha707a606a505a404a303a202a101a000;
   assign poisonPat = (~ trainPat);
   assign latchBeats_0 = trainLatch[15 : 0];
   assign patBeats_0 = trainPat[15 : 0];
@@ -9277,103 +9965,138 @@ module Ddr3ControllerCore (
   assign rotScores_5 = (_zz_rotScores_5 + _zz_rotScores_5_21);
   assign rotScores_6 = (_zz_rotScores_6 + _zz_rotScores_6_21);
   assign rotScores_7 = (_zz_rotScores_7 + _zz_rotScores_7_21);
-  assign rotScoreW_0 = rotScores_0;
+  assign _zz_treeS1_0 = (rotScoresReg_0 < rotScoresReg_1);
+  assign treeS1_0 = (_zz_treeS1_0 ? rotScoresReg_1 : rotScoresReg_0);
+  assign treeI1_0 = (_zz_treeS1_0 ? 3'b001 : 3'b000);
+  assign _zz_treeS1_1 = (rotScoresReg_2 < rotScoresReg_3);
+  assign treeS1_1 = (_zz_treeS1_1 ? rotScoresReg_3 : rotScoresReg_2);
+  assign treeI1_1 = (_zz_treeS1_1 ? 3'b011 : 3'b010);
+  assign _zz_treeS1_2 = (rotScoresReg_4 < rotScoresReg_5);
+  assign treeS1_2 = (_zz_treeS1_2 ? rotScoresReg_5 : rotScoresReg_4);
+  assign treeI1_2 = (_zz_treeS1_2 ? 3'b101 : 3'b100);
+  assign _zz_treeS1_3 = (rotScoresReg_6 < rotScoresReg_7);
+  assign treeS1_3 = (_zz_treeS1_3 ? rotScoresReg_7 : rotScoresReg_6);
+  assign treeI1_3 = (_zz_treeS1_3 ? 3'b111 : 3'b110);
+  assign _zz_treeS2_0 = (treeS1_0 < treeS1_1);
+  assign treeS2_0 = (_zz_treeS2_0 ? treeS1_1 : treeS1_0);
+  assign treeI2_0 = (_zz_treeS2_0 ? treeI1_1 : treeI1_0);
+  assign _zz_treeS2_1 = (treeS1_2 < treeS1_3);
+  assign treeS2_1 = (_zz_treeS2_1 ? treeS1_3 : treeS1_2);
+  assign treeI2_1 = (_zz_treeS2_1 ? treeI1_3 : treeI1_2);
+  assign rotScoreW_0 = 4'b0000;
   assign rotIdxW_0 = 3'b000;
-  assign _zz_rotScoreW_1 = (rotScoreW_0 < rotScores_1);
-  assign rotScoreW_1 = (_zz_rotScoreW_1 ? rotScores_1 : rotScoreW_0);
-  assign rotIdxW_1 = (_zz_rotScoreW_1 ? 3'b001 : rotIdxW_0);
-  assign _zz_rotScoreW_2 = (rotScoreW_1 < rotScores_2);
-  assign rotScoreW_2 = (_zz_rotScoreW_2 ? rotScores_2 : rotScoreW_1);
-  assign rotIdxW_2 = (_zz_rotScoreW_2 ? 3'b010 : rotIdxW_1);
-  assign _zz_rotScoreW_3 = (rotScoreW_2 < rotScores_3);
-  assign rotScoreW_3 = (_zz_rotScoreW_3 ? rotScores_3 : rotScoreW_2);
-  assign rotIdxW_3 = (_zz_rotScoreW_3 ? 3'b011 : rotIdxW_2);
-  assign _zz_rotScoreW_4 = (rotScoreW_3 < rotScores_4);
-  assign rotScoreW_4 = (_zz_rotScoreW_4 ? rotScores_4 : rotScoreW_3);
-  assign rotIdxW_4 = (_zz_rotScoreW_4 ? 3'b100 : rotIdxW_3);
-  assign _zz_rotScoreW_5 = (rotScoreW_4 < rotScores_5);
-  assign rotScoreW_5 = (_zz_rotScoreW_5 ? rotScores_5 : rotScoreW_4);
-  assign rotIdxW_5 = (_zz_rotScoreW_5 ? 3'b101 : rotIdxW_4);
-  assign _zz_rotScoreW_6 = (rotScoreW_5 < rotScores_6);
-  assign rotScoreW_6 = (_zz_rotScoreW_6 ? rotScores_6 : rotScoreW_5);
-  assign rotIdxW_6 = (_zz_rotScoreW_6 ? 3'b110 : rotIdxW_5);
-  assign _zz_rotScoreW_7 = (rotScoreW_6 < rotScores_7);
-  assign rotScoreW_7 = (_zz_rotScoreW_7 ? rotScores_7 : rotScoreW_6);
-  assign rotIdxW_7 = (_zz_rotScoreW_7 ? 3'b111 : rotIdxW_6);
+  assign rotScoreW_1 = 4'b0000;
+  assign rotIdxW_1 = 3'b000;
+  assign rotScoreW_2 = 4'b0000;
+  assign rotIdxW_2 = 3'b000;
+  assign rotScoreW_3 = 4'b0000;
+  assign rotIdxW_3 = 3'b000;
+  assign rotScoreW_4 = 4'b0000;
+  assign rotIdxW_4 = 3'b000;
+  assign rotScoreW_5 = 4'b0000;
+  assign rotIdxW_5 = 3'b000;
+  assign rotScoreW_6 = 4'b0000;
+  assign rotIdxW_6 = 3'b000;
+  assign _zz_rotScoreW_7 = (treeS2_0 < treeS2_1);
+  assign rotScoreW_7 = (_zz_rotScoreW_7 ? treeS2_1 : treeS2_0);
+  assign rotIdxW_7 = (_zz_rotScoreW_7 ? treeI2_1 : treeI2_0);
   assign winEndRaw = (sweepMag0 + sweepMagN);
   assign winEnd = (((sweepMagN == 7'h0) || (7'h40 < winEndRaw)) ? 7'h40 : winEndRaw[6 : 0]);
   assign winDoneNow = (((sweepMagN != 7'h0) && (! s2Side)) && (s2Mag == winEnd));
-  assign when_Ddr3ControllerCore_l407 = (((state == Ddr3State_IDLE) || (state == Ddr3State_READ)) || (state == Ddr3State_WRITE));
-  assign when_Ddr3ControllerCore_l408 = (refresh_timer == 11'h30c);
-  assign when_Ddr3ControllerCore_l491 = io_phy_rburst[0];
-  assign when_Ddr3ControllerCore_l492 = io_phy_rburst[1];
+  assign when_Ddr3ControllerCore_l452 = (((state == Ddr3State_IDLE) || (state == Ddr3State_READ)) || (state == Ddr3State_WRITE));
+  assign when_Ddr3ControllerCore_l453 = (refresh_timer == 11'h250);
+  assign when_Ddr3ControllerCore_l536 = io_phy_rburst[0];
+  assign when_Ddr3ControllerCore_l537 = io_phy_rburst[1];
+  assign when_Ddr3ControllerCore_l540 = (((((((state == Ddr3State_READ_CALIB) && (! training)) && dllSweepDone) && (! scanOn)) && (rcalib_tries == 10'h008)) && (5'h05 <= cycle)) && (cycle <= 5'h0c));
+  assign _zz_1 = ({7'd0,1'b1} <<< _zz__zz_1);
+  assign _zz_dqsTrace_0 = {{{{{{{io_phy_rvalid[1],io_phy_wpoint_1},io_phy_rburst[1]},io_phy_rpoint_1},io_phy_rvalid[0]},io_phy_wpoint_0},io_phy_rburst[0]},io_phy_rpoint_0};
+  assign _zz_dqCyc10 = {{{{{{{io_phy_dq_in_7[3 : 0],io_phy_dq_in_6[3 : 0]},io_phy_dq_in_5[3 : 0]},io_phy_dq_in_4[3 : 0]},io_phy_dq_in_3[3 : 0]},io_phy_dq_in_2[3 : 0]},io_phy_dq_in_1[3 : 0]},io_phy_dq_in_0[3 : 0]};
+  assign when_Ddr3ControllerCore_l550 = (cycle == 5'h0a);
+  assign when_Ddr3ControllerCore_l551 = (cycle == 5'h0b);
   assign rdCyc = (_zz_rdCyc + 5'h01);
-  assign when_Ddr3ControllerCore_l519 = (((state == Ddr3State_READ) || (state == Ddr3State_READ_CALIB)) && ((((cycle == rdCyc) || (cycle == _zz_when_Ddr3ControllerCore_l519)) || (cycle == _zz_when_Ddr3ControllerCore_l519_1)) || (cycle == _zz_when_Ddr3ControllerCore_l519_2)));
-  assign when_Ddr3ControllerCore_l522 = (state == Ddr3State_WRITE);
+  assign when_Ddr3ControllerCore_l589 = (((state == Ddr3State_READ) || (state == Ddr3State_READ_CALIB)) && ((rdCyc <= cycle) && (cycle <= _zz_when_Ddr3ControllerCore_l589)));
   assign acceptReq = (((state == Ddr3State_IDLE) && (! busy)) && (! refresh_due));
   assign io_req_ready = acceptReq;
-  assign when_Ddr3ControllerCore_l560 = (tick_counter == 17'h0000f);
+  assign when_Ddr3ControllerCore_l628 = (tick_counter == 17'h0000f);
   assign _zz_A_0 = (MR1 | 16'h0084);
-  assign when_Ddr3ControllerCore_l685 = (io_phy_dq_raw[0] && io_phy_dq_raw[8]);
-  assign when_Ddr3ControllerCore_l644 = (3'b010 <= _zz_when_Ddr3ControllerCore_l644);
-  assign when_Ddr3ControllerCore_l637 = (wlVoteN == 3'b011);
-  assign when_Ddr3ControllerCore_l645 = (! wlSeenR);
-  assign when_Ddr3ControllerCore_l650 = (wlMatchNR != 8'hff);
-  assign when_Ddr3ControllerCore_l659 = (wlevel_tries == 9'h1ff);
-  assign when_Ddr3ControllerCore_l674 = ((wlevel_cnt == 4'b0001) && (8'h08 <= wstep));
-  assign when_Ddr3ControllerCore_l663 = (! when_Ddr3ControllerCore_l644);
-  assign when_Ddr3ControllerCore_l802 = ((((! aligning) && (anchorLeft == 2'b00)) && (settleLeft == 2'b00)) && (pinLeft == 2'b00));
-  assign when_Ddr3ControllerCore_l807 = ((((! aligning) && (anchorLeft == 2'b00)) && (settleLeft == 2'b00)) && (pinLeft == 2'b00));
-  assign when_Ddr3ControllerCore_l827 = (scanOn && ((aligning || (anchorLeft != 2'b00)) || (settleLeft != 2'b00)));
-  assign when_Ddr3ControllerCore_l829 = (anchorLeft != 2'b00);
-  assign when_Ddr3ControllerCore_l841 = (navigateLeft != 8'h0);
-  assign when_Ddr3ControllerCore_l865 = (((aligning || (anchorLeft != 2'b00)) || (settleLeft != 2'b00)) || (pinLeft != 2'b00));
-  assign when_Ddr3ControllerCore_l866 = (anchorLeft != 2'b00);
-  assign when_Ddr3ControllerCore_l881 = (navigateLeft != 8'h0);
-  assign when_Ddr3ControllerCore_l906 = (pinLeft != 2'b00);
-  assign when_Ddr3ControllerCore_l924 = ((settleLeft == 2'b01) && applyArmed);
-  assign when_Ddr3ControllerCore_l949 = (settleLeft == 2'b00);
-  assign when_Ddr3ControllerCore_l954 = (bestCntDll < rotScoreW_7);
-  assign when_Ddr3ControllerCore_l964 = (bestCntDll == 4'b1000);
-  assign when_Ddr3ControllerCore_l989 = ((s2Side && (s2Mag == 7'h40)) && (rclkpos == 2'b11));
-  assign when_Ddr3ControllerCore_l1025 = (rclkpos == 2'b11);
-  assign when_Ddr3ControllerCore_l1031 = (((! s2Side) && (s2Mag == 7'h40)) && (! winDoneNow));
-  assign when_Ddr3ControllerCore_l1053 = ((s0Mag != 7'h40) && (! winDoneNow));
-  assign when_Ddr3ControllerCore_l1072 = (! training);
-  assign when_Ddr3ControllerCore_l1077 = (! winDoneNow);
-  assign when_Ddr3ControllerCore_l1102 = (bestCnt < rotScoreW_7);
-  assign when_Ddr3ControllerCore_l1109 = (rclksel == 3'b111);
-  assign when_Ddr3ControllerCore_l1113 = (rcalib_tries == 10'h028);
-  assign when_Ddr3ControllerCore_l1120 = ((! training) && (! dllSweepDone));
-  assign when_Ddr3ControllerCore_l1128 = ((! scanOn) && (! shiftCalDone));
-  assign when_Ddr3ControllerCore_l1129 = (! shiftPhase);
-  assign when_Ddr3ControllerCore_l1130 = (bestCnt == 4'b1000);
-  assign when_Ddr3ControllerCore_l1156 = (best0 < bestCnt);
-  assign when_Ddr3ControllerCore_l1179 = (bestSurveyCnt < bestCnt);
-  assign when_Ddr3ControllerCore_l1186 = (bestCnt == 4'b1000);
-  assign when_Ddr3ControllerCore_l1195 = ((! scSide) && (_zz_when_Ddr3ControllerCore_l1195 <= 7'h40));
+  assign when_Ddr3ControllerCore_l753 = (io_phy_dq_raw[0] && io_phy_dq_raw[8]);
+  assign when_Ddr3ControllerCore_l712 = (3'b010 <= _zz_when_Ddr3ControllerCore_l712);
+  assign when_Ddr3ControllerCore_l705 = (wlVoteN == 3'b011);
+  assign when_Ddr3ControllerCore_l713 = (! wlSeenR);
+  assign when_Ddr3ControllerCore_l718 = (wlMatchNR != 8'hff);
+  assign when_Ddr3ControllerCore_l727 = (wlevel_tries == 9'h1ff);
+  assign when_Ddr3ControllerCore_l742 = ((wlevel_cnt == 4'b0001) && (8'h08 <= wstep));
+  assign when_Ddr3ControllerCore_l731 = (! when_Ddr3ControllerCore_l712);
+  assign when_Ddr3ControllerCore_l891 = ((((! aligning) && (anchorLeft == 2'b00)) && (settleLeft == 2'b00)) && (pinLeft == 2'b00));
+  assign when_Ddr3ControllerCore_l896 = ((((! aligning) && (anchorLeft == 2'b00)) && (settleLeft == 2'b00)) && (pinLeft == 2'b00));
+  assign when_Ddr3ControllerCore_l916 = (scanOn && ((aligning || (anchorLeft != 2'b00)) || (settleLeft != 2'b00)));
+  assign when_Ddr3ControllerCore_l918 = (anchorLeft != 2'b00);
+  assign when_Ddr3ControllerCore_l930 = (navigateLeft != 8'h0);
+  assign when_Ddr3ControllerCore_l954 = (((aligning || (anchorLeft != 2'b00)) || (settleLeft != 2'b00)) || (pinLeft != 2'b00));
+  assign when_Ddr3ControllerCore_l955 = (anchorLeft != 2'b00);
+  assign when_Ddr3ControllerCore_l970 = (navigateLeft != 8'h0);
+  assign when_Ddr3ControllerCore_l995 = (pinLeft != 2'b00);
+  assign when_Ddr3ControllerCore_l1013 = ((settleLeft == 2'b01) && applyArmed);
+  assign when_Ddr3ControllerCore_l1038 = (settleLeft == 2'b00);
+  assign when_Ddr3ControllerCore_l1043 = (bestCntDll < sweepScoreReg);
+  assign when_Ddr3ControllerCore_l1054 = (bestCntDll == 4'b1000);
+  assign when_Ddr3ControllerCore_l1079 = ((s2Side && (s2Mag == 7'h40)) && (rclkpos == 2'b11));
+  assign when_Ddr3ControllerCore_l1115 = (rclkpos == 2'b11);
+  assign when_Ddr3ControllerCore_l1121 = (((! s2Side) && (s2Mag == 7'h40)) && (! winDoneNow));
+  assign when_Ddr3ControllerCore_l1143 = ((s0Mag != 7'h40) && (! winDoneNow));
+  assign when_Ddr3ControllerCore_l1162 = (! training);
+  assign when_Ddr3ControllerCore_l1167 = (! winDoneNow);
+  assign when_Ddr3ControllerCore_l1192 = (rcalib_tries < 10'h020);
+  assign _zz_2 = {rclkpos,rclksel};
+  assign when_Ddr3ControllerCore_l1194 = ((((((! training) && (! dllSweepDone)) && (! scanOn)) && (! shiftCalDone)) && (tryMode == 2'b00)) && (wTry == 2'b00));
+  assign _zz_3 = ({31'd0,1'b1} <<< _zz_2);
+  assign _zz_grid0_0 = sweepScoreReg;
+  assign when_Ddr3ControllerCore_l1197 = (((! training) && dllSweepDone) && (! scanOn));
+  assign _zz_4 = ({31'd0,1'b1} <<< _zz_2);
+  assign _zz_gridF_0 = sweepScoreReg;
+  assign when_Ddr3ControllerCore_l1201 = (bestCnt < sweepScoreReg);
+  assign when_Ddr3ControllerCore_l1209 = (rclksel == 3'b111);
+  assign when_Ddr3ControllerCore_l1213 = (rcalib_tries == 10'h028);
+  assign when_Ddr3ControllerCore_l1220 = ((! training) && (! dllSweepDone));
+  assign when_Ddr3ControllerCore_l1228 = ((! scanOn) && (! shiftCalDone));
+  assign _zz_5 = ({15'd0,1'b1} <<< {wTry,tryMode});
+  assign _zz_wrModeMap_0 = bestCnt;
+  assign when_Ddr3ControllerCore_l1231 = ((bestCnt == 4'b1000) && ((tryMode == 2'b00) || (! 1'b0)));
+  assign when_Ddr3ControllerCore_l1236 = ((tryMode == 2'b00) || (best0 < bestCnt));
+  assign when_Ddr3ControllerCore_l1243 = (tryMode < 2'b11);
+  assign _zz_wrMode = (tryMode + 2'b01);
+  assign when_Ddr3ControllerCore_l1252 = (bestCnt <= best0);
+  assign when_Ddr3ControllerCore_l1268 = (bestSurveyCnt < bestCnt);
+  assign when_Ddr3ControllerCore_l1275 = (bestCnt == 4'b1000);
+  assign when_Ddr3ControllerCore_l1284 = ((! scSide) && (_zz_when_Ddr3ControllerCore_l1284 <= 7'h40));
   assign _zz_s0Mag = (scMag + 7'h02);
-  assign when_Ddr3ControllerCore_l1207 = (_zz_when_Ddr3ControllerCore_l1207 <= 7'h40);
+  assign when_Ddr3ControllerCore_l1296 = (_zz_when_Ddr3ControllerCore_l1296 <= 7'h40);
   assign _zz_s0Mag_1 = (scMag + 7'h02);
-  assign when_Ddr3ControllerCore_l1200 = (! scSide);
-  assign when_Ddr3ControllerCore_l1236 = (sweepMagN != 7'h0);
-  assign when_Ddr3ControllerCore_l1273 = (bestCnt == 4'b1000);
-  assign when_Ddr3ControllerCore_l1318 = (! training);
+  assign when_Ddr3ControllerCore_l1289 = (! scSide);
+  assign when_Ddr3ControllerCore_l1325 = (sweepMagN != 7'h0);
+  assign when_Ddr3ControllerCore_l1362 = (bestCnt == 4'b1000);
+  assign when_Ddr3ControllerCore_l1407 = (! training);
+  assign _zz_6 = ({3'd0,1'b1} <<< wTry);
+  assign when_Ddr3ControllerCore_l1410 = ((bestCnt < 4'b1000) && (wTry < 2'b10));
+  assign when_Ddr3ControllerCore_l1411 = ((wTry == 2'b00) || (bestWCnt < bestCnt));
+  assign when_Ddr3ControllerCore_l1419 = (wTry == 2'b00);
+  assign when_Ddr3ControllerCore_l1440 = ((wTry == 2'b10) && (bestCnt < bestWCnt));
   assign _zz_state = (io_req_payload_write ? Ddr3State_WRITE : Ddr3State_READ);
-  assign when_Ddr3ControllerCore_l1406 = (! io_req_payload_write);
+  assign when_Ddr3ControllerCore_l1538 = (! io_req_payload_write);
   assign _zz_A_2 = {reqReg_addr[6 : 0],3'b000};
   assign _zz_BA_2 = reqReg_addr[23 : 21];
-  assign when_Ddr3ControllerCore_l1421 = (cycle == 5'h01);
-  assign when_Ddr3ControllerCore_l1427 = (cycle == 5'h02);
-  assign when_Ddr3ControllerCore_l1432 = (cycle == 5'h0b);
-  assign when_Ddr3ControllerCore_l1436 = (cycle == 5'h0c);
-  assign when_Ddr3ControllerCore_l1441 = (cycle == 5'h0d);
-  assign when_Ddr3ControllerCore_l1452 = (cycle == 5'h01);
-  assign when_Ddr3ControllerCore_l1463 = (cycle == 5'h02);
-  assign when_Ddr3ControllerCore_l1490 = (cycle == 5'h03);
-  assign when_Ddr3ControllerCore_l1535 = (cycle == 5'h04);
-  assign when_Ddr3ControllerCore_l1541 = (cycle == 5'h07);
-  assign when_Ddr3ControllerCore_l1562 = (cycle == 5'h10);
+  assign when_Ddr3ControllerCore_l1553 = (cycle == 5'h01);
+  assign when_Ddr3ControllerCore_l1558 = (cycle == 5'h02);
+  assign when_Ddr3ControllerCore_l1564 = (cycle == 5'h09);
+  assign when_Ddr3ControllerCore_l1568 = (cycle == 5'h0a);
+  assign when_Ddr3ControllerCore_l1572 = (cycle == 5'h0c);
+  assign when_Ddr3ControllerCore_l1576 = (cycle == 5'h0d);
+  assign when_Ddr3ControllerCore_l1587 = (cycle == 5'h01);
+  assign when_Ddr3ControllerCore_l1593 = (cycle == 5'h02);
+  assign when_Ddr3ControllerCore_l1628 = (cycle == 5'h03);
+  assign when_Ddr3ControllerCore_l1714 = (cycle == 5'h04);
+  assign when_Ddr3ControllerCore_l1746 = (cycle == ((2'b10 <= wrMode) ? 5'h08 : 5'h07));
+  assign when_Ddr3ControllerCore_l1767 = (cycle == 5'h10);
   assign rdataVec_0 = _zz_rdataVec_0;
   assign rdataVec_1 = _zz_rdataVec_1;
   assign rdataVec_2 = _zz_rdataVec_2;
@@ -9426,7 +10149,7 @@ module Ddr3ControllerCore (
   assign io_phy_BA_3 = BA_3;
   assign io_phy_CKE = CKE;
   assign io_phy_resetn_delay = resetn_delay;
-  assign when_Ddr3ControllerCore_l1688 = (((((io_phy_rst_lock_n && (! _zz_when_Ddr3ControllerCore_l1688)) && (! busy)) && (state == Ddr3State_IDLE)) && wlevel_done) && rcalib_done);
+  assign when_Ddr3ControllerCore_l1914 = (((((io_phy_rst_lock_n && (! _zz_when_Ddr3ControllerCore_l1914)) && (! busy)) && (state == Ddr3State_IDLE)) && wlevel_done) && rcalib_done);
   assign io_init_done = init_done_latched;
   assign io_write_level_done = wlevel_done;
   assign io_read_calib_done = rcalib_done;
@@ -9436,12 +10159,15 @@ module Ddr3ControllerCore (
   assign io_best_rot = bestRot;
   assign io_best_score = bestCnt;
   assign io_dbg_state = state;
-  assign io_wlMap = wlMapR;
+  assign io_wlMap = {{{{{{dqsTrace_6,dqsTrace_5},dqsTrace_4},dqsTrace_3},dqCyc11},dqCyc10},{gridF_31,{gridF_30,{gridF_29,{gridF_28,{gridF_27,{gridF_26,{gridF_25,{gridF_24,{gridF_23,{gridF_22,_zz_io_wlMap}}}}}}}}}}};
   assign io_wlFirst = wlFirstR;
   assign io_wlLast = wlLastR;
   assign io_wlMatchN = wlMatchNR;
-  always @(posedge io_pclk or posedge _zz_when_Ddr3ControllerCore_l1688) begin
-    if(_zz_when_Ddr3ControllerCore_l1688) begin
+  assign io_wr_adv = wrMode;
+  assign io_w_scores = {{wScores_2,wScores_1},wScores_0};
+  assign io_train_latch = bestLatch;
+  always @(posedge io_pclk or posedge _zz_when_Ddr3ControllerCore_l1914) begin
+    if(_zz_when_Ddr3ControllerCore_l1914) begin
       state <= Ddr3State_RST_WAIT;
       cycle <= 5'h0;
       tick_counter <= 17'h0ea60;
@@ -9461,6 +10187,10 @@ module Ddr3ControllerCore (
       wlMatchNR <= 8'h0;
       wlVoteN <= 3'b000;
       wlVoteCnt <= 3'b000;
+      wlVoteCnt0 <= 3'b000;
+      wlVoteCnt1 <= 3'b000;
+      wlLockedR <= 1'b0;
+      wlLockedStepR <= 8'h0;
       wstep <= 8'h0;
       rcalib_done <= 1'b0;
       rcalib_cnt <= 4'b0000;
@@ -9473,17 +10203,131 @@ module Ddr3ControllerCore (
       trainDone <= 1'b0;
       needPoison <= 1'b0;
       trainLatch <= 128'h0;
+      rotScoresReg_0 <= 4'b0000;
+      rotScoresReg_1 <= 4'b0000;
+      rotScoresReg_2 <= 4'b0000;
+      rotScoresReg_3 <= 4'b0000;
+      rotScoresReg_4 <= 4'b0000;
+      rotScoresReg_5 <= 4'b0000;
+      rotScoresReg_6 <= 4'b0000;
+      rotScoresReg_7 <= 4'b0000;
+      sweepScoreReg <= 4'b0000;
+      sweepRotReg <= 3'b000;
       bestCnt <= 4'b0000;
       bestPos <= 2'b00;
       bestSel <= 3'b000;
       bestRot <= 3'b000;
-      wrAdv <= 1'b0;
+      wrMode <= 2'b00;
       shiftCalDone <= 1'b0;
-      shiftPhase <= 1'b0;
+      tryMode <= 2'b00;
+      wCalDone <= 1'b0;
+      wTry <= 2'b00;
+      wBase <= 8'h0;
+      bestWstep <= 8'h0;
       best0 <= 4'b0000;
       best0Pos <= 2'b00;
       best0Sel <= 3'b000;
       best0Rot <= 3'b000;
+      bestMode <= 2'b00;
+      bestLatch <= 128'h0;
+      dqCyc10 <= 32'h0;
+      dqCyc11 <= 32'h0;
+      bestWCnt <= 4'b0000;
+      bestWPos <= 2'b00;
+      bestWSel <= 3'b000;
+      bestWRot <= 3'b000;
+      bestWMode <= 2'b00;
+      wScores_0 <= 4'b0000;
+      wScores_1 <= 4'b0000;
+      wScores_2 <= 4'b0000;
+      grid0_0 <= 4'b0000;
+      grid0_1 <= 4'b0000;
+      grid0_2 <= 4'b0000;
+      grid0_3 <= 4'b0000;
+      grid0_4 <= 4'b0000;
+      grid0_5 <= 4'b0000;
+      grid0_6 <= 4'b0000;
+      grid0_7 <= 4'b0000;
+      grid0_8 <= 4'b0000;
+      grid0_9 <= 4'b0000;
+      grid0_10 <= 4'b0000;
+      grid0_11 <= 4'b0000;
+      grid0_12 <= 4'b0000;
+      grid0_13 <= 4'b0000;
+      grid0_14 <= 4'b0000;
+      grid0_15 <= 4'b0000;
+      grid0_16 <= 4'b0000;
+      grid0_17 <= 4'b0000;
+      grid0_18 <= 4'b0000;
+      grid0_19 <= 4'b0000;
+      grid0_20 <= 4'b0000;
+      grid0_21 <= 4'b0000;
+      grid0_22 <= 4'b0000;
+      grid0_23 <= 4'b0000;
+      grid0_24 <= 4'b0000;
+      grid0_25 <= 4'b0000;
+      grid0_26 <= 4'b0000;
+      grid0_27 <= 4'b0000;
+      grid0_28 <= 4'b0000;
+      grid0_29 <= 4'b0000;
+      grid0_30 <= 4'b0000;
+      grid0_31 <= 4'b0000;
+      gridF_0 <= 4'b0000;
+      gridF_1 <= 4'b0000;
+      gridF_2 <= 4'b0000;
+      gridF_3 <= 4'b0000;
+      gridF_4 <= 4'b0000;
+      gridF_5 <= 4'b0000;
+      gridF_6 <= 4'b0000;
+      gridF_7 <= 4'b0000;
+      gridF_8 <= 4'b0000;
+      gridF_9 <= 4'b0000;
+      gridF_10 <= 4'b0000;
+      gridF_11 <= 4'b0000;
+      gridF_12 <= 4'b0000;
+      gridF_13 <= 4'b0000;
+      gridF_14 <= 4'b0000;
+      gridF_15 <= 4'b0000;
+      gridF_16 <= 4'b0000;
+      gridF_17 <= 4'b0000;
+      gridF_18 <= 4'b0000;
+      gridF_19 <= 4'b0000;
+      gridF_20 <= 4'b0000;
+      gridF_21 <= 4'b0000;
+      gridF_22 <= 4'b0000;
+      gridF_23 <= 4'b0000;
+      gridF_24 <= 4'b0000;
+      gridF_25 <= 4'b0000;
+      gridF_26 <= 4'b0000;
+      gridF_27 <= 4'b0000;
+      gridF_28 <= 4'b0000;
+      gridF_29 <= 4'b0000;
+      gridF_30 <= 4'b0000;
+      gridF_31 <= 4'b0000;
+      dqsTrace_0 <= 16'h0;
+      dqsTrace_1 <= 16'h0;
+      dqsTrace_2 <= 16'h0;
+      dqsTrace_3 <= 16'h0;
+      dqsTrace_4 <= 16'h0;
+      dqsTrace_5 <= 16'h0;
+      dqsTrace_6 <= 16'h0;
+      dqsTrace_7 <= 16'h0;
+      wrModeMap_0 <= 4'b0000;
+      wrModeMap_1 <= 4'b0000;
+      wrModeMap_2 <= 4'b0000;
+      wrModeMap_3 <= 4'b0000;
+      wrModeMap_4 <= 4'b0000;
+      wrModeMap_5 <= 4'b0000;
+      wrModeMap_6 <= 4'b0000;
+      wrModeMap_7 <= 4'b0000;
+      wrModeMap_8 <= 4'b0000;
+      wrModeMap_9 <= 4'b0000;
+      wrModeMap_10 <= 4'b0000;
+      wrModeMap_11 <= 4'b0000;
+      wrModeMap_12 <= 4'b0000;
+      wrModeMap_13 <= 4'b0000;
+      wrModeMap_14 <= 4'b0000;
+      wrModeMap_15 <= 4'b0000;
       dllSweepOn <= 1'b0;
       dllSweepDone <= 1'b0;
       bestCntDll <= 4'b0000;
@@ -9551,25 +10395,54 @@ module Ddr3ControllerCore (
     end else begin
       sweepMag0 <= 7'h0;
       sweepMagN <= 7'h0;
-      if(when_Ddr3ControllerCore_l407) begin
-        if(when_Ddr3ControllerCore_l408) begin
+      if(when_Ddr3ControllerCore_l452) begin
+        if(when_Ddr3ControllerCore_l453) begin
           refresh_due <= 1'b1;
           refresh_timer <= 11'h0;
         end else begin
           refresh_timer <= (refresh_timer + 11'h001);
         end
       end
-      if(when_Ddr3ControllerCore_l491) begin
+      if(when_Ddr3ControllerCore_l536) begin
         rburst_seen[0] <= 1'b1;
       end
-      if(when_Ddr3ControllerCore_l492) begin
+      if(when_Ddr3ControllerCore_l537) begin
         rburst_seen[1] <= 1'b1;
       end
-      dqs_read <= 4'b0000;
-      if(when_Ddr3ControllerCore_l519) begin
-        dqs_read <= 4'b1111;
+      if(when_Ddr3ControllerCore_l540) begin
+        if(_zz_1[0]) begin
+          dqsTrace_0 <= _zz_dqsTrace_0;
+        end
+        if(_zz_1[1]) begin
+          dqsTrace_1 <= _zz_dqsTrace_0;
+        end
+        if(_zz_1[2]) begin
+          dqsTrace_2 <= _zz_dqsTrace_0;
+        end
+        if(_zz_1[3]) begin
+          dqsTrace_3 <= _zz_dqsTrace_0;
+        end
+        if(_zz_1[4]) begin
+          dqsTrace_4 <= _zz_dqsTrace_0;
+        end
+        if(_zz_1[5]) begin
+          dqsTrace_5 <= _zz_dqsTrace_0;
+        end
+        if(_zz_1[6]) begin
+          dqsTrace_6 <= _zz_dqsTrace_0;
+        end
+        if(_zz_1[7]) begin
+          dqsTrace_7 <= _zz_dqsTrace_0;
+        end
+        if(when_Ddr3ControllerCore_l550) begin
+          dqCyc10 <= _zz_dqCyc10;
+        end
+        if(when_Ddr3ControllerCore_l551) begin
+          dqCyc11 <= _zz_dqCyc10;
+        end
       end
-      if(when_Ddr3ControllerCore_l522) begin
+      dqs_read <= 4'b0000;
+      if(when_Ddr3ControllerCore_l589) begin
         dqs_read <= 4'b1111;
       end
       if(io_phy_rst_lock_n) begin
@@ -9605,12 +10478,12 @@ module Ddr3ControllerCore (
           Ddr3State_RST_WAIT : begin
             if(tick) begin
               resetn_delay <= 1'b1;
-              tick_counter <= 17'h0c364;
+              tick_counter <= 17'h09484;
               state <= Ddr3State_CKE_WAIT;
             end
           end
           Ddr3State_CKE_WAIT : begin
-            if(when_Ddr3ControllerCore_l560) begin
+            if(when_Ddr3ControllerCore_l628) begin
               CKE <= 1'b1;
             end
             if(tick) begin
@@ -9695,22 +10568,22 @@ module Ddr3ControllerCore (
               5'h11 : begin
                 dqs_out <= 8'h0;
                 dqs_oen <= 4'b0000;
-                if(when_Ddr3ControllerCore_l637) begin
+                if(when_Ddr3ControllerCore_l705) begin
                   wlVoteN <= 3'b000;
                   wlVoteCnt <= 3'b000;
                   wlevel_tries <= (wlevel_tries + 9'h001);
-                  wlMapR[wstep] <= when_Ddr3ControllerCore_l644;
-                  if(when_Ddr3ControllerCore_l644) begin
-                    if(when_Ddr3ControllerCore_l645) begin
+                  wlMapR[wstep] <= when_Ddr3ControllerCore_l712;
+                  if(when_Ddr3ControllerCore_l712) begin
+                    if(when_Ddr3ControllerCore_l713) begin
                       wlSeenR <= 1'b1;
                       wlFirstR <= wstep;
                     end
                     wlLastR <= wstep;
-                    if(when_Ddr3ControllerCore_l650) begin
+                    if(when_Ddr3ControllerCore_l718) begin
                       wlMatchNR <= (wlMatchNR + 8'h01);
                     end
                   end
-                  if(when_Ddr3ControllerCore_l659) begin
+                  if(when_Ddr3ControllerCore_l727) begin
                     wlevel_done <= 1'b1;
                     wstep <= 8'hff;
                     nRAS_0 <= CMD_SetModeReg[2];
@@ -9719,13 +10592,13 @@ module Ddr3ControllerCore (
                     BA_0 <= MR1[15 : 13];
                     A_0 <= {1'd0, _zz_A_0_8};
                   end else begin
-                    if(when_Ddr3ControllerCore_l663) begin
+                    if(when_Ddr3ControllerCore_l731) begin
                       wstep <= _zz_wstep;
                       wlevel_cnt <= 4'b0000;
                       cycle <= 5'h0a;
                     end else begin
                       wlevel_cnt <= (wlevel_cnt + 4'b0001);
-                      if(when_Ddr3ControllerCore_l674) begin
+                      if(when_Ddr3ControllerCore_l742) begin
                         wlevel_done <= 1'b1;
                         wstep <= _zz_wstep_1;
                         nRAS_0 <= CMD_SetModeReg[2];
@@ -9739,7 +10612,7 @@ module Ddr3ControllerCore (
                     end
                   end
                 end else begin
-                  if(when_Ddr3ControllerCore_l685) begin
+                  if(when_Ddr3ControllerCore_l753) begin
                     wlVoteCnt <= (wlVoteCnt + 3'b001);
                   end
                   wlVoteN <= (wlVoteN + 3'b001);
@@ -9775,12 +10648,26 @@ module Ddr3ControllerCore (
                 end else begin
                   if(training) begin
                     shiftCalDone <= 1'b0;
-                    shiftPhase <= 1'b0;
-                    wrAdv <= 1'b0;
+                    tryMode <= 2'b00;
+                    wrMode <= 2'b00;
+                    bestMode <= 2'b00;
+                    wCalDone <= 1'b0;
+                    wTry <= 2'b00;
+                    wBase <= 8'h0;
+                    bestWstep <= 8'h0;
+                    bestWCnt <= 4'b0000;
+                    bestWPos <= 2'b00;
+                    bestWSel <= 3'b000;
+                    bestWRot <= 3'b000;
+                    bestWMode <= 2'b00;
+                    wScores_0 <= 4'b0000;
+                    wScores_1 <= 4'b0000;
+                    wScores_2 <= 4'b0000;
                   end
                   rcalib_cnt <= 4'b0000;
                   rcalib_tries <= 10'h0;
                   bestCnt <= 4'b0000;
+                  bestLatch <= 128'h0;
                   bestPos <= rclkpos;
                   bestSel <= rclksel;
                   bestRot <= 3'b000;
@@ -9823,33 +10710,47 @@ module Ddr3ControllerCore (
                 BA_2 <= 3'b000;
                 A_2 <= (_zz_A_2_3 <<< 12);
               end
-              5'h0b : begin
+              5'h0a : begin
                 trainLatch <= {{{{{{{io_phy_dq_in_7,io_phy_dq_in_6},io_phy_dq_in_5},io_phy_dq_in_4},io_phy_dq_in_3},io_phy_dq_in_2},io_phy_dq_in_1},io_phy_dq_in_0};
               end
               5'h0c : begin
-                if(when_Ddr3ControllerCore_l802) begin
+                rotScoresReg_0 <= rotScores_0;
+                rotScoresReg_1 <= rotScores_1;
+                rotScoresReg_2 <= rotScores_2;
+                rotScoresReg_3 <= rotScores_3;
+                rotScoresReg_4 <= rotScores_4;
+                rotScoresReg_5 <= rotScores_5;
+                rotScoresReg_6 <= rotScores_6;
+                rotScoresReg_7 <= rotScores_7;
+              end
+              5'h0d : begin
+                sweepScoreReg <= rotScoreW_7;
+                sweepRotReg <= rotIdxW_7;
+              end
+              5'h0e : begin
+                if(when_Ddr3ControllerCore_l891) begin
                   `ifndef SYNTHESIS
                     `ifdef FORMAL
-                      assert(1'b0); // Ddr3ControllerCore.scala:L803
+                      assert(1'b0); // Ddr3ControllerCore.scala:L892
                     `else
                       if(!1'b0) begin
-                        $display("NOTE RCALIB chk pos=%x sel=%x seen=%x score=%x rot=%x latch=%x best=%x tries=%x", rclkpos, rclksel, rburst_seen, rotScoreW_7, rotIdxW_7, trainLatch, bestCnt, rcalib_tries); // Ddr3ControllerCore.scala:L803
+                        $display("NOTE RCALIB chk pos=%x sel=%x seen=%x score=%x rot=%x latch=%x best=%x tries=%x", rclkpos, rclksel, rburst_seen, sweepScoreReg, sweepRotReg, trainLatch, bestCnt, rcalib_tries); // Ddr3ControllerCore.scala:L892
                       end
                     `endif
                   `endif
                 end
                 rcalib_cnt <= 4'b0000;
-                if(when_Ddr3ControllerCore_l807) begin
+                if(when_Ddr3ControllerCore_l896) begin
                   rcalib_tries <= (rcalib_tries + 10'h001);
                 end
-                if(when_Ddr3ControllerCore_l827) begin
+                if(when_Ddr3ControllerCore_l916) begin
                   rmove <= 1'b0;
-                  if(when_Ddr3ControllerCore_l829) begin
+                  if(when_Ddr3ControllerCore_l918) begin
                     anchorLeft <= (anchorLeft - 2'b01);
                     cycle <= 5'h01;
                   end else begin
                     if(aligning) begin
-                      if(when_Ddr3ControllerCore_l841) begin
+                      if(when_Ddr3ControllerCore_l930) begin
                         rdir <= s0Side;
                         rmove <= navigateLeft[0];
                         navigateLeft <= (navigateLeft - 8'h01);
@@ -9867,13 +10768,13 @@ module Ddr3ControllerCore (
                 end else begin
                   if(dllSweepOn) begin
                     rmove <= 1'b0;
-                    if(when_Ddr3ControllerCore_l865) begin
-                      if(when_Ddr3ControllerCore_l866) begin
+                    if(when_Ddr3ControllerCore_l954) begin
+                      if(when_Ddr3ControllerCore_l955) begin
                         anchorLeft <= (anchorLeft - 2'b01);
                         cycle <= 5'h01;
                       end else begin
                         if(aligning) begin
-                          if(when_Ddr3ControllerCore_l881) begin
+                          if(when_Ddr3ControllerCore_l970) begin
                             rdir <= (applyArmed ? bestSide : s0Side);
                             rmove <= navigateLeft[0];
                             navigateLeft <= (navigateLeft - 8'h01);
@@ -9884,7 +10785,7 @@ module Ddr3ControllerCore (
                             cycle <= 5'h01;
                           end
                         end else begin
-                          if(when_Ddr3ControllerCore_l906) begin
+                          if(when_Ddr3ControllerCore_l995) begin
                             dqs_hold <= 1'b1;
                             s1Side <= s0Side;
                             s1Mag <= s0Mag;
@@ -9898,7 +10799,7 @@ module Ddr3ControllerCore (
                             s1Mag <= s0Mag;
                             s2Side <= s1Side;
                             s2Mag <= s1Mag;
-                            if(when_Ddr3ControllerCore_l924) begin
+                            if(when_Ddr3ControllerCore_l1013) begin
                               rclkpos <= bestPos;
                               needFinalSurvey <= 1'b1;
                               dllSweepDone <= 1'b1;
@@ -9906,10 +10807,10 @@ module Ddr3ControllerCore (
                               applyArmed <= 1'b0;
                               `ifndef SYNTHESIS
                                 `ifdef FORMAL
-                                  assert(1'b0); // Ddr3ControllerCore.scala:L934
+                                  assert(1'b0); // Ddr3ControllerCore.scala:L1023
                                 `else
                                   if(!1'b0) begin
-                                    $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L934
+                                    $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L1023
                                   end
                                 `endif
                               `endif
@@ -9925,16 +10826,17 @@ module Ddr3ControllerCore (
                         end
                       end
                     end else begin
-                      if(when_Ddr3ControllerCore_l949) begin
-                        if(when_Ddr3ControllerCore_l954) begin
-                          bestCntDll <= rotScoreW_7;
+                      if(when_Ddr3ControllerCore_l1038) begin
+                        if(when_Ddr3ControllerCore_l1043) begin
+                          bestCntDll <= sweepScoreReg;
+                          bestLatch <= trainLatch;
                           bestMag <= s2Mag;
                           bestSide <= s2Side;
                           bestPos <= rclkpos;
                           bestSel <= rclksel;
-                          bestRot <= rotIdxW_7;
+                          bestRot <= sweepRotReg;
                         end
-                        if(when_Ddr3ControllerCore_l964) begin
+                        if(when_Ddr3ControllerCore_l1054) begin
                           aligning <= 1'b1;
                           anchorLeft <= 2'b10;
                           navigateLeft <= ({1'd0,bestMag} <<< 1'd1);
@@ -9947,16 +10849,16 @@ module Ddr3ControllerCore (
                           s2Mag <= bestMag;
                           `ifndef SYNTHESIS
                             `ifdef FORMAL
-                              assert(1'b0); // Ddr3ControllerCore.scala:L979
+                              assert(1'b0); // Ddr3ControllerCore.scala:L1069
                             `else
                               if(!1'b0) begin
-                                $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L979
+                                $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L1069
                               end
                             `endif
                           `endif
                           cycle <= 5'h01;
                         end else begin
-                          if(when_Ddr3ControllerCore_l989) begin
+                          if(when_Ddr3ControllerCore_l1079) begin
                             aligning <= 1'b1;
                             anchorLeft <= 2'b10;
                             navigateLeft <= ({1'd0,bestMag} <<< 1'd1);
@@ -9969,10 +10871,10 @@ module Ddr3ControllerCore (
                             s2Mag <= bestMag;
                             `ifndef SYNTHESIS
                               `ifdef FORMAL
-                                assert(1'b0); // Ddr3ControllerCore.scala:L1002
+                                assert(1'b0); // Ddr3ControllerCore.scala:L1092
                               `else
                                 if(!1'b0) begin
-                                  $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L1002
+                                  $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L1092
                                 end
                               `endif
                             `endif
@@ -9984,8 +10886,8 @@ module Ddr3ControllerCore (
                             s2Mag <= s1Mag;
                             rclkpos <= _zz_rclkpos;
                             rdir <= s0Side;
-                            if(when_Ddr3ControllerCore_l1025) begin
-                              if(when_Ddr3ControllerCore_l1031) begin
+                            if(when_Ddr3ControllerCore_l1115) begin
+                              if(when_Ddr3ControllerCore_l1121) begin
                                 s0Side <= 1'b1;
                                 s0Mag <= 7'h01;
                                 s1Side <= 1'b1;
@@ -9998,15 +10900,15 @@ module Ddr3ControllerCore (
                                 applyArmed <= 1'b0;
                                 `ifndef SYNTHESIS
                                   `ifdef FORMAL
-                                    assert(1'b0); // Ddr3ControllerCore.scala:L1043
+                                    assert(1'b0); // Ddr3ControllerCore.scala:L1133
                                   `else
                                     if(!1'b0) begin
-                                      $display("NOTE RCALIB dll side switch to minus"); // Ddr3ControllerCore.scala:L1043
+                                      $display("NOTE RCALIB dll side switch to minus"); // Ddr3ControllerCore.scala:L1133
                                     end
                                   `endif
                                 `endif
                               end else begin
-                                if(when_Ddr3ControllerCore_l1053) begin
+                                if(when_Ddr3ControllerCore_l1143) begin
                                   s0Mag <= (s0Mag + 7'h01);
                                   rmove <= 1'b1;
                                   pinLeft <= 2'b10;
@@ -10017,14 +10919,14 @@ module Ddr3ControllerCore (
                               dllSweepOn <= 1'b0;
                               `ifndef SYNTHESIS
                                 `ifdef FORMAL
-                                  assert(1'b0); // Ddr3ControllerCore.scala:L1070
+                                  assert(1'b0); // Ddr3ControllerCore.scala:L1160
                                 `else
                                   if(!1'b0) begin
-                                    $display("NOTE RCALIB window side=%x mag=%x pos=%x rot=%x score=%x", bestSide, bestMag, bestPos, bestRot, bestCntDll); // Ddr3ControllerCore.scala:L1070
+                                    $display("NOTE RCALIB window side=%x mag=%x pos=%x rot=%x score=%x", bestSide, bestMag, bestPos, bestRot, bestCntDll); // Ddr3ControllerCore.scala:L1160
                                   end
                                 `endif
                               `endif
-                              if(when_Ddr3ControllerCore_l1072) begin
+                              if(when_Ddr3ControllerCore_l1162) begin
                                 rcalib_done <= 1'b1;
                               end
                               nRAS_0 <= CMD_PreCharge[2];
@@ -10033,7 +10935,7 @@ module Ddr3ControllerCore (
                               BA_0 <= 3'b000;
                               A_0 <= {13'd0, _zz_A_0_13};
                             end
-                            if(when_Ddr3ControllerCore_l1077) begin
+                            if(when_Ddr3ControllerCore_l1167) begin
                               trainDone <= 1'b1;
                               needPoison <= 1'b0;
                               bistReturn <= 1'b1;
@@ -10045,90 +10947,269 @@ module Ddr3ControllerCore (
                       end
                     end
                   end else begin
-                    if(when_Ddr3ControllerCore_l1102) begin
-                      bestCnt <= rotScoreW_7;
+                    if(when_Ddr3ControllerCore_l1192) begin
+                      if(when_Ddr3ControllerCore_l1194) begin
+                        if(_zz_3[0]) begin
+                          grid0_0 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[1]) begin
+                          grid0_1 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[2]) begin
+                          grid0_2 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[3]) begin
+                          grid0_3 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[4]) begin
+                          grid0_4 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[5]) begin
+                          grid0_5 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[6]) begin
+                          grid0_6 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[7]) begin
+                          grid0_7 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[8]) begin
+                          grid0_8 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[9]) begin
+                          grid0_9 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[10]) begin
+                          grid0_10 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[11]) begin
+                          grid0_11 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[12]) begin
+                          grid0_12 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[13]) begin
+                          grid0_13 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[14]) begin
+                          grid0_14 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[15]) begin
+                          grid0_15 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[16]) begin
+                          grid0_16 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[17]) begin
+                          grid0_17 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[18]) begin
+                          grid0_18 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[19]) begin
+                          grid0_19 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[20]) begin
+                          grid0_20 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[21]) begin
+                          grid0_21 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[22]) begin
+                          grid0_22 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[23]) begin
+                          grid0_23 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[24]) begin
+                          grid0_24 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[25]) begin
+                          grid0_25 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[26]) begin
+                          grid0_26 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[27]) begin
+                          grid0_27 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[28]) begin
+                          grid0_28 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[29]) begin
+                          grid0_29 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[30]) begin
+                          grid0_30 <= _zz_grid0_0;
+                        end
+                        if(_zz_3[31]) begin
+                          grid0_31 <= _zz_grid0_0;
+                        end
+                      end
+                      if(when_Ddr3ControllerCore_l1197) begin
+                        if(_zz_4[0]) begin
+                          gridF_0 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[1]) begin
+                          gridF_1 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[2]) begin
+                          gridF_2 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[3]) begin
+                          gridF_3 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[4]) begin
+                          gridF_4 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[5]) begin
+                          gridF_5 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[6]) begin
+                          gridF_6 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[7]) begin
+                          gridF_7 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[8]) begin
+                          gridF_8 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[9]) begin
+                          gridF_9 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[10]) begin
+                          gridF_10 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[11]) begin
+                          gridF_11 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[12]) begin
+                          gridF_12 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[13]) begin
+                          gridF_13 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[14]) begin
+                          gridF_14 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[15]) begin
+                          gridF_15 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[16]) begin
+                          gridF_16 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[17]) begin
+                          gridF_17 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[18]) begin
+                          gridF_18 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[19]) begin
+                          gridF_19 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[20]) begin
+                          gridF_20 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[21]) begin
+                          gridF_21 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[22]) begin
+                          gridF_22 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[23]) begin
+                          gridF_23 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[24]) begin
+                          gridF_24 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[25]) begin
+                          gridF_25 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[26]) begin
+                          gridF_26 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[27]) begin
+                          gridF_27 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[28]) begin
+                          gridF_28 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[29]) begin
+                          gridF_29 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[30]) begin
+                          gridF_30 <= _zz_gridF_0;
+                        end
+                        if(_zz_4[31]) begin
+                          gridF_31 <= _zz_gridF_0;
+                        end
+                      end
+                    end
+                    if(when_Ddr3ControllerCore_l1201) begin
+                      bestCnt <= sweepScoreReg;
+                      bestLatch <= trainLatch;
                       bestPos <= rclkpos;
                       bestSel <= rclksel;
-                      bestRot <= rotIdxW_7;
+                      bestRot <= sweepRotReg;
                     end
                     rclksel <= _zz_rclksel;
-                    if(when_Ddr3ControllerCore_l1109) begin
+                    if(when_Ddr3ControllerCore_l1209) begin
                       rclkpos <= _zz_rclkpos_1;
                     end
-                    if(when_Ddr3ControllerCore_l1113) begin
+                    if(when_Ddr3ControllerCore_l1213) begin
                       rclkpos <= bestPos;
                       rclksel <= bestSel;
-                      if(when_Ddr3ControllerCore_l1120) begin
-                        if(when_Ddr3ControllerCore_l1128) begin
-                          if(when_Ddr3ControllerCore_l1129) begin
-                            if(when_Ddr3ControllerCore_l1130) begin
-                              `ifndef SYNTHESIS
-                                `ifdef FORMAL
-                                  assert(1'b0); // Ddr3ControllerCore.scala:L1134
-                                `else
-                                  if(!1'b0) begin
-                                    $display("NOTE RCALIB wshift lock 0 (fast)"); // Ddr3ControllerCore.scala:L1134
-                                  end
-                                `endif
-                              `endif
-                              shiftCalDone <= 1'b1;
-                              rcalib_tries <= 10'h028;
-                              trainDone <= 1'b1;
-                              needPoison <= 1'b0;
-                              bistReturn <= 1'b1;
-                              state <= Ddr3State_WRITE;
-                              cycle <= 5'h0;
-                            end else begin
-                              best0 <= bestCnt;
-                              best0Pos <= bestPos;
-                              best0Sel <= best0Sel;
-                              best0Rot <= bestRot;
-                              shiftPhase <= 1'b1;
-                              wrAdv <= 1'b1;
-                              rcalib_tries <= 10'h0;
-                              bestCnt <= 4'b0000;
-                              `ifndef SYNTHESIS
-                                `ifdef FORMAL
-                                  assert(1'b0); // Ddr3ControllerCore.scala:L1149
-                                `else
-                                  if(!1'b0) begin
-                                    $display("NOTE RCALIB wshift try +1"); // Ddr3ControllerCore.scala:L1149
-                                  end
-                                `endif
-                              `endif
-                              trainDone <= 1'b1;
-                              needPoison <= 1'b0;
-                              bistReturn <= 1'b1;
-                              state <= Ddr3State_WRITE;
-                              cycle <= 5'h0;
-                            end
-                          end else begin
-                            if(when_Ddr3ControllerCore_l1156) begin
-                              `ifndef SYNTHESIS
-                                `ifdef FORMAL
-                                  assert(1'b0); // Ddr3ControllerCore.scala:L1159
-                                `else
-                                  if(!1'b0) begin
-                                    $display("NOTE RCALIB wshift lock +1"); // Ddr3ControllerCore.scala:L1159
-                                  end
-                                `endif
-                              `endif
-                            end else begin
-                              bestCnt <= best0;
-                              bestPos <= best0Pos;
-                              bestSel <= best0Sel;
-                              bestRot <= best0Rot;
-                              wrAdv <= 1'b0;
-                              `ifndef SYNTHESIS
-                                `ifdef FORMAL
-                                  assert(1'b0); // Ddr3ControllerCore.scala:L1168
-                                `else
-                                  if(!1'b0) begin
-                                    $display("NOTE RCALIB wshift lock 0"); // Ddr3ControllerCore.scala:L1168
-                                  end
-                                `endif
-                              `endif
-                            end
+                      if(when_Ddr3ControllerCore_l1220) begin
+                        if(when_Ddr3ControllerCore_l1228) begin
+                          if(_zz_5[0]) begin
+                            wrModeMap_0 <= _zz_wrModeMap_0;
+                          end
+                          if(_zz_5[1]) begin
+                            wrModeMap_1 <= _zz_wrModeMap_0;
+                          end
+                          if(_zz_5[2]) begin
+                            wrModeMap_2 <= _zz_wrModeMap_0;
+                          end
+                          if(_zz_5[3]) begin
+                            wrModeMap_3 <= _zz_wrModeMap_0;
+                          end
+                          if(_zz_5[4]) begin
+                            wrModeMap_4 <= _zz_wrModeMap_0;
+                          end
+                          if(_zz_5[5]) begin
+                            wrModeMap_5 <= _zz_wrModeMap_0;
+                          end
+                          if(_zz_5[6]) begin
+                            wrModeMap_6 <= _zz_wrModeMap_0;
+                          end
+                          if(_zz_5[7]) begin
+                            wrModeMap_7 <= _zz_wrModeMap_0;
+                          end
+                          if(_zz_5[8]) begin
+                            wrModeMap_8 <= _zz_wrModeMap_0;
+                          end
+                          if(_zz_5[9]) begin
+                            wrModeMap_9 <= _zz_wrModeMap_0;
+                          end
+                          if(_zz_5[10]) begin
+                            wrModeMap_10 <= _zz_wrModeMap_0;
+                          end
+                          if(_zz_5[11]) begin
+                            wrModeMap_11 <= _zz_wrModeMap_0;
+                          end
+                          if(_zz_5[12]) begin
+                            wrModeMap_12 <= _zz_wrModeMap_0;
+                          end
+                          if(_zz_5[13]) begin
+                            wrModeMap_13 <= _zz_wrModeMap_0;
+                          end
+                          if(_zz_5[14]) begin
+                            wrModeMap_14 <= _zz_wrModeMap_0;
+                          end
+                          if(_zz_5[15]) begin
+                            wrModeMap_15 <= _zz_wrModeMap_0;
+                          end
+                          if(when_Ddr3ControllerCore_l1231) begin
                             shiftCalDone <= 1'b1;
                             rcalib_tries <= 10'h028;
                             trainDone <= 1'b1;
@@ -10136,21 +11217,56 @@ module Ddr3ControllerCore (
                             bistReturn <= 1'b1;
                             state <= Ddr3State_WRITE;
                             cycle <= 5'h0;
+                          end else begin
+                            if(when_Ddr3ControllerCore_l1236) begin
+                              best0 <= bestCnt;
+                              bestMode <= wrMode;
+                              best0Pos <= bestPos;
+                              best0Sel <= bestSel;
+                              best0Rot <= bestRot;
+                            end
+                            if(when_Ddr3ControllerCore_l1243) begin
+                              tryMode <= _zz_wrMode;
+                              wrMode <= _zz_wrMode;
+                              rcalib_tries <= 10'h0;
+                              bestCnt <= 4'b0000;
+                              bestLatch <= 128'h0;
+                              trainDone <= 1'b1;
+                              needPoison <= 1'b0;
+                              bistReturn <= 1'b1;
+                              state <= Ddr3State_WRITE;
+                              cycle <= 5'h0;
+                            end else begin
+                              if(when_Ddr3ControllerCore_l1252) begin
+                                bestCnt <= best0;
+                                bestPos <= best0Pos;
+                                bestSel <= best0Sel;
+                                bestRot <= best0Rot;
+                                wrMode <= bestMode;
+                              end
+                              shiftCalDone <= 1'b1;
+                              rcalib_tries <= 10'h028;
+                              trainDone <= 1'b1;
+                              needPoison <= 1'b0;
+                              bistReturn <= 1'b1;
+                              state <= Ddr3State_WRITE;
+                              cycle <= 5'h0;
+                            end
                           end
                         end
                         if(scanOn) begin
-                          if(when_Ddr3ControllerCore_l1179) begin
+                          if(when_Ddr3ControllerCore_l1268) begin
                             bestSurveyCnt <= bestCnt;
                             bestSurveySide <= scSide;
                             bestSurveyMag <= scMag;
                           end
-                          if(when_Ddr3ControllerCore_l1186) begin
+                          if(when_Ddr3ControllerCore_l1275) begin
                             `ifndef SYNTHESIS
                               `ifdef FORMAL
-                                assert(1'b0); // Ddr3ControllerCore.scala:L1188
+                                assert(1'b0); // Ddr3ControllerCore.scala:L1277
                               `else
                                 if(!1'b0) begin
-                                  $display("NOTE RCALIB scan sweep at side=%x mag=%x score=%x", scSide, scMag, bestCnt); // Ddr3ControllerCore.scala:L1188
+                                  $display("NOTE RCALIB scan sweep at side=%x mag=%x score=%x", scSide, scMag, bestCnt); // Ddr3ControllerCore.scala:L1277
                                 end
                               `endif
                             `endif
@@ -10174,7 +11290,7 @@ module Ddr3ControllerCore (
                             applyArmed <= 1'b0;
                             cycle <= 5'h01;
                           end else begin
-                            if(when_Ddr3ControllerCore_l1195) begin
+                            if(when_Ddr3ControllerCore_l1284) begin
                               scMag <= (scMag + 7'h02);
                               rcalib_tries <= 10'h0;
                               bestCnt <= 4'b0000;
@@ -10191,7 +11307,7 @@ module Ddr3ControllerCore (
                               applyArmed <= 1'b0;
                               cycle <= 5'h01;
                             end else begin
-                              if(when_Ddr3ControllerCore_l1200) begin
+                              if(when_Ddr3ControllerCore_l1289) begin
                                 scSide <= 1'b1;
                                 scMag <= 7'h02;
                                 rcalib_tries <= 10'h0;
@@ -10209,7 +11325,7 @@ module Ddr3ControllerCore (
                                 applyArmed <= 1'b0;
                                 cycle <= 5'h01;
                               end else begin
-                                if(when_Ddr3ControllerCore_l1207) begin
+                                if(when_Ddr3ControllerCore_l1296) begin
                                   scMag <= (scMag + 7'h02);
                                   rcalib_tries <= 10'h0;
                                   bestCnt <= 4'b0000;
@@ -10228,10 +11344,10 @@ module Ddr3ControllerCore (
                                 end else begin
                                   `ifndef SYNTHESIS
                                     `ifdef FORMAL
-                                      assert(1'b0); // Ddr3ControllerCore.scala:L1215
+                                      assert(1'b0); // Ddr3ControllerCore.scala:L1304
                                     `else
                                       if(!1'b0) begin
-                                        $display("NOTE RCALIB scan done best side=%x mag=%x score=%x", bestSurveySide, bestSurveyMag, bestSurveyCnt); // Ddr3ControllerCore.scala:L1215
+                                        $display("NOTE RCALIB scan done best side=%x mag=%x score=%x", bestSurveySide, bestSurveyMag, bestSurveyCnt); // Ddr3ControllerCore.scala:L1304
                                       end
                                     `endif
                                   `endif
@@ -10264,7 +11380,7 @@ module Ddr3ControllerCore (
                             bestSurveySide <= 1'b0;
                             bestSurveyMag <= 7'h0;
                             rclksel[0] <= 1'b0;
-                            if(when_Ddr3ControllerCore_l1236) begin
+                            if(when_Ddr3ControllerCore_l1325) begin
                               dllSweepOn <= 1'b1;
                               bestCntDll <= 4'b0000;
                               bestSide <= 1'b0;
@@ -10283,16 +11399,16 @@ module Ddr3ControllerCore (
                               applyArmed <= 1'b0;
                               `ifndef SYNTHESIS
                                 `ifdef FORMAL
-                                  assert(1'b0); // Ddr3ControllerCore.scala:L1265
+                                  assert(1'b0); // Ddr3ControllerCore.scala:L1354
                                 `else
                                   if(!1'b0) begin
-                                    $display("NOTE RCALIB window start mag0=%x n=%x", sweepMag0, sweepMagN); // Ddr3ControllerCore.scala:L1265
+                                    $display("NOTE RCALIB window start mag0=%x n=%x", sweepMag0, sweepMagN); // Ddr3ControllerCore.scala:L1354
                                   end
                                 `endif
                               `endif
                               cycle <= 5'h01;
                             end else begin
-                              if(when_Ddr3ControllerCore_l1273) begin
+                              if(when_Ddr3ControllerCore_l1362) begin
                                 dllSweepOn <= 1'b1;
                                 bestCntDll <= 4'b0000;
                                 bestSide <= 1'b0;
@@ -10311,10 +11427,10 @@ module Ddr3ControllerCore (
                                 bestCnt <= 4'b0000;
                                 `ifndef SYNTHESIS
                                   `ifdef FORMAL
-                                    assert(1'b0); // Ddr3ControllerCore.scala:L1302
+                                    assert(1'b0); // Ddr3ControllerCore.scala:L1391
                                   `else
                                     if(!1'b0) begin
-                                      $display("NOTE RCALIB scan start"); // Ddr3ControllerCore.scala:L1302
+                                      $display("NOTE RCALIB scan start"); // Ddr3ControllerCore.scala:L1391
                                     end
                                   `endif
                                 `endif
@@ -10338,21 +11454,81 @@ module Ddr3ControllerCore (
                         dllSweepOn <= 1'b0;
                         `ifndef SYNTHESIS
                           `ifdef FORMAL
-                            assert(1'b0); // Ddr3ControllerCore.scala:L1311
+                            assert(1'b0); // Ddr3ControllerCore.scala:L1400
                           `else
                             if(!1'b0) begin
-                              $display("NOTE RCALIB lock best pos=%x sel=%x rot=%x score=%x", bestPos, bestSel, bestRot, bestCnt); // Ddr3ControllerCore.scala:L1311
+                              $display("NOTE RCALIB lock best pos=%x sel=%x rot=%x score=%x", bestPos, bestSel, bestRot, bestCnt); // Ddr3ControllerCore.scala:L1400
                             end
                           `endif
                         `endif
-                        if(when_Ddr3ControllerCore_l1318) begin
-                          rcalib_done <= 1'b1;
+                        if(when_Ddr3ControllerCore_l1407) begin
+                          if(_zz_6[0]) begin
+                            wScores_0 <= bestCnt;
+                          end
+                          if(_zz_6[1]) begin
+                            wScores_1 <= bestCnt;
+                          end
+                          if(_zz_6[2]) begin
+                            wScores_2 <= bestCnt;
+                          end
+                          if(when_Ddr3ControllerCore_l1410) begin
+                            if(when_Ddr3ControllerCore_l1411) begin
+                              bestWCnt <= bestCnt;
+                              bestWstep <= wstep;
+                              bestWPos <= bestPos;
+                              bestWSel <= bestSel;
+                              bestWRot <= bestRot;
+                              bestWMode <= wrMode;
+                            end
+                            if(when_Ddr3ControllerCore_l1419) begin
+                              wBase <= wstep;
+                              wTry <= 2'b01;
+                              wstep <= _zz_wstep_6;
+                            end else begin
+                              wTry <= 2'b10;
+                              wstep <= _zz_wstep_7;
+                            end
+                            dllSweepDone <= 1'b0;
+                            scanOn <= 1'b0;
+                            shiftCalDone <= 1'b0;
+                            tryMode <= 2'b00;
+                            wrMode <= 2'b00;
+                            bestCnt <= 4'b0000;
+                            bestLatch <= 128'h0;
+                            rcalib_tries <= 10'h0;
+                            rclkpos <= 2'b00;
+                            rclksel <= 3'b000;
+                            bestRot <= 3'b000;
+                            trainDone <= 1'b1;
+                            needPoison <= 1'b0;
+                            bistReturn <= 1'b1;
+                            state <= Ddr3State_WRITE;
+                            cycle <= 5'h0;
+                          end else begin
+                            if(when_Ddr3ControllerCore_l1440) begin
+                              bestCnt <= bestWCnt;
+                              wstep <= bestWstep;
+                              rclkpos <= bestWPos;
+                              rclksel <= bestWSel;
+                              bestPos <= bestWPos;
+                              bestSel <= bestWSel;
+                              bestRot <= bestWRot;
+                              wrMode <= bestWMode;
+                            end
+                            rcalib_done <= 1'b1;
+                            nRAS_0 <= CMD_PreCharge[2];
+                            nCAS_0 <= CMD_PreCharge[1];
+                            nWE_0 <= CMD_PreCharge[0];
+                            BA_0 <= 3'b000;
+                            A_0 <= {13'd0, _zz_A_0_14};
+                          end
+                        end else begin
+                          nRAS_0 <= CMD_PreCharge[2];
+                          nCAS_0 <= CMD_PreCharge[1];
+                          nWE_0 <= CMD_PreCharge[0];
+                          BA_0 <= 3'b000;
+                          A_0 <= {13'd0, _zz_A_0_15};
                         end
-                        nRAS_0 <= CMD_PreCharge[2];
-                        nCAS_0 <= CMD_PreCharge[1];
-                        nWE_0 <= CMD_PreCharge[0];
-                        BA_0 <= 3'b000;
-                        A_0 <= {13'd0, _zz_A_0_14};
                       end
                     end else begin
                       trainDone <= 1'b1;
@@ -10364,7 +11540,7 @@ module Ddr3ControllerCore (
                   end
                 end
               end
-              5'h0d : begin
+              5'h0f : begin
                 busy <= 1'b0;
                 state <= Ddr3State_IDLE;
               end
@@ -10381,7 +11557,7 @@ module Ddr3ControllerCore (
               nCAS_0 <= CMD_BankActivate[1];
               nWE_0 <= CMD_BankActivate[0];
               BA_0 <= 3'b000;
-              A_0 <= {13'd0, _zz_A_0_15};
+              A_0 <= {13'd0, _zz_A_0_16};
               state <= Ddr3State_WRITE;
               cycle <= 5'h01;
               busy <= 1'b1;
@@ -10393,7 +11569,7 @@ module Ddr3ControllerCore (
                 nCAS_0 <= CMD_BankActivate[1];
                 nWE_0 <= CMD_BankActivate[0];
                 BA_0 <= 3'b000;
-                A_0 <= {13'd0, _zz_A_0_16};
+                A_0 <= {13'd0, _zz_A_0_17};
                 state <= Ddr3State_WRITE;
                 cycle <= 5'h01;
                 busy <= 1'b1;
@@ -10403,7 +11579,7 @@ module Ddr3ControllerCore (
                   nCAS_0 <= CMD_AutoRefresh[1];
                   nWE_0 <= CMD_AutoRefresh[0];
                   BA_0 <= 3'b000;
-                  A_0 <= {13'd0, _zz_A_0_17};
+                  A_0 <= {13'd0, _zz_A_0_18};
                   state <= Ddr3State_REFRESH;
                   cycle <= 5'h01;
                   busy <= 1'b1;
@@ -10423,7 +11599,7 @@ module Ddr3ControllerCore (
                       state <= _zz_state;
                       cycle <= 5'h01;
                       busy <= 1'b1;
-                      if(when_Ddr3ControllerCore_l1406) begin
+                      if(when_Ddr3ControllerCore_l1538) begin
                         dqs_hold <= 1'b1;
                       end
                     end
@@ -10433,116 +11609,194 @@ module Ddr3ControllerCore (
             end
           end
           Ddr3State_READ : begin
-            if(when_Ddr3ControllerCore_l1421) begin
+            if(when_Ddr3ControllerCore_l1553) begin
               nRAS_2 <= CMD_Read[2];
               nCAS_2 <= CMD_Read[1];
               nWE_2 <= CMD_Read[0];
               BA_2 <= _zz_BA_2;
               A_2 <= _zz_A_2_5[13:0];
-              dqs_hold <= 1'b1;
             end
-            if(when_Ddr3ControllerCore_l1427) begin
+            if(when_Ddr3ControllerCore_l1558) begin
               nRAS_2 <= CMD_Read[2];
               nCAS_2 <= CMD_Read[1];
               nWE_2 <= CMD_Read[0];
               BA_2 <= _zz_BA_2;
               A_2 <= _zz_A_2_7[13:0];
             end
-            if(when_Ddr3ControllerCore_l1432) begin
+            if(when_Ddr3ControllerCore_l1564) begin
               data_ready <= 1'b1;
             end
-            if(when_Ddr3ControllerCore_l1436) begin
+            if(when_Ddr3ControllerCore_l1568) begin
               data_ready <= 1'b0;
+            end
+            if(when_Ddr3ControllerCore_l1572) begin
               nRAS_0 <= CMD_PreCharge[2];
               nCAS_0 <= CMD_PreCharge[1];
               nWE_0 <= CMD_PreCharge[0];
               BA_0 <= 3'b000;
-              A_0 <= {13'd0, _zz_A_0_18};
+              A_0 <= {13'd0, _zz_A_0_19};
             end
-            if(when_Ddr3ControllerCore_l1441) begin
+            if(when_Ddr3ControllerCore_l1576) begin
               busy <= 1'b0;
               state <= Ddr3State_IDLE;
             end
           end
           Ddr3State_WRITE : begin
-            if(when_Ddr3ControllerCore_l1452) begin
+            if(when_Ddr3ControllerCore_l1587) begin
               nRAS_2 <= CMD_Write[2];
               nCAS_2 <= CMD_Write[1];
               nWE_2 <= CMD_Write[0];
               BA_2 <= reqReg_addr[23 : 21];
               A_2 <= _zz_A_2_9[13:0];
             end
-            if(when_Ddr3ControllerCore_l1463) begin
-              dqs_out <= 8'h40;
-              dqs_oen <= 4'b0011;
-              if(wrAdv) begin
-                dq_oen <= 4'b0011;
-                dq_out_4 <= 16'h0;
-                dq_out_5 <= reqReg_wdata[15 : 0];
-                dq_out_6 <= reqReg_wdata[31 : 16];
-                dq_out_7 <= reqReg_wdata[47 : 32];
-              end else begin
-                dq_oen <= 4'b0111;
-                dq_out_6 <= 16'h0;
-                dq_out_7 <= reqReg_wdata[15 : 0];
-              end
-              if(wrAdv) begin
-                dm_out[4] <= 1'b1;
-                dm_out[5] <= (! (|reqReg_wstrb[1 : 0]));
-                dm_out[6] <= (! (|reqReg_wstrb[3 : 2]));
-                dm_out[7] <= (! (|reqReg_wstrb[5 : 4]));
-              end else begin
-                dm_out[6] <= 1'b1;
-                dm_out[7] <= (! (|reqReg_wstrb[1 : 0]));
-              end
+            if(when_Ddr3ControllerCore_l1593) begin
+              case(wrMode)
+                2'b00 : begin
+                  dqs_out <= 8'h40;
+                  dqs_oen <= 4'b0011;
+                  dq_oen <= 4'b0111;
+                  dq_out_6 <= 16'h0;
+                  dq_out_7 <= reqReg_wdata[15 : 0];
+                  dm_out[6] <= 1'b1;
+                  dm_out[7] <= (! (|reqReg_wstrb[1 : 0]));
+                end
+                2'b01 : begin
+                  dqs_out <= 8'h40;
+                  dqs_oen <= 4'b0011;
+                  dq_oen <= 4'b0011;
+                  dq_out_4 <= 16'h0;
+                  dq_out_5 <= reqReg_wdata[15 : 0];
+                  dq_out_6 <= reqReg_wdata[31 : 16];
+                  dq_out_7 <= reqReg_wdata[47 : 32];
+                  dm_out[4] <= 1'b1;
+                  dm_out[5] <= (! (|reqReg_wstrb[1 : 0]));
+                  dm_out[6] <= (! (|reqReg_wstrb[3 : 2]));
+                  dm_out[7] <= (! (|reqReg_wstrb[5 : 4]));
+                end
+                2'b10 : begin
+                  dqs_out <= 8'h0;
+                  dqs_oen <= 4'b0111;
+                end
+                default : begin
+                end
+              endcase
             end
-            if(when_Ddr3ControllerCore_l1490) begin
-              dqs_out <= 8'h55;
-              dqs_oen <= 4'b0000;
-              dq_oen <= 4'b0000;
-              if(wrAdv) begin
-                dq_out_0 <= reqReg_wdata[63 : 48];
-                dq_out_1 <= reqReg_wdata[79 : 64];
-                dq_out_2 <= reqReg_wdata[95 : 80];
-                dq_out_3 <= reqReg_wdata[111 : 96];
-                dq_out_4 <= reqReg_wdata[127 : 112];
-                dq_out_5 <= 16'h0;
-                dq_out_6 <= 16'h0;
-              end else begin
-                dq_out_0 <= reqReg_wdata[31 : 16];
-                dq_out_1 <= reqReg_wdata[47 : 32];
-                dq_out_2 <= reqReg_wdata[63 : 48];
-                dq_out_3 <= reqReg_wdata[79 : 64];
-                dq_out_4 <= reqReg_wdata[95 : 80];
-                dq_out_5 <= reqReg_wdata[111 : 96];
-                dq_out_6 <= reqReg_wdata[127 : 112];
-              end
-              dq_out_7 <= 16'h0;
-              if(wrAdv) begin
-                dm_out[0] <= (! (|reqReg_wstrb[7 : 6]));
-                dm_out[1] <= (! (|reqReg_wstrb[9 : 8]));
-                dm_out[2] <= (! (|reqReg_wstrb[11 : 10]));
-                dm_out[3] <= (! (|reqReg_wstrb[13 : 12]));
-                dm_out[4] <= (! (|reqReg_wstrb[15 : 14]));
-                dm_out[5] <= 1'b1;
-                dm_out[6] <= 1'b1;
-              end else begin
-                dm_out[0] <= (! (|reqReg_wstrb[3 : 2]));
-                dm_out[1] <= (! (|reqReg_wstrb[5 : 4]));
-                dm_out[2] <= (! (|reqReg_wstrb[7 : 6]));
-                dm_out[3] <= (! (|reqReg_wstrb[9 : 8]));
-                dm_out[4] <= (! (|reqReg_wstrb[11 : 10]));
-                dm_out[5] <= (! (|reqReg_wstrb[13 : 12]));
-                dm_out[6] <= (! (|reqReg_wstrb[15 : 14]));
-              end
-              dm_out[7] <= 1'b1;
+            if(when_Ddr3ControllerCore_l1628) begin
+              case(wrMode)
+                2'b00 : begin
+                  dqs_out <= 8'h55;
+                  dqs_oen <= 4'b0000;
+                  dq_oen <= 4'b0000;
+                  dq_out_0 <= reqReg_wdata[31 : 16];
+                  dq_out_1 <= reqReg_wdata[47 : 32];
+                  dq_out_2 <= reqReg_wdata[63 : 48];
+                  dq_out_3 <= reqReg_wdata[79 : 64];
+                  dq_out_4 <= reqReg_wdata[95 : 80];
+                  dq_out_5 <= reqReg_wdata[111 : 96];
+                  dq_out_6 <= reqReg_wdata[127 : 112];
+                  dq_out_7 <= 16'h0;
+                  dm_out[0] <= (! (|reqReg_wstrb[3 : 2]));
+                  dm_out[1] <= (! (|reqReg_wstrb[5 : 4]));
+                  dm_out[2] <= (! (|reqReg_wstrb[7 : 6]));
+                  dm_out[3] <= (! (|reqReg_wstrb[9 : 8]));
+                  dm_out[4] <= (! (|reqReg_wstrb[11 : 10]));
+                  dm_out[5] <= (! (|reqReg_wstrb[13 : 12]));
+                  dm_out[6] <= (! (|reqReg_wstrb[15 : 14]));
+                  dm_out[7] <= 1'b1;
+                end
+                2'b01 : begin
+                  dqs_out <= 8'h55;
+                  dqs_oen <= 4'b0000;
+                  dq_oen <= 4'b0000;
+                  dq_out_0 <= reqReg_wdata[63 : 48];
+                  dq_out_1 <= reqReg_wdata[79 : 64];
+                  dq_out_2 <= reqReg_wdata[95 : 80];
+                  dq_out_3 <= reqReg_wdata[111 : 96];
+                  dq_out_4 <= reqReg_wdata[127 : 112];
+                  dq_out_5 <= 16'h0;
+                  dq_out_6 <= 16'h0;
+                  dq_out_7 <= 16'h0;
+                  dm_out[0] <= (! (|reqReg_wstrb[7 : 6]));
+                  dm_out[1] <= (! (|reqReg_wstrb[9 : 8]));
+                  dm_out[2] <= (! (|reqReg_wstrb[11 : 10]));
+                  dm_out[3] <= (! (|reqReg_wstrb[13 : 12]));
+                  dm_out[4] <= (! (|reqReg_wstrb[15 : 14]));
+                  dm_out[5] <= 1'b1;
+                  dm_out[6] <= 1'b1;
+                  dm_out[7] <= 1'b1;
+                end
+                2'b10 : begin
+                  dqs_out <= 8'h55;
+                  dqs_oen <= 4'b0000;
+                  dq_oen <= 4'b0000;
+                  dq_out_0 <= 16'h0;
+                  dq_out_1 <= reqReg_wdata[15 : 0];
+                  dq_out_2 <= reqReg_wdata[31 : 16];
+                  dq_out_3 <= reqReg_wdata[47 : 32];
+                  dq_out_4 <= reqReg_wdata[63 : 48];
+                  dq_out_5 <= reqReg_wdata[79 : 64];
+                  dq_out_6 <= reqReg_wdata[95 : 80];
+                  dq_out_7 <= reqReg_wdata[111 : 96];
+                  dm_out[0] <= 1'b1;
+                  dm_out[1] <= (! (|reqReg_wstrb[1 : 0]));
+                  dm_out[2] <= (! (|reqReg_wstrb[3 : 2]));
+                  dm_out[3] <= (! (|reqReg_wstrb[5 : 4]));
+                  dm_out[4] <= (! (|reqReg_wstrb[7 : 6]));
+                  dm_out[5] <= (! (|reqReg_wstrb[9 : 8]));
+                  dm_out[6] <= (! (|reqReg_wstrb[11 : 10]));
+                  dm_out[7] <= (! (|reqReg_wstrb[13 : 12]));
+                end
+                default : begin
+                  dqs_out <= 8'h54;
+                  dqs_oen <= 4'b0000;
+                  dq_oen <= 4'b0001;
+                  dq_out_2 <= 16'h0;
+                  dq_out_3 <= reqReg_wdata[15 : 0];
+                  dq_out_4 <= reqReg_wdata[31 : 16];
+                  dq_out_5 <= reqReg_wdata[47 : 32];
+                  dq_out_6 <= reqReg_wdata[63 : 48];
+                  dq_out_7 <= reqReg_wdata[79 : 64];
+                  dm_out[2] <= 1'b1;
+                  dm_out[3] <= (! (|reqReg_wstrb[1 : 0]));
+                  dm_out[4] <= (! (|reqReg_wstrb[3 : 2]));
+                  dm_out[5] <= (! (|reqReg_wstrb[5 : 4]));
+                  dm_out[6] <= (! (|reqReg_wstrb[7 : 6]));
+                  dm_out[7] <= (! (|reqReg_wstrb[9 : 8]));
+                end
+              endcase
             end
-            if(when_Ddr3ControllerCore_l1535) begin
-              dqs_out <= 8'h0;
-              dqs_oen <= 4'b1110;
-              dq_oen <= 4'b1111;
+            if(when_Ddr3ControllerCore_l1714) begin
+              case(wrMode)
+                2'b00, 2'b01 : begin
+                  dqs_out <= 8'h0;
+                  dqs_oen <= 4'b1110;
+                  dq_oen <= 4'b1111;
+                end
+                2'b10 : begin
+                  dqs_out <= 8'h01;
+                  dqs_oen <= 4'b1100;
+                  dq_oen <= 4'b1110;
+                  dq_out_0 <= reqReg_wdata[127 : 112];
+                  dq_out_1 <= 16'h0;
+                  dm_out[0] <= (! (|reqReg_wstrb[15 : 14]));
+                  dm_out[1] <= 1'b1;
+                end
+                default : begin
+                  dqs_out <= 8'h05;
+                  dqs_oen <= 4'b1000;
+                  dq_oen <= 4'b1100;
+                  dq_out_0 <= reqReg_wdata[95 : 80];
+                  dq_out_1 <= reqReg_wdata[111 : 96];
+                  dq_out_2 <= reqReg_wdata[127 : 112];
+                  dq_out_3 <= 16'h0;
+                  dm_out[0] <= (! (|reqReg_wstrb[11 : 10]));
+                  dm_out[1] <= (! (|reqReg_wstrb[13 : 12]));
+                  dm_out[2] <= (! (|reqReg_wstrb[15 : 14]));
+                  dm_out[3] <= 1'b1;
+                end
+              endcase
             end
-            if(when_Ddr3ControllerCore_l1541) begin
+            if(when_Ddr3ControllerCore_l1746) begin
               if(trainDone) begin
                 trainDone <= 1'b0;
                 if(needPoison) begin
@@ -10559,7 +11813,7 @@ module Ddr3ControllerCore (
             end
           end
           default : begin
-            if(when_Ddr3ControllerCore_l1562) begin
+            if(when_Ddr3ControllerCore_l1767) begin
               busy <= 1'b0;
               state <= Ddr3State_IDLE;
             end
@@ -10607,6 +11861,10 @@ module Ddr3ControllerCore (
         wlMatchNR <= 8'h0;
         wlVoteN <= 3'b000;
         wlVoteCnt <= 3'b000;
+        wlVoteCnt0 <= 3'b000;
+        wlVoteCnt1 <= 3'b000;
+        wlLockedR <= 1'b0;
+        wlLockedStepR <= 8'h0;
         wlevel_done <= 1'b0;
         wstep <= 8'h0;
         rcalib_cnt <= 4'b0000;
@@ -10633,13 +11891,37 @@ module Ddr3ControllerCore (
         rmove <= 1'b0;
         rdir <= 1'b0;
         bestRot <= 3'b000;
-        wrAdv <= 1'b0;
+        wrMode <= 2'b00;
         shiftCalDone <= 1'b0;
-        shiftPhase <= 1'b0;
+        tryMode <= 2'b00;
+        wCalDone <= 1'b0;
+        wTry <= 2'b00;
+        wBase <= 8'h0;
+        bestWstep <= 8'h0;
         best0 <= 4'b0000;
         best0Pos <= 2'b00;
         best0Sel <= 3'b000;
         best0Rot <= 3'b000;
+        bestMode <= 2'b00;
+        bestLatch <= 128'h0;
+        bestWCnt <= 4'b0000;
+        bestWPos <= 2'b00;
+        bestWSel <= 3'b000;
+        bestWRot <= 3'b000;
+        bestWMode <= 2'b00;
+        rotScoresReg_0 <= 4'b0000;
+        rotScoresReg_1 <= 4'b0000;
+        rotScoresReg_2 <= 4'b0000;
+        rotScoresReg_3 <= 4'b0000;
+        rotScoresReg_4 <= 4'b0000;
+        rotScoresReg_5 <= 4'b0000;
+        rotScoresReg_6 <= 4'b0000;
+        rotScoresReg_7 <= 4'b0000;
+        sweepScoreReg <= 4'b0000;
+        sweepRotReg <= 3'b000;
+        wScores_0 <= 4'b0000;
+        wScores_1 <= 4'b0000;
+        wScores_2 <= 4'b0000;
         training <= 1'b1;
         trainDone <= 1'b0;
         needPoison <= 1'b0;
@@ -10651,7 +11933,7 @@ module Ddr3ControllerCore (
         resetn_delay <= 1'b0;
         state <= Ddr3State_RST_WAIT;
       end
-      if(when_Ddr3ControllerCore_l1688) begin
+      if(when_Ddr3ControllerCore_l1914) begin
         init_done_latched <= 1'b1;
       end
     end
@@ -10672,14 +11954,14 @@ module Ddr3ControllerCore (
         end
         Ddr3State_READ_CALIB : begin
           case(cycle)
-            5'h0c : begin
-              if(!when_Ddr3ControllerCore_l827) begin
+            5'h0e : begin
+              if(!when_Ddr3ControllerCore_l916) begin
                 if(dllSweepOn) begin
-                  if(!when_Ddr3ControllerCore_l865) begin
-                    if(when_Ddr3ControllerCore_l949) begin
-                      if(!when_Ddr3ControllerCore_l964) begin
-                        if(!when_Ddr3ControllerCore_l989) begin
-                          if(when_Ddr3ControllerCore_l1077) begin
+                  if(!when_Ddr3ControllerCore_l954) begin
+                    if(when_Ddr3ControllerCore_l1038) begin
+                      if(!when_Ddr3ControllerCore_l1054) begin
+                        if(!when_Ddr3ControllerCore_l1079) begin
+                          if(when_Ddr3ControllerCore_l1167) begin
                             reqReg_write <= 1'b1;
                             reqReg_addr <= 27'h0;
                             reqReg_wdata <= trainPat;
@@ -10690,11 +11972,16 @@ module Ddr3ControllerCore (
                     end
                   end
                 end else begin
-                  if(when_Ddr3ControllerCore_l1113) begin
-                    if(when_Ddr3ControllerCore_l1120) begin
-                      if(when_Ddr3ControllerCore_l1128) begin
-                        if(when_Ddr3ControllerCore_l1129) begin
-                          if(when_Ddr3ControllerCore_l1130) begin
+                  if(when_Ddr3ControllerCore_l1213) begin
+                    if(when_Ddr3ControllerCore_l1220) begin
+                      if(when_Ddr3ControllerCore_l1228) begin
+                        if(when_Ddr3ControllerCore_l1231) begin
+                          reqReg_write <= 1'b1;
+                          reqReg_addr <= 27'h0;
+                          reqReg_wdata <= trainPat;
+                          reqReg_wstrb <= 16'hffff;
+                        end else begin
+                          if(when_Ddr3ControllerCore_l1243) begin
                             reqReg_write <= 1'b1;
                             reqReg_addr <= 27'h0;
                             reqReg_wdata <= trainPat;
@@ -10705,23 +11992,27 @@ module Ddr3ControllerCore (
                             reqReg_wdata <= trainPat;
                             reqReg_wstrb <= 16'hffff;
                           end
-                        end else begin
-                          reqReg_write <= 1'b1;
-                          reqReg_addr <= 27'h0;
-                          reqReg_wdata <= trainPat;
-                          reqReg_wstrb <= 16'hffff;
                         end
                       end
                       if(!scanOn) begin
                         if(shiftCalDone) begin
-                          if(!when_Ddr3ControllerCore_l1236) begin
-                            if(when_Ddr3ControllerCore_l1273) begin
+                          if(!when_Ddr3ControllerCore_l1325) begin
+                            if(when_Ddr3ControllerCore_l1362) begin
                               reqReg_write <= 1'b1;
                               reqReg_addr <= 27'h0;
                               reqReg_wdata <= trainPat;
                               reqReg_wstrb <= 16'hffff;
                             end
                           end
+                        end
+                      end
+                    end else begin
+                      if(when_Ddr3ControllerCore_l1407) begin
+                        if(when_Ddr3ControllerCore_l1410) begin
+                          reqReg_write <= 1'b1;
+                          reqReg_addr <= 27'h0;
+                          reqReg_wdata <= trainPat;
+                          reqReg_wstrb <= 16'hffff;
                         end
                       end
                     end
