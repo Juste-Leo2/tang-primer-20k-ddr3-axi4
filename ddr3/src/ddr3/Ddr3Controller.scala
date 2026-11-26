@@ -84,6 +84,9 @@ class Ddr3Controller(val config: Ddr3Config = Ddr3Config()) extends Component {
   phy.io.BA           := coreArea.core.io.phy.BA
   phy.io.CKE          := coreArea.core.io.phy.CKE
   phy.io.resetn_delay := coreArea.core.io.phy.resetn_delay
+  if (!config.isSimulation) {
+    phy.io.wser_rst := coreArea.core.io.phy.wser_rst
+  }
 
   coreArea.core.io.phy.dlllock    := phy.io.dlllock
   coreArea.core.io.phy.rst_lock_n := phy.io.rst_lock_n
