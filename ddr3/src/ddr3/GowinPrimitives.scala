@@ -54,6 +54,7 @@ class DQS extends BlackBox {
     val DQSW0    = out Bool()
     val DQSW270  = out Bool()
     val RBURST   = out Bool()
+    val RVALID   = out Bool()
   }
   noIoPrefix()
 }

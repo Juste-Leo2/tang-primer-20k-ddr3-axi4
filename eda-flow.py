@@ -219,7 +219,13 @@ def main():
         sh([PROGRAMMER_CLI, "--device", "GW2A-18C", "--fsFile", str(fs)],
            REPO, "flash")
     elif args.flash == "openfpgaloader":
-        sh([sys.executable, "cli/main.py", "flash", str(fs)], REPO, "flash")
+        openfpga = REPO / "tools" / "oss-cad-suite" / "bin" / "openFPGALoader.exe"
+        env = os.environ.copy()
+        env["PATH"] = os.pathsep.join([str(openfpga.parent), str(openfpga.parent.parent / "lib")]) + os.pathsep + env.get("PATH", "")
+        print(f"[flash] $ {openfpga} -b tangprimer20k -m {fs}", flush=True)
+        rc = subprocess.run([str(openfpga), "-b", "tangprimer20k", "-m", str(fs)], cwd=str(REPO), env=env).returncode
+        if rc != 0:
+            raise SystemExit(f"[flash] FAILED rc={rc}")
 
     # 6. validate (optional) --------------------------------------------------
     if args.validate:

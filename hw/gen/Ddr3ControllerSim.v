@@ -1,7 +1,7 @@
 // Generator : SpinalHDL v1.15.0    git head : 05a01af3d3345aa0afcaad8e0186dde13a359db2
 // Component : Ddr3ControllerSim
-// Git hash  : 0508d2ccda12613f9b11a2610362074cd90f61ad
-// Date      : 09/10/2026, 18:35:48
+// Git hash  : 4f2b9d9b2e3630cd724d92875e0480b071137942
+// Date      : 26/11/2026, 18:43:53
 
 `timescale 1ns/1ps
 
@@ -31,6 +31,9 @@ module Ddr3ControllerSim (
   output wire [7:0]    io_wlFirst,
   output wire [7:0]    io_wlLast,
   output wire [7:0]    io_wlMatchN,
+  output wire [1:0]    io_wr_adv,
+  output wire [11:0]   io_w_scores,
+  output wire [127:0]  io_train_latch,
   inout  wire [15:0]   io_pad_DDR3_DQ,
   inout  wire [1:0]    io_pad_DDR3_DQS,
   output wire [1:0]    io_pad_DDR3_DM,
@@ -62,6 +65,9 @@ module Ddr3ControllerSim (
   wire       [7:0]    coreArea_core_io_wlFirst;
   wire       [7:0]    coreArea_core_io_wlLast;
   wire       [7:0]    coreArea_core_io_wlMatchN;
+  wire       [1:0]    coreArea_core_io_wr_adv;
+  wire       [11:0]   coreArea_core_io_w_scores;
+  wire       [127:0]  coreArea_core_io_train_latch;
   wire                coreArea_core_io_phy_dqs_hold;
   wire       [7:0]    coreArea_core_io_phy_wstep;
   wire                coreArea_core_io_phy_rloadn;
@@ -107,6 +113,11 @@ module Ddr3ControllerSim (
   wire                phy_io_dlllock;
   wire                phy_io_rst_lock_n;
   wire       [1:0]    phy_io_rburst;
+  wire       [1:0]    phy_io_rvalid;
+  wire       [2:0]    phy_io_wpoint_0;
+  wire       [2:0]    phy_io_wpoint_1;
+  wire       [2:0]    phy_io_rpoint_0;
+  wire       [2:0]    phy_io_rpoint_1;
   wire       [15:0]   phy_io_dq_in_0;
   wire       [15:0]   phy_io_dq_in_1;
   wire       [15:0]   phy_io_dq_in_2;
@@ -127,7 +138,7 @@ module Ddr3ControllerSim (
   wire                phy_io_pad_DDR3_CKE;
   wire                phy_io_pad_DDR3_nRESET;
   wire                phy_io_pad_DDR3_ODT;
-  wire                _zz_when_Ddr3ControllerCore_l1548;
+  wire                _zz_when_Ddr3ControllerCore_l1907;
 
   Ddr3ControllerCore coreArea_core (
     .io_req_valid                      (io_req_valid                             ), //i
@@ -151,6 +162,9 @@ module Ddr3ControllerSim (
     .io_wlFirst                        (coreArea_core_io_wlFirst[7:0]            ), //o
     .io_wlLast                         (coreArea_core_io_wlLast[7:0]             ), //o
     .io_wlMatchN                       (coreArea_core_io_wlMatchN[7:0]           ), //o
+    .io_wr_adv                         (coreArea_core_io_wr_adv[1:0]             ), //o
+    .io_w_scores                       (coreArea_core_io_w_scores[11:0]          ), //o
+    .io_train_latch                    (coreArea_core_io_train_latch[127:0]      ), //o
     .io_phy_dlllock                    (phy_io_dlllock                           ), //i
     .io_phy_rst_lock_n                 (phy_io_rst_lock_n                        ), //i
     .io_phy_rburst                     (phy_io_rburst[1:0]                       ), //i
@@ -205,7 +219,7 @@ module Ddr3ControllerSim (
     .io_phy_BA_3                       (coreArea_core_io_phy_BA_3[2:0]           ), //o
     .io_phy_CKE                        (coreArea_core_io_phy_CKE                 ), //o
     .io_phy_resetn_delay               (coreArea_core_io_phy_resetn_delay        ), //o
-    ._zz_when_Ddr3ControllerCore_l1548 (_zz_when_Ddr3ControllerCore_l1548        ), //i
+    ._zz_when_Ddr3ControllerCore_l1907 (_zz_when_Ddr3ControllerCore_l1907        ), //i
     .io_pclk                           (io_pclk                                  )  //i
   );
   GowinDdr3Phy phy (
@@ -255,9 +269,15 @@ module Ddr3ControllerSim (
     .io_BA_3            (coreArea_core_io_phy_BA_3[2:0]     ), //i
     .io_CKE             (coreArea_core_io_phy_CKE           ), //i
     .io_resetn_delay    (coreArea_core_io_phy_resetn_delay  ), //i
+    .io_wser_rst        (1'b0                               ), //i
     .io_dlllock         (phy_io_dlllock                     ), //o
     .io_rst_lock_n      (phy_io_rst_lock_n                  ), //o
     .io_rburst          (phy_io_rburst[1:0]                 ), //o
+    .io_rvalid          (phy_io_rvalid[1:0]                 ), //o
+    .io_wpoint_0        (phy_io_wpoint_0[2:0]               ), //o
+    .io_wpoint_1        (phy_io_wpoint_1[2:0]               ), //o
+    .io_rpoint_0        (phy_io_rpoint_0[2:0]               ), //o
+    .io_rpoint_1        (phy_io_rpoint_1[2:0]               ), //o
     .io_dq_in_0         (phy_io_dq_in_0[15:0]               ), //o
     .io_dq_in_1         (phy_io_dq_in_1[15:0]               ), //o
     .io_dq_in_2         (phy_io_dq_in_2[15:0]               ), //o
@@ -281,7 +301,7 @@ module Ddr3ControllerSim (
     .io_pad_DDR3_nRESET (phy_io_pad_DDR3_nRESET             ), //o
     .io_pad_DDR3_ODT    (phy_io_pad_DDR3_ODT                )  //o
   );
-  assign _zz_when_Ddr3ControllerCore_l1548 = (! io_resetn);
+  assign _zz_when_Ddr3ControllerCore_l1907 = (! io_resetn);
   assign io_pad_DDR3_DM = phy_io_pad_DDR3_DM;
   assign io_pad_DDR3_A = phy_io_pad_DDR3_A;
   assign io_pad_DDR3_BA = phy_io_pad_DDR3_BA;
@@ -309,6 +329,9 @@ module Ddr3ControllerSim (
   assign io_wlFirst = coreArea_core_io_wlFirst;
   assign io_wlLast = coreArea_core_io_wlLast;
   assign io_wlMatchN = coreArea_core_io_wlMatchN;
+  assign io_wr_adv = coreArea_core_io_wr_adv;
+  assign io_w_scores = coreArea_core_io_w_scores;
+  assign io_train_latch = coreArea_core_io_train_latch;
 
 endmodule
 
@@ -359,9 +382,15 @@ module GowinDdr3Phy (
   input  wire [2:0]    io_BA_3,
   input  wire          io_CKE,
   input  wire          io_resetn_delay,
+  input  wire          io_wser_rst,
   output wire          io_dlllock,
   output wire          io_rst_lock_n,
   output wire [1:0]    io_rburst,
+  output wire [1:0]    io_rvalid,
+  output wire [2:0]    io_wpoint_0,
+  output wire [2:0]    io_wpoint_1,
+  output wire [2:0]    io_rpoint_0,
+  output wire [2:0]    io_rpoint_1,
   output reg  [15:0]   io_dq_in_0,
   output reg  [15:0]   io_dq_in_1,
   output reg  [15:0]   io_dq_in_2,
@@ -388,7 +417,6 @@ module GowinDdr3Phy (
 
   wire                dll_1_RESET;
   wire                dQS_1_DQSIN;
-  wire                dQS_1_RESET;
   wire                oSER8_MEM_1_D0;
   wire                oSER8_MEM_1_D1;
   wire                oSER8_MEM_1_D2;
@@ -401,7 +429,6 @@ module GowinDdr3Phy (
   wire                oSER8_MEM_1_TX1;
   wire                oSER8_MEM_1_TX2;
   wire                oSER8_MEM_1_TX3;
-  wire                oSER8_MEM_1_RESET;
   wire                iOBUF_1_I;
   wire                iOBUF_1_OEN;
   wire                oSER8_MEM_2_D0;
@@ -412,9 +439,7 @@ module GowinDdr3Phy (
   wire                oSER8_MEM_2_D5;
   wire                oSER8_MEM_2_D6;
   wire                oSER8_MEM_2_D7;
-  wire                oSER8_MEM_2_RESET;
   wire                dQS_2_DQSIN;
-  wire                dQS_2_RESET;
   wire                oSER8_MEM_3_D0;
   wire                oSER8_MEM_3_D1;
   wire                oSER8_MEM_3_D2;
@@ -427,7 +452,6 @@ module GowinDdr3Phy (
   wire                oSER8_MEM_3_TX1;
   wire                oSER8_MEM_3_TX2;
   wire                oSER8_MEM_3_TX3;
-  wire                oSER8_MEM_3_RESET;
   wire                iOBUF_2_I;
   wire                iOBUF_2_OEN;
   wire                oSER8_MEM_4_D0;
@@ -438,7 +462,6 @@ module GowinDdr3Phy (
   wire                oSER8_MEM_4_D5;
   wire                oSER8_MEM_4_D6;
   wire                oSER8_MEM_4_D7;
-  wire                oSER8_MEM_4_RESET;
   wire                oSER8_MEM_5_D0;
   wire                oSER8_MEM_5_D1;
   wire                oSER8_MEM_5_D2;
@@ -451,11 +474,9 @@ module GowinDdr3Phy (
   wire                oSER8_MEM_5_TX1;
   wire                oSER8_MEM_5_TX2;
   wire                oSER8_MEM_5_TX3;
-  wire                oSER8_MEM_5_RESET;
   wire                iOBUF_3_I;
   wire                iOBUF_3_OEN;
   wire                iDES8_MEM_1_D;
-  wire                iDES8_MEM_1_RESET;
   wire                oSER8_MEM_6_D0;
   wire                oSER8_MEM_6_D1;
   wire                oSER8_MEM_6_D2;
@@ -468,11 +489,9 @@ module GowinDdr3Phy (
   wire                oSER8_MEM_6_TX1;
   wire                oSER8_MEM_6_TX2;
   wire                oSER8_MEM_6_TX3;
-  wire                oSER8_MEM_6_RESET;
   wire                iOBUF_4_I;
   wire                iOBUF_4_OEN;
   wire                iDES8_MEM_2_D;
-  wire                iDES8_MEM_2_RESET;
   wire                oSER8_MEM_7_D0;
   wire                oSER8_MEM_7_D1;
   wire                oSER8_MEM_7_D2;
@@ -485,11 +504,9 @@ module GowinDdr3Phy (
   wire                oSER8_MEM_7_TX1;
   wire                oSER8_MEM_7_TX2;
   wire                oSER8_MEM_7_TX3;
-  wire                oSER8_MEM_7_RESET;
   wire                iOBUF_5_I;
   wire                iOBUF_5_OEN;
   wire                iDES8_MEM_3_D;
-  wire                iDES8_MEM_3_RESET;
   wire                oSER8_MEM_8_D0;
   wire                oSER8_MEM_8_D1;
   wire                oSER8_MEM_8_D2;
@@ -502,11 +519,9 @@ module GowinDdr3Phy (
   wire                oSER8_MEM_8_TX1;
   wire                oSER8_MEM_8_TX2;
   wire                oSER8_MEM_8_TX3;
-  wire                oSER8_MEM_8_RESET;
   wire                iOBUF_6_I;
   wire                iOBUF_6_OEN;
   wire                iDES8_MEM_4_D;
-  wire                iDES8_MEM_4_RESET;
   wire                oSER8_MEM_9_D0;
   wire                oSER8_MEM_9_D1;
   wire                oSER8_MEM_9_D2;
@@ -519,11 +534,9 @@ module GowinDdr3Phy (
   wire                oSER8_MEM_9_TX1;
   wire                oSER8_MEM_9_TX2;
   wire                oSER8_MEM_9_TX3;
-  wire                oSER8_MEM_9_RESET;
   wire                iOBUF_7_I;
   wire                iOBUF_7_OEN;
   wire                iDES8_MEM_5_D;
-  wire                iDES8_MEM_5_RESET;
   wire                oSER8_MEM_10_D0;
   wire                oSER8_MEM_10_D1;
   wire                oSER8_MEM_10_D2;
@@ -536,11 +549,9 @@ module GowinDdr3Phy (
   wire                oSER8_MEM_10_TX1;
   wire                oSER8_MEM_10_TX2;
   wire                oSER8_MEM_10_TX3;
-  wire                oSER8_MEM_10_RESET;
   wire                iOBUF_8_I;
   wire                iOBUF_8_OEN;
   wire                iDES8_MEM_6_D;
-  wire                iDES8_MEM_6_RESET;
   wire                oSER8_MEM_11_D0;
   wire                oSER8_MEM_11_D1;
   wire                oSER8_MEM_11_D2;
@@ -553,11 +564,9 @@ module GowinDdr3Phy (
   wire                oSER8_MEM_11_TX1;
   wire                oSER8_MEM_11_TX2;
   wire                oSER8_MEM_11_TX3;
-  wire                oSER8_MEM_11_RESET;
   wire                iOBUF_9_I;
   wire                iOBUF_9_OEN;
   wire                iDES8_MEM_7_D;
-  wire                iDES8_MEM_7_RESET;
   wire                oSER8_MEM_12_D0;
   wire                oSER8_MEM_12_D1;
   wire                oSER8_MEM_12_D2;
@@ -570,11 +579,9 @@ module GowinDdr3Phy (
   wire                oSER8_MEM_12_TX1;
   wire                oSER8_MEM_12_TX2;
   wire                oSER8_MEM_12_TX3;
-  wire                oSER8_MEM_12_RESET;
   wire                iOBUF_10_I;
   wire                iOBUF_10_OEN;
   wire                iDES8_MEM_8_D;
-  wire                iDES8_MEM_8_RESET;
   wire                oSER8_MEM_13_D0;
   wire                oSER8_MEM_13_D1;
   wire                oSER8_MEM_13_D2;
@@ -587,11 +594,9 @@ module GowinDdr3Phy (
   wire                oSER8_MEM_13_TX1;
   wire                oSER8_MEM_13_TX2;
   wire                oSER8_MEM_13_TX3;
-  wire                oSER8_MEM_13_RESET;
   wire                iOBUF_11_I;
   wire                iOBUF_11_OEN;
   wire                iDES8_MEM_9_D;
-  wire                iDES8_MEM_9_RESET;
   wire                oSER8_MEM_14_D0;
   wire                oSER8_MEM_14_D1;
   wire                oSER8_MEM_14_D2;
@@ -604,11 +609,9 @@ module GowinDdr3Phy (
   wire                oSER8_MEM_14_TX1;
   wire                oSER8_MEM_14_TX2;
   wire                oSER8_MEM_14_TX3;
-  wire                oSER8_MEM_14_RESET;
   wire                iOBUF_12_I;
   wire                iOBUF_12_OEN;
   wire                iDES8_MEM_10_D;
-  wire                iDES8_MEM_10_RESET;
   wire                oSER8_MEM_15_D0;
   wire                oSER8_MEM_15_D1;
   wire                oSER8_MEM_15_D2;
@@ -621,11 +624,9 @@ module GowinDdr3Phy (
   wire                oSER8_MEM_15_TX1;
   wire                oSER8_MEM_15_TX2;
   wire                oSER8_MEM_15_TX3;
-  wire                oSER8_MEM_15_RESET;
   wire                iOBUF_13_I;
   wire                iOBUF_13_OEN;
   wire                iDES8_MEM_11_D;
-  wire                iDES8_MEM_11_RESET;
   wire                oSER8_MEM_16_D0;
   wire                oSER8_MEM_16_D1;
   wire                oSER8_MEM_16_D2;
@@ -638,11 +639,9 @@ module GowinDdr3Phy (
   wire                oSER8_MEM_16_TX1;
   wire                oSER8_MEM_16_TX2;
   wire                oSER8_MEM_16_TX3;
-  wire                oSER8_MEM_16_RESET;
   wire                iOBUF_14_I;
   wire                iOBUF_14_OEN;
   wire                iDES8_MEM_12_D;
-  wire                iDES8_MEM_12_RESET;
   wire                oSER8_MEM_17_D0;
   wire                oSER8_MEM_17_D1;
   wire                oSER8_MEM_17_D2;
@@ -655,11 +654,9 @@ module GowinDdr3Phy (
   wire                oSER8_MEM_17_TX1;
   wire                oSER8_MEM_17_TX2;
   wire                oSER8_MEM_17_TX3;
-  wire                oSER8_MEM_17_RESET;
   wire                iOBUF_15_I;
   wire                iOBUF_15_OEN;
   wire                iDES8_MEM_13_D;
-  wire                iDES8_MEM_13_RESET;
   wire                oSER8_MEM_18_D0;
   wire                oSER8_MEM_18_D1;
   wire                oSER8_MEM_18_D2;
@@ -672,11 +669,9 @@ module GowinDdr3Phy (
   wire                oSER8_MEM_18_TX1;
   wire                oSER8_MEM_18_TX2;
   wire                oSER8_MEM_18_TX3;
-  wire                oSER8_MEM_18_RESET;
   wire                iOBUF_16_I;
   wire                iOBUF_16_OEN;
   wire                iDES8_MEM_14_D;
-  wire                iDES8_MEM_14_RESET;
   wire                oSER8_MEM_19_D0;
   wire                oSER8_MEM_19_D1;
   wire                oSER8_MEM_19_D2;
@@ -689,11 +684,9 @@ module GowinDdr3Phy (
   wire                oSER8_MEM_19_TX1;
   wire                oSER8_MEM_19_TX2;
   wire                oSER8_MEM_19_TX3;
-  wire                oSER8_MEM_19_RESET;
   wire                iOBUF_17_I;
   wire                iOBUF_17_OEN;
   wire                iDES8_MEM_15_D;
-  wire                iDES8_MEM_15_RESET;
   wire                oSER8_MEM_20_D0;
   wire                oSER8_MEM_20_D1;
   wire                oSER8_MEM_20_D2;
@@ -706,14 +699,9 @@ module GowinDdr3Phy (
   wire                oSER8_MEM_20_TX1;
   wire                oSER8_MEM_20_TX2;
   wire                oSER8_MEM_20_TX3;
-  wire                oSER8_MEM_20_RESET;
   wire                iOBUF_18_I;
   wire                iOBUF_18_OEN;
   wire                iDES8_MEM_16_D;
-  wire                iDES8_MEM_16_RESET;
-  wire                oSER8_1_RESET;
-  wire                oSER8_2_RESET;
-  wire                oSER8_3_RESET;
   wire                oSER8_4_D0;
   wire                oSER8_4_D1;
   wire                oSER8_4_D2;
@@ -722,7 +710,6 @@ module GowinDdr3Phy (
   wire                oSER8_4_D5;
   wire                oSER8_4_D6;
   wire                oSER8_4_D7;
-  wire                oSER8_4_RESET;
   wire                oSER8_5_D0;
   wire                oSER8_5_D1;
   wire                oSER8_5_D2;
@@ -731,7 +718,6 @@ module GowinDdr3Phy (
   wire                oSER8_5_D5;
   wire                oSER8_5_D6;
   wire                oSER8_5_D7;
-  wire                oSER8_5_RESET;
   wire                oSER8_6_D0;
   wire                oSER8_6_D1;
   wire                oSER8_6_D2;
@@ -740,7 +726,6 @@ module GowinDdr3Phy (
   wire                oSER8_6_D5;
   wire                oSER8_6_D6;
   wire                oSER8_6_D7;
-  wire                oSER8_6_RESET;
   wire                oSER8_7_D0;
   wire                oSER8_7_D1;
   wire                oSER8_7_D2;
@@ -749,7 +734,6 @@ module GowinDdr3Phy (
   wire                oSER8_7_D5;
   wire                oSER8_7_D6;
   wire                oSER8_7_D7;
-  wire                oSER8_7_RESET;
   wire                oSER8_8_D0;
   wire                oSER8_8_D1;
   wire                oSER8_8_D2;
@@ -758,7 +742,6 @@ module GowinDdr3Phy (
   wire                oSER8_8_D5;
   wire                oSER8_8_D6;
   wire                oSER8_8_D7;
-  wire                oSER8_8_RESET;
   wire                oSER8_9_D0;
   wire                oSER8_9_D1;
   wire                oSER8_9_D2;
@@ -767,7 +750,6 @@ module GowinDdr3Phy (
   wire                oSER8_9_D5;
   wire                oSER8_9_D6;
   wire                oSER8_9_D7;
-  wire                oSER8_9_RESET;
   wire                oSER8_10_D0;
   wire                oSER8_10_D1;
   wire                oSER8_10_D2;
@@ -776,7 +758,6 @@ module GowinDdr3Phy (
   wire                oSER8_10_D5;
   wire                oSER8_10_D6;
   wire                oSER8_10_D7;
-  wire                oSER8_10_RESET;
   wire                oSER8_11_D0;
   wire                oSER8_11_D1;
   wire                oSER8_11_D2;
@@ -785,7 +766,6 @@ module GowinDdr3Phy (
   wire                oSER8_11_D5;
   wire                oSER8_11_D6;
   wire                oSER8_11_D7;
-  wire                oSER8_11_RESET;
   wire                oSER8_12_D0;
   wire                oSER8_12_D1;
   wire                oSER8_12_D2;
@@ -794,7 +774,6 @@ module GowinDdr3Phy (
   wire                oSER8_12_D5;
   wire                oSER8_12_D6;
   wire                oSER8_12_D7;
-  wire                oSER8_12_RESET;
   wire                oSER8_13_D0;
   wire                oSER8_13_D1;
   wire                oSER8_13_D2;
@@ -803,7 +782,6 @@ module GowinDdr3Phy (
   wire                oSER8_13_D5;
   wire                oSER8_13_D6;
   wire                oSER8_13_D7;
-  wire                oSER8_13_RESET;
   wire                oSER8_14_D0;
   wire                oSER8_14_D1;
   wire                oSER8_14_D2;
@@ -812,7 +790,6 @@ module GowinDdr3Phy (
   wire                oSER8_14_D5;
   wire                oSER8_14_D6;
   wire                oSER8_14_D7;
-  wire                oSER8_14_RESET;
   wire                oSER8_15_D0;
   wire                oSER8_15_D1;
   wire                oSER8_15_D2;
@@ -821,7 +798,6 @@ module GowinDdr3Phy (
   wire                oSER8_15_D5;
   wire                oSER8_15_D6;
   wire                oSER8_15_D7;
-  wire                oSER8_15_RESET;
   wire                oSER8_16_D0;
   wire                oSER8_16_D1;
   wire                oSER8_16_D2;
@@ -830,7 +806,6 @@ module GowinDdr3Phy (
   wire                oSER8_16_D5;
   wire                oSER8_16_D6;
   wire                oSER8_16_D7;
-  wire                oSER8_16_RESET;
   wire                oSER8_17_D0;
   wire                oSER8_17_D1;
   wire                oSER8_17_D2;
@@ -839,7 +814,6 @@ module GowinDdr3Phy (
   wire                oSER8_17_D5;
   wire                oSER8_17_D6;
   wire                oSER8_17_D7;
-  wire                oSER8_17_RESET;
   wire                oSER8_18_D0;
   wire                oSER8_18_D1;
   wire                oSER8_18_D2;
@@ -848,7 +822,6 @@ module GowinDdr3Phy (
   wire                oSER8_18_D5;
   wire                oSER8_18_D6;
   wire                oSER8_18_D7;
-  wire                oSER8_18_RESET;
   wire                oSER8_19_D0;
   wire                oSER8_19_D1;
   wire                oSER8_19_D2;
@@ -857,7 +830,6 @@ module GowinDdr3Phy (
   wire                oSER8_19_D5;
   wire                oSER8_19_D6;
   wire                oSER8_19_D7;
-  wire                oSER8_19_RESET;
   wire                oSER8_20_D0;
   wire                oSER8_20_D1;
   wire                oSER8_20_D2;
@@ -866,7 +838,6 @@ module GowinDdr3Phy (
   wire                oSER8_20_D5;
   wire                oSER8_20_D6;
   wire                oSER8_20_D7;
-  wire                oSER8_20_RESET;
   wire       [7:0]    dll_1_STEP;
   wire                dll_1_LOCK;
   wire                dQS_1_DQSR90;
@@ -875,6 +846,7 @@ module GowinDdr3Phy (
   wire                dQS_1_DQSW0;
   wire                dQS_1_DQSW270;
   wire                dQS_1_RBURST;
+  wire                dQS_1_RVALID;
   wire                oSER8_MEM_1_Q0;
   wire                oSER8_MEM_1_Q1;
   wire                iOBUF_1_O;
@@ -886,6 +858,7 @@ module GowinDdr3Phy (
   wire                dQS_2_DQSW0;
   wire                dQS_2_DQSW270;
   wire                dQS_2_RBURST;
+  wire                dQS_2_RVALID;
   wire                oSER8_MEM_3_Q0;
   wire                oSER8_MEM_3_Q1;
   wire                iOBUF_2_O;
@@ -1107,7 +1080,28 @@ module GowinDdr3Phy (
   wire                oSER8_19_Q1;
   wire                oSER8_20_Q0;
   wire                oSER8_20_Q1;
-  wire                rst_lock_n;
+  wire                raw_rst_n;
+  wire                _zz_1;
+  reg        [3:0]    pclkRstArea_holdCnt;
+  wire                when_GowinDdr3Phy_l93;
+  reg                 pclkRstArea_rst_pclk_n;
+  reg                 pclkRstArea_rst_cmd_p;
+  reg                 pclkRstArea_rst_io_p;
+  wire                _zz_2;
+  wire                _zz_3;
+  wire                _zz_4;
+  (* async_reg = "true" *) reg                 fclkRstArea_s0_cmd;
+  (* async_reg = "true" *) reg                 fclkRstArea_s0_io;
+  (* async_reg = "true" *) reg                 fclkRstArea_s1_cmd;
+  (* async_reg = "true" *) reg                 fclkRstArea_s0_io_regNext;
+  (* syn_keep = 1 *) reg                 fclkRstArea_rst_dqs0;
+  (* syn_keep = 1 *) reg                 fclkRstArea_rst_dqs1;
+  (* syn_keep = 1 *) reg                 fclkRstArea_rst_dq0a;
+  (* syn_keep = 1 *) reg                 fclkRstArea_rst_dq0b;
+  (* syn_keep = 1 *) reg                 fclkRstArea_rst_dq1a;
+  (* syn_keep = 1 *) reg                 fclkRstArea_rst_dq1b;
+  (* syn_keep = 1 , async_reg = "true" *) reg                 fclkRstArea_rst_cmd_a;
+  (* syn_keep = 1 , async_reg = "true" *) reg                 fclkRstArea_rst_cmd_b;
   wire       [2:0]    dqs_waddr_0;
   wire       [2:0]    dqs_waddr_1;
   wire       [2:0]    dqs_raddr_0;
@@ -1119,6 +1113,7 @@ module GowinDdr3Phy (
   wire                clk_dqsw270_0;
   wire                clk_dqsw270_1;
   reg        [1:0]    rburst;
+  reg        [1:0]    rvalid;
   reg        [1:0]    dqs_pad_in;
   reg        [1:0]    dqs_buf;
   reg        [1:0]    dqs_buf_oen;
@@ -1141,46 +1136,47 @@ module GowinDdr3Phy (
     .DQS_MODE ("X4"   ),
     .HWL      ("false")
   ) dQS_1 (
-    .FCLK    (io_fclk          ), //i
-    .PCLK    (io_pclk          ), //i
-    .DQSIN   (dQS_1_DQSIN      ), //i
-    .RESET   (dQS_1_RESET      ), //i
-    .HOLD    (io_dqs_hold      ), //i
-    .RLOADN  (io_rloadn        ), //i
-    .WLOADN  (1'b0             ), //i
-    .RMOVE   (io_rmove         ), //i
-    .WMOVE   (1'b0             ), //i
-    .RDIR    (io_rdir          ), //i
-    .DLLSTEP (dll_1_STEP[7:0]  ), //i
-    .WSTEP   (io_wstep[7:0]    ), //i
-    .RCLKSEL (io_rclksel[2:0]  ), //i
-    .READ    (io_dqs_read[3:0] ), //i
-    .DQSR90  (dQS_1_DQSR90     ), //o
-    .WPOINT  (dQS_1_WPOINT[2:0]), //o
-    .RPOINT  (dQS_1_RPOINT[2:0]), //o
-    .DQSW0   (dQS_1_DQSW0      ), //o
-    .DQSW270 (dQS_1_DQSW270    ), //o
-    .RBURST  (dQS_1_RBURST     )  //o
+    .FCLK    (io_fclk             ), //i
+    .PCLK    (io_pclk             ), //i
+    .DQSIN   (dQS_1_DQSIN         ), //i
+    .RESET   (fclkRstArea_rst_dqs0), //i
+    .HOLD    (io_dqs_hold         ), //i
+    .RLOADN  (io_rloadn           ), //i
+    .WLOADN  (1'b0                ), //i
+    .RMOVE   (io_rmove            ), //i
+    .WMOVE   (1'b0                ), //i
+    .RDIR    (io_rdir             ), //i
+    .DLLSTEP (dll_1_STEP[7:0]     ), //i
+    .WSTEP   (io_wstep[7:0]       ), //i
+    .RCLKSEL (io_rclksel[2:0]     ), //i
+    .READ    (io_dqs_read[3:0]    ), //i
+    .DQSR90  (dQS_1_DQSR90        ), //o
+    .WPOINT  (dQS_1_WPOINT[2:0]   ), //o
+    .RPOINT  (dQS_1_RPOINT[2:0]   ), //o
+    .DQSW0   (dQS_1_DQSW0         ), //o
+    .DQSW270 (dQS_1_DQSW270       ), //o
+    .RBURST  (dQS_1_RBURST        ), //o
+    .RVALID  (dQS_1_RVALID        )  //o
   );
   OSER8_MEM oSER8_MEM_1 (
-    .D0    (oSER8_MEM_1_D0   ), //i
-    .D1    (oSER8_MEM_1_D1   ), //i
-    .D2    (oSER8_MEM_1_D2   ), //i
-    .D3    (oSER8_MEM_1_D3   ), //i
-    .D4    (oSER8_MEM_1_D4   ), //i
-    .D5    (oSER8_MEM_1_D5   ), //i
-    .D6    (oSER8_MEM_1_D6   ), //i
-    .D7    (oSER8_MEM_1_D7   ), //i
-    .TX0   (oSER8_MEM_1_TX0  ), //i
-    .TX1   (oSER8_MEM_1_TX1  ), //i
-    .TX2   (oSER8_MEM_1_TX2  ), //i
-    .TX3   (oSER8_MEM_1_TX3  ), //i
-    .FCLK  (io_fclk          ), //i
-    .PCLK  (io_pclk          ), //i
-    .TCLK  (clk_dqsw_0       ), //i
-    .RESET (oSER8_MEM_1_RESET), //i
-    .Q0    (oSER8_MEM_1_Q0   ), //o
-    .Q1    (oSER8_MEM_1_Q1   )  //o
+    .D0    (oSER8_MEM_1_D0      ), //i
+    .D1    (oSER8_MEM_1_D1      ), //i
+    .D2    (oSER8_MEM_1_D2      ), //i
+    .D3    (oSER8_MEM_1_D3      ), //i
+    .D4    (oSER8_MEM_1_D4      ), //i
+    .D5    (oSER8_MEM_1_D5      ), //i
+    .D6    (oSER8_MEM_1_D6      ), //i
+    .D7    (oSER8_MEM_1_D7      ), //i
+    .TX0   (oSER8_MEM_1_TX0     ), //i
+    .TX1   (oSER8_MEM_1_TX1     ), //i
+    .TX2   (oSER8_MEM_1_TX2     ), //i
+    .TX3   (oSER8_MEM_1_TX3     ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .TCLK  (clk_dqsw_0          ), //i
+    .RESET (fclkRstArea_rst_dqs0), //i
+    .Q0    (oSER8_MEM_1_Q0      ), //o
+    .Q1    (oSER8_MEM_1_Q1      )  //o
   );
   IOBUF iOBUF_1 (
     .I   (iOBUF_1_I         ), //i
@@ -1191,69 +1187,70 @@ module GowinDdr3Phy (
   OSER8_MEM #(
     .TCLK_SOURCE ("DQSW270")
   ) oSER8_MEM_2 (
-    .D0    (oSER8_MEM_2_D0   ), //i
-    .D1    (oSER8_MEM_2_D1   ), //i
-    .D2    (oSER8_MEM_2_D2   ), //i
-    .D3    (oSER8_MEM_2_D3   ), //i
-    .D4    (oSER8_MEM_2_D4   ), //i
-    .D5    (oSER8_MEM_2_D5   ), //i
-    .D6    (oSER8_MEM_2_D6   ), //i
-    .D7    (oSER8_MEM_2_D7   ), //i
-    .TX0   (1'b0             ), //i
-    .TX1   (1'b0             ), //i
-    .TX2   (1'b0             ), //i
-    .TX3   (1'b0             ), //i
-    .FCLK  (io_fclk          ), //i
-    .PCLK  (io_pclk          ), //i
-    .TCLK  (clk_dqsw270_0    ), //i
-    .RESET (oSER8_MEM_2_RESET), //i
-    .Q0    (oSER8_MEM_2_Q0   ), //o
-    .Q1    (oSER8_MEM_2_Q1   )  //o
+    .D0    (oSER8_MEM_2_D0      ), //i
+    .D1    (oSER8_MEM_2_D1      ), //i
+    .D2    (oSER8_MEM_2_D2      ), //i
+    .D3    (oSER8_MEM_2_D3      ), //i
+    .D4    (oSER8_MEM_2_D4      ), //i
+    .D5    (oSER8_MEM_2_D5      ), //i
+    .D6    (oSER8_MEM_2_D6      ), //i
+    .D7    (oSER8_MEM_2_D7      ), //i
+    .TX0   (1'b0                ), //i
+    .TX1   (1'b0                ), //i
+    .TX2   (1'b0                ), //i
+    .TX3   (1'b0                ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .TCLK  (clk_dqsw270_0       ), //i
+    .RESET (fclkRstArea_rst_dqs0), //i
+    .Q0    (oSER8_MEM_2_Q0      ), //o
+    .Q1    (oSER8_MEM_2_Q1      )  //o
   );
   DQS #(
     .DQS_MODE ("X4"   ),
     .HWL      ("false")
   ) dQS_2 (
-    .FCLK    (io_fclk          ), //i
-    .PCLK    (io_pclk          ), //i
-    .DQSIN   (dQS_2_DQSIN      ), //i
-    .RESET   (dQS_2_RESET      ), //i
-    .HOLD    (io_dqs_hold      ), //i
-    .RLOADN  (io_rloadn        ), //i
-    .WLOADN  (1'b0             ), //i
-    .RMOVE   (io_rmove         ), //i
-    .WMOVE   (1'b0             ), //i
-    .RDIR    (io_rdir          ), //i
-    .DLLSTEP (dll_1_STEP[7:0]  ), //i
-    .WSTEP   (io_wstep[7:0]    ), //i
-    .RCLKSEL (io_rclksel[2:0]  ), //i
-    .READ    (io_dqs_read[3:0] ), //i
-    .DQSR90  (dQS_2_DQSR90     ), //o
-    .WPOINT  (dQS_2_WPOINT[2:0]), //o
-    .RPOINT  (dQS_2_RPOINT[2:0]), //o
-    .DQSW0   (dQS_2_DQSW0      ), //o
-    .DQSW270 (dQS_2_DQSW270    ), //o
-    .RBURST  (dQS_2_RBURST     )  //o
+    .FCLK    (io_fclk             ), //i
+    .PCLK    (io_pclk             ), //i
+    .DQSIN   (dQS_2_DQSIN         ), //i
+    .RESET   (fclkRstArea_rst_dqs1), //i
+    .HOLD    (io_dqs_hold         ), //i
+    .RLOADN  (io_rloadn           ), //i
+    .WLOADN  (1'b0                ), //i
+    .RMOVE   (io_rmove            ), //i
+    .WMOVE   (1'b0                ), //i
+    .RDIR    (io_rdir             ), //i
+    .DLLSTEP (dll_1_STEP[7:0]     ), //i
+    .WSTEP   (io_wstep[7:0]       ), //i
+    .RCLKSEL (io_rclksel[2:0]     ), //i
+    .READ    (io_dqs_read[3:0]    ), //i
+    .DQSR90  (dQS_2_DQSR90        ), //o
+    .WPOINT  (dQS_2_WPOINT[2:0]   ), //o
+    .RPOINT  (dQS_2_RPOINT[2:0]   ), //o
+    .DQSW0   (dQS_2_DQSW0         ), //o
+    .DQSW270 (dQS_2_DQSW270       ), //o
+    .RBURST  (dQS_2_RBURST        ), //o
+    .RVALID  (dQS_2_RVALID        )  //o
   );
   OSER8_MEM oSER8_MEM_3 (
-    .D0    (oSER8_MEM_3_D0   ), //i
-    .D1    (oSER8_MEM_3_D1   ), //i
-    .D2    (oSER8_MEM_3_D2   ), //i
-    .D3    (oSER8_MEM_3_D3   ), //i
-    .D4    (oSER8_MEM_3_D4   ), //i
-    .D5    (oSER8_MEM_3_D5   ), //i
-    .D6    (oSER8_MEM_3_D6   ), //i
-    .D7    (oSER8_MEM_3_D7   ), //i
-    .TX0   (oSER8_MEM_3_TX0  ), //i
-    .TX1   (oSER8_MEM_3_TX1  ), //i
-    .TX2   (oSER8_MEM_3_TX2  ), //i
-    .TX3   (oSER8_MEM_3_TX3  ), //i
-    .FCLK  (io_fclk          ), //i
-    .PCLK  (io_pclk          ), //i
-    .TCLK  (clk_dqsw_1       ), //i
-    .RESET (oSER8_MEM_3_RESET), //i
-    .Q0    (oSER8_MEM_3_Q0   ), //o
-    .Q1    (oSER8_MEM_3_Q1   )  //o
+    .D0    (oSER8_MEM_3_D0      ), //i
+    .D1    (oSER8_MEM_3_D1      ), //i
+    .D2    (oSER8_MEM_3_D2      ), //i
+    .D3    (oSER8_MEM_3_D3      ), //i
+    .D4    (oSER8_MEM_3_D4      ), //i
+    .D5    (oSER8_MEM_3_D5      ), //i
+    .D6    (oSER8_MEM_3_D6      ), //i
+    .D7    (oSER8_MEM_3_D7      ), //i
+    .TX0   (oSER8_MEM_3_TX0     ), //i
+    .TX1   (oSER8_MEM_3_TX1     ), //i
+    .TX2   (oSER8_MEM_3_TX2     ), //i
+    .TX3   (oSER8_MEM_3_TX3     ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .TCLK  (clk_dqsw_1          ), //i
+    .RESET (fclkRstArea_rst_dqs1), //i
+    .Q0    (oSER8_MEM_3_Q0      ), //o
+    .Q1    (oSER8_MEM_3_Q1      )  //o
   );
   IOBUF iOBUF_2 (
     .I   (iOBUF_2_I         ), //i
@@ -1264,46 +1261,46 @@ module GowinDdr3Phy (
   OSER8_MEM #(
     .TCLK_SOURCE ("DQSW270")
   ) oSER8_MEM_4 (
-    .D0    (oSER8_MEM_4_D0   ), //i
-    .D1    (oSER8_MEM_4_D1   ), //i
-    .D2    (oSER8_MEM_4_D2   ), //i
-    .D3    (oSER8_MEM_4_D3   ), //i
-    .D4    (oSER8_MEM_4_D4   ), //i
-    .D5    (oSER8_MEM_4_D5   ), //i
-    .D6    (oSER8_MEM_4_D6   ), //i
-    .D7    (oSER8_MEM_4_D7   ), //i
-    .TX0   (1'b0             ), //i
-    .TX1   (1'b0             ), //i
-    .TX2   (1'b0             ), //i
-    .TX3   (1'b0             ), //i
-    .FCLK  (io_fclk          ), //i
-    .PCLK  (io_pclk          ), //i
-    .TCLK  (clk_dqsw270_1    ), //i
-    .RESET (oSER8_MEM_4_RESET), //i
-    .Q0    (oSER8_MEM_4_Q0   ), //o
-    .Q1    (oSER8_MEM_4_Q1   )  //o
+    .D0    (oSER8_MEM_4_D0      ), //i
+    .D1    (oSER8_MEM_4_D1      ), //i
+    .D2    (oSER8_MEM_4_D2      ), //i
+    .D3    (oSER8_MEM_4_D3      ), //i
+    .D4    (oSER8_MEM_4_D4      ), //i
+    .D5    (oSER8_MEM_4_D5      ), //i
+    .D6    (oSER8_MEM_4_D6      ), //i
+    .D7    (oSER8_MEM_4_D7      ), //i
+    .TX0   (1'b0                ), //i
+    .TX1   (1'b0                ), //i
+    .TX2   (1'b0                ), //i
+    .TX3   (1'b0                ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .TCLK  (clk_dqsw270_1       ), //i
+    .RESET (fclkRstArea_rst_dqs1), //i
+    .Q0    (oSER8_MEM_4_Q0      ), //o
+    .Q1    (oSER8_MEM_4_Q1      )  //o
   );
   OSER8_MEM #(
     .TCLK_SOURCE ("DQSW270")
   ) oSER8_MEM_5 (
-    .D0    (oSER8_MEM_5_D0   ), //i
-    .D1    (oSER8_MEM_5_D1   ), //i
-    .D2    (oSER8_MEM_5_D2   ), //i
-    .D3    (oSER8_MEM_5_D3   ), //i
-    .D4    (oSER8_MEM_5_D4   ), //i
-    .D5    (oSER8_MEM_5_D5   ), //i
-    .D6    (oSER8_MEM_5_D6   ), //i
-    .D7    (oSER8_MEM_5_D7   ), //i
-    .TX0   (oSER8_MEM_5_TX0  ), //i
-    .TX1   (oSER8_MEM_5_TX1  ), //i
-    .TX2   (oSER8_MEM_5_TX2  ), //i
-    .TX3   (oSER8_MEM_5_TX3  ), //i
-    .FCLK  (io_fclk          ), //i
-    .PCLK  (io_pclk          ), //i
-    .TCLK  (clk_dqsw270_0    ), //i
-    .RESET (oSER8_MEM_5_RESET), //i
-    .Q0    (oSER8_MEM_5_Q0   ), //o
-    .Q1    (oSER8_MEM_5_Q1   )  //o
+    .D0    (oSER8_MEM_5_D0      ), //i
+    .D1    (oSER8_MEM_5_D1      ), //i
+    .D2    (oSER8_MEM_5_D2      ), //i
+    .D3    (oSER8_MEM_5_D3      ), //i
+    .D4    (oSER8_MEM_5_D4      ), //i
+    .D5    (oSER8_MEM_5_D5      ), //i
+    .D6    (oSER8_MEM_5_D6      ), //i
+    .D7    (oSER8_MEM_5_D7      ), //i
+    .TX0   (oSER8_MEM_5_TX0     ), //i
+    .TX1   (oSER8_MEM_5_TX1     ), //i
+    .TX2   (oSER8_MEM_5_TX2     ), //i
+    .TX3   (oSER8_MEM_5_TX3     ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .TCLK  (clk_dqsw270_0       ), //i
+    .RESET (fclkRstArea_rst_dq0a), //i
+    .Q0    (oSER8_MEM_5_Q0      ), //o
+    .Q1    (oSER8_MEM_5_Q1      )  //o
   );
   IOBUF iOBUF_3 (
     .I   (iOBUF_3_I        ), //i
@@ -1312,44 +1309,44 @@ module GowinDdr3Phy (
     .IO  (io_pad_DDR3_DQ[0])  //~
   );
   IDES8_MEM iDES8_MEM_1 (
-    .D     (iDES8_MEM_1_D    ), //i
-    .ICLK  (clk_dqsr_0       ), //i
-    .FCLK  (io_fclk          ), //i
-    .PCLK  (io_pclk          ), //i
-    .CALIB (1'b0             ), //i
-    .RESET (iDES8_MEM_1_RESET), //i
-    .WADDR (dqs_waddr_0[2:0] ), //i
-    .RADDR (dqs_raddr_0[2:0] ), //i
-    .Q0    (iDES8_MEM_1_Q0   ), //o
-    .Q1    (iDES8_MEM_1_Q1   ), //o
-    .Q2    (iDES8_MEM_1_Q2   ), //o
-    .Q3    (iDES8_MEM_1_Q3   ), //o
-    .Q4    (iDES8_MEM_1_Q4   ), //o
-    .Q5    (iDES8_MEM_1_Q5   ), //o
-    .Q6    (iDES8_MEM_1_Q6   ), //o
-    .Q7    (iDES8_MEM_1_Q7   )  //o
+    .D     (iDES8_MEM_1_D       ), //i
+    .ICLK  (clk_dqsr_0          ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .CALIB (1'b0                ), //i
+    .RESET (fclkRstArea_rst_dq0a), //i
+    .WADDR (dqs_waddr_0[2:0]    ), //i
+    .RADDR (dqs_raddr_0[2:0]    ), //i
+    .Q0    (iDES8_MEM_1_Q0      ), //o
+    .Q1    (iDES8_MEM_1_Q1      ), //o
+    .Q2    (iDES8_MEM_1_Q2      ), //o
+    .Q3    (iDES8_MEM_1_Q3      ), //o
+    .Q4    (iDES8_MEM_1_Q4      ), //o
+    .Q5    (iDES8_MEM_1_Q5      ), //o
+    .Q6    (iDES8_MEM_1_Q6      ), //o
+    .Q7    (iDES8_MEM_1_Q7      )  //o
   );
   OSER8_MEM #(
     .TCLK_SOURCE ("DQSW270")
   ) oSER8_MEM_6 (
-    .D0    (oSER8_MEM_6_D0   ), //i
-    .D1    (oSER8_MEM_6_D1   ), //i
-    .D2    (oSER8_MEM_6_D2   ), //i
-    .D3    (oSER8_MEM_6_D3   ), //i
-    .D4    (oSER8_MEM_6_D4   ), //i
-    .D5    (oSER8_MEM_6_D5   ), //i
-    .D6    (oSER8_MEM_6_D6   ), //i
-    .D7    (oSER8_MEM_6_D7   ), //i
-    .TX0   (oSER8_MEM_6_TX0  ), //i
-    .TX1   (oSER8_MEM_6_TX1  ), //i
-    .TX2   (oSER8_MEM_6_TX2  ), //i
-    .TX3   (oSER8_MEM_6_TX3  ), //i
-    .FCLK  (io_fclk          ), //i
-    .PCLK  (io_pclk          ), //i
-    .TCLK  (clk_dqsw270_0    ), //i
-    .RESET (oSER8_MEM_6_RESET), //i
-    .Q0    (oSER8_MEM_6_Q0   ), //o
-    .Q1    (oSER8_MEM_6_Q1   )  //o
+    .D0    (oSER8_MEM_6_D0      ), //i
+    .D1    (oSER8_MEM_6_D1      ), //i
+    .D2    (oSER8_MEM_6_D2      ), //i
+    .D3    (oSER8_MEM_6_D3      ), //i
+    .D4    (oSER8_MEM_6_D4      ), //i
+    .D5    (oSER8_MEM_6_D5      ), //i
+    .D6    (oSER8_MEM_6_D6      ), //i
+    .D7    (oSER8_MEM_6_D7      ), //i
+    .TX0   (oSER8_MEM_6_TX0     ), //i
+    .TX1   (oSER8_MEM_6_TX1     ), //i
+    .TX2   (oSER8_MEM_6_TX2     ), //i
+    .TX3   (oSER8_MEM_6_TX3     ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .TCLK  (clk_dqsw270_0       ), //i
+    .RESET (fclkRstArea_rst_dq0a), //i
+    .Q0    (oSER8_MEM_6_Q0      ), //o
+    .Q1    (oSER8_MEM_6_Q1      )  //o
   );
   IOBUF iOBUF_4 (
     .I   (iOBUF_4_I        ), //i
@@ -1358,44 +1355,44 @@ module GowinDdr3Phy (
     .IO  (io_pad_DDR3_DQ[1])  //~
   );
   IDES8_MEM iDES8_MEM_2 (
-    .D     (iDES8_MEM_2_D    ), //i
-    .ICLK  (clk_dqsr_0       ), //i
-    .FCLK  (io_fclk          ), //i
-    .PCLK  (io_pclk          ), //i
-    .CALIB (1'b0             ), //i
-    .RESET (iDES8_MEM_2_RESET), //i
-    .WADDR (dqs_waddr_0[2:0] ), //i
-    .RADDR (dqs_raddr_0[2:0] ), //i
-    .Q0    (iDES8_MEM_2_Q0   ), //o
-    .Q1    (iDES8_MEM_2_Q1   ), //o
-    .Q2    (iDES8_MEM_2_Q2   ), //o
-    .Q3    (iDES8_MEM_2_Q3   ), //o
-    .Q4    (iDES8_MEM_2_Q4   ), //o
-    .Q5    (iDES8_MEM_2_Q5   ), //o
-    .Q6    (iDES8_MEM_2_Q6   ), //o
-    .Q7    (iDES8_MEM_2_Q7   )  //o
+    .D     (iDES8_MEM_2_D       ), //i
+    .ICLK  (clk_dqsr_0          ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .CALIB (1'b0                ), //i
+    .RESET (fclkRstArea_rst_dq0a), //i
+    .WADDR (dqs_waddr_0[2:0]    ), //i
+    .RADDR (dqs_raddr_0[2:0]    ), //i
+    .Q0    (iDES8_MEM_2_Q0      ), //o
+    .Q1    (iDES8_MEM_2_Q1      ), //o
+    .Q2    (iDES8_MEM_2_Q2      ), //o
+    .Q3    (iDES8_MEM_2_Q3      ), //o
+    .Q4    (iDES8_MEM_2_Q4      ), //o
+    .Q5    (iDES8_MEM_2_Q5      ), //o
+    .Q6    (iDES8_MEM_2_Q6      ), //o
+    .Q7    (iDES8_MEM_2_Q7      )  //o
   );
   OSER8_MEM #(
     .TCLK_SOURCE ("DQSW270")
   ) oSER8_MEM_7 (
-    .D0    (oSER8_MEM_7_D0   ), //i
-    .D1    (oSER8_MEM_7_D1   ), //i
-    .D2    (oSER8_MEM_7_D2   ), //i
-    .D3    (oSER8_MEM_7_D3   ), //i
-    .D4    (oSER8_MEM_7_D4   ), //i
-    .D5    (oSER8_MEM_7_D5   ), //i
-    .D6    (oSER8_MEM_7_D6   ), //i
-    .D7    (oSER8_MEM_7_D7   ), //i
-    .TX0   (oSER8_MEM_7_TX0  ), //i
-    .TX1   (oSER8_MEM_7_TX1  ), //i
-    .TX2   (oSER8_MEM_7_TX2  ), //i
-    .TX3   (oSER8_MEM_7_TX3  ), //i
-    .FCLK  (io_fclk          ), //i
-    .PCLK  (io_pclk          ), //i
-    .TCLK  (clk_dqsw270_0    ), //i
-    .RESET (oSER8_MEM_7_RESET), //i
-    .Q0    (oSER8_MEM_7_Q0   ), //o
-    .Q1    (oSER8_MEM_7_Q1   )  //o
+    .D0    (oSER8_MEM_7_D0      ), //i
+    .D1    (oSER8_MEM_7_D1      ), //i
+    .D2    (oSER8_MEM_7_D2      ), //i
+    .D3    (oSER8_MEM_7_D3      ), //i
+    .D4    (oSER8_MEM_7_D4      ), //i
+    .D5    (oSER8_MEM_7_D5      ), //i
+    .D6    (oSER8_MEM_7_D6      ), //i
+    .D7    (oSER8_MEM_7_D7      ), //i
+    .TX0   (oSER8_MEM_7_TX0     ), //i
+    .TX1   (oSER8_MEM_7_TX1     ), //i
+    .TX2   (oSER8_MEM_7_TX2     ), //i
+    .TX3   (oSER8_MEM_7_TX3     ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .TCLK  (clk_dqsw270_0       ), //i
+    .RESET (fclkRstArea_rst_dq0a), //i
+    .Q0    (oSER8_MEM_7_Q0      ), //o
+    .Q1    (oSER8_MEM_7_Q1      )  //o
   );
   IOBUF iOBUF_5 (
     .I   (iOBUF_5_I        ), //i
@@ -1404,44 +1401,44 @@ module GowinDdr3Phy (
     .IO  (io_pad_DDR3_DQ[2])  //~
   );
   IDES8_MEM iDES8_MEM_3 (
-    .D     (iDES8_MEM_3_D    ), //i
-    .ICLK  (clk_dqsr_0       ), //i
-    .FCLK  (io_fclk          ), //i
-    .PCLK  (io_pclk          ), //i
-    .CALIB (1'b0             ), //i
-    .RESET (iDES8_MEM_3_RESET), //i
-    .WADDR (dqs_waddr_0[2:0] ), //i
-    .RADDR (dqs_raddr_0[2:0] ), //i
-    .Q0    (iDES8_MEM_3_Q0   ), //o
-    .Q1    (iDES8_MEM_3_Q1   ), //o
-    .Q2    (iDES8_MEM_3_Q2   ), //o
-    .Q3    (iDES8_MEM_3_Q3   ), //o
-    .Q4    (iDES8_MEM_3_Q4   ), //o
-    .Q5    (iDES8_MEM_3_Q5   ), //o
-    .Q6    (iDES8_MEM_3_Q6   ), //o
-    .Q7    (iDES8_MEM_3_Q7   )  //o
+    .D     (iDES8_MEM_3_D       ), //i
+    .ICLK  (clk_dqsr_0          ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .CALIB (1'b0                ), //i
+    .RESET (fclkRstArea_rst_dq0a), //i
+    .WADDR (dqs_waddr_0[2:0]    ), //i
+    .RADDR (dqs_raddr_0[2:0]    ), //i
+    .Q0    (iDES8_MEM_3_Q0      ), //o
+    .Q1    (iDES8_MEM_3_Q1      ), //o
+    .Q2    (iDES8_MEM_3_Q2      ), //o
+    .Q3    (iDES8_MEM_3_Q3      ), //o
+    .Q4    (iDES8_MEM_3_Q4      ), //o
+    .Q5    (iDES8_MEM_3_Q5      ), //o
+    .Q6    (iDES8_MEM_3_Q6      ), //o
+    .Q7    (iDES8_MEM_3_Q7      )  //o
   );
   OSER8_MEM #(
     .TCLK_SOURCE ("DQSW270")
   ) oSER8_MEM_8 (
-    .D0    (oSER8_MEM_8_D0   ), //i
-    .D1    (oSER8_MEM_8_D1   ), //i
-    .D2    (oSER8_MEM_8_D2   ), //i
-    .D3    (oSER8_MEM_8_D3   ), //i
-    .D4    (oSER8_MEM_8_D4   ), //i
-    .D5    (oSER8_MEM_8_D5   ), //i
-    .D6    (oSER8_MEM_8_D6   ), //i
-    .D7    (oSER8_MEM_8_D7   ), //i
-    .TX0   (oSER8_MEM_8_TX0  ), //i
-    .TX1   (oSER8_MEM_8_TX1  ), //i
-    .TX2   (oSER8_MEM_8_TX2  ), //i
-    .TX3   (oSER8_MEM_8_TX3  ), //i
-    .FCLK  (io_fclk          ), //i
-    .PCLK  (io_pclk          ), //i
-    .TCLK  (clk_dqsw270_0    ), //i
-    .RESET (oSER8_MEM_8_RESET), //i
-    .Q0    (oSER8_MEM_8_Q0   ), //o
-    .Q1    (oSER8_MEM_8_Q1   )  //o
+    .D0    (oSER8_MEM_8_D0      ), //i
+    .D1    (oSER8_MEM_8_D1      ), //i
+    .D2    (oSER8_MEM_8_D2      ), //i
+    .D3    (oSER8_MEM_8_D3      ), //i
+    .D4    (oSER8_MEM_8_D4      ), //i
+    .D5    (oSER8_MEM_8_D5      ), //i
+    .D6    (oSER8_MEM_8_D6      ), //i
+    .D7    (oSER8_MEM_8_D7      ), //i
+    .TX0   (oSER8_MEM_8_TX0     ), //i
+    .TX1   (oSER8_MEM_8_TX1     ), //i
+    .TX2   (oSER8_MEM_8_TX2     ), //i
+    .TX3   (oSER8_MEM_8_TX3     ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .TCLK  (clk_dqsw270_0       ), //i
+    .RESET (fclkRstArea_rst_dq0a), //i
+    .Q0    (oSER8_MEM_8_Q0      ), //o
+    .Q1    (oSER8_MEM_8_Q1      )  //o
   );
   IOBUF iOBUF_6 (
     .I   (iOBUF_6_I        ), //i
@@ -1450,44 +1447,44 @@ module GowinDdr3Phy (
     .IO  (io_pad_DDR3_DQ[3])  //~
   );
   IDES8_MEM iDES8_MEM_4 (
-    .D     (iDES8_MEM_4_D    ), //i
-    .ICLK  (clk_dqsr_0       ), //i
-    .FCLK  (io_fclk          ), //i
-    .PCLK  (io_pclk          ), //i
-    .CALIB (1'b0             ), //i
-    .RESET (iDES8_MEM_4_RESET), //i
-    .WADDR (dqs_waddr_0[2:0] ), //i
-    .RADDR (dqs_raddr_0[2:0] ), //i
-    .Q0    (iDES8_MEM_4_Q0   ), //o
-    .Q1    (iDES8_MEM_4_Q1   ), //o
-    .Q2    (iDES8_MEM_4_Q2   ), //o
-    .Q3    (iDES8_MEM_4_Q3   ), //o
-    .Q4    (iDES8_MEM_4_Q4   ), //o
-    .Q5    (iDES8_MEM_4_Q5   ), //o
-    .Q6    (iDES8_MEM_4_Q6   ), //o
-    .Q7    (iDES8_MEM_4_Q7   )  //o
+    .D     (iDES8_MEM_4_D       ), //i
+    .ICLK  (clk_dqsr_0          ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .CALIB (1'b0                ), //i
+    .RESET (fclkRstArea_rst_dq0a), //i
+    .WADDR (dqs_waddr_0[2:0]    ), //i
+    .RADDR (dqs_raddr_0[2:0]    ), //i
+    .Q0    (iDES8_MEM_4_Q0      ), //o
+    .Q1    (iDES8_MEM_4_Q1      ), //o
+    .Q2    (iDES8_MEM_4_Q2      ), //o
+    .Q3    (iDES8_MEM_4_Q3      ), //o
+    .Q4    (iDES8_MEM_4_Q4      ), //o
+    .Q5    (iDES8_MEM_4_Q5      ), //o
+    .Q6    (iDES8_MEM_4_Q6      ), //o
+    .Q7    (iDES8_MEM_4_Q7      )  //o
   );
   OSER8_MEM #(
     .TCLK_SOURCE ("DQSW270")
   ) oSER8_MEM_9 (
-    .D0    (oSER8_MEM_9_D0   ), //i
-    .D1    (oSER8_MEM_9_D1   ), //i
-    .D2    (oSER8_MEM_9_D2   ), //i
-    .D3    (oSER8_MEM_9_D3   ), //i
-    .D4    (oSER8_MEM_9_D4   ), //i
-    .D5    (oSER8_MEM_9_D5   ), //i
-    .D6    (oSER8_MEM_9_D6   ), //i
-    .D7    (oSER8_MEM_9_D7   ), //i
-    .TX0   (oSER8_MEM_9_TX0  ), //i
-    .TX1   (oSER8_MEM_9_TX1  ), //i
-    .TX2   (oSER8_MEM_9_TX2  ), //i
-    .TX3   (oSER8_MEM_9_TX3  ), //i
-    .FCLK  (io_fclk          ), //i
-    .PCLK  (io_pclk          ), //i
-    .TCLK  (clk_dqsw270_0    ), //i
-    .RESET (oSER8_MEM_9_RESET), //i
-    .Q0    (oSER8_MEM_9_Q0   ), //o
-    .Q1    (oSER8_MEM_9_Q1   )  //o
+    .D0    (oSER8_MEM_9_D0      ), //i
+    .D1    (oSER8_MEM_9_D1      ), //i
+    .D2    (oSER8_MEM_9_D2      ), //i
+    .D3    (oSER8_MEM_9_D3      ), //i
+    .D4    (oSER8_MEM_9_D4      ), //i
+    .D5    (oSER8_MEM_9_D5      ), //i
+    .D6    (oSER8_MEM_9_D6      ), //i
+    .D7    (oSER8_MEM_9_D7      ), //i
+    .TX0   (oSER8_MEM_9_TX0     ), //i
+    .TX1   (oSER8_MEM_9_TX1     ), //i
+    .TX2   (oSER8_MEM_9_TX2     ), //i
+    .TX3   (oSER8_MEM_9_TX3     ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .TCLK  (clk_dqsw270_0       ), //i
+    .RESET (fclkRstArea_rst_dq0b), //i
+    .Q0    (oSER8_MEM_9_Q0      ), //o
+    .Q1    (oSER8_MEM_9_Q1      )  //o
   );
   IOBUF iOBUF_7 (
     .I   (iOBUF_7_I        ), //i
@@ -1496,44 +1493,44 @@ module GowinDdr3Phy (
     .IO  (io_pad_DDR3_DQ[4])  //~
   );
   IDES8_MEM iDES8_MEM_5 (
-    .D     (iDES8_MEM_5_D    ), //i
-    .ICLK  (clk_dqsr_0       ), //i
-    .FCLK  (io_fclk          ), //i
-    .PCLK  (io_pclk          ), //i
-    .CALIB (1'b0             ), //i
-    .RESET (iDES8_MEM_5_RESET), //i
-    .WADDR (dqs_waddr_0[2:0] ), //i
-    .RADDR (dqs_raddr_0[2:0] ), //i
-    .Q0    (iDES8_MEM_5_Q0   ), //o
-    .Q1    (iDES8_MEM_5_Q1   ), //o
-    .Q2    (iDES8_MEM_5_Q2   ), //o
-    .Q3    (iDES8_MEM_5_Q3   ), //o
-    .Q4    (iDES8_MEM_5_Q4   ), //o
-    .Q5    (iDES8_MEM_5_Q5   ), //o
-    .Q6    (iDES8_MEM_5_Q6   ), //o
-    .Q7    (iDES8_MEM_5_Q7   )  //o
+    .D     (iDES8_MEM_5_D       ), //i
+    .ICLK  (clk_dqsr_0          ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .CALIB (1'b0                ), //i
+    .RESET (fclkRstArea_rst_dq0b), //i
+    .WADDR (dqs_waddr_0[2:0]    ), //i
+    .RADDR (dqs_raddr_0[2:0]    ), //i
+    .Q0    (iDES8_MEM_5_Q0      ), //o
+    .Q1    (iDES8_MEM_5_Q1      ), //o
+    .Q2    (iDES8_MEM_5_Q2      ), //o
+    .Q3    (iDES8_MEM_5_Q3      ), //o
+    .Q4    (iDES8_MEM_5_Q4      ), //o
+    .Q5    (iDES8_MEM_5_Q5      ), //o
+    .Q6    (iDES8_MEM_5_Q6      ), //o
+    .Q7    (iDES8_MEM_5_Q7      )  //o
   );
   OSER8_MEM #(
     .TCLK_SOURCE ("DQSW270")
   ) oSER8_MEM_10 (
-    .D0    (oSER8_MEM_10_D0   ), //i
-    .D1    (oSER8_MEM_10_D1   ), //i
-    .D2    (oSER8_MEM_10_D2   ), //i
-    .D3    (oSER8_MEM_10_D3   ), //i
-    .D4    (oSER8_MEM_10_D4   ), //i
-    .D5    (oSER8_MEM_10_D5   ), //i
-    .D6    (oSER8_MEM_10_D6   ), //i
-    .D7    (oSER8_MEM_10_D7   ), //i
-    .TX0   (oSER8_MEM_10_TX0  ), //i
-    .TX1   (oSER8_MEM_10_TX1  ), //i
-    .TX2   (oSER8_MEM_10_TX2  ), //i
-    .TX3   (oSER8_MEM_10_TX3  ), //i
-    .FCLK  (io_fclk           ), //i
-    .PCLK  (io_pclk           ), //i
-    .TCLK  (clk_dqsw270_0     ), //i
-    .RESET (oSER8_MEM_10_RESET), //i
-    .Q0    (oSER8_MEM_10_Q0   ), //o
-    .Q1    (oSER8_MEM_10_Q1   )  //o
+    .D0    (oSER8_MEM_10_D0     ), //i
+    .D1    (oSER8_MEM_10_D1     ), //i
+    .D2    (oSER8_MEM_10_D2     ), //i
+    .D3    (oSER8_MEM_10_D3     ), //i
+    .D4    (oSER8_MEM_10_D4     ), //i
+    .D5    (oSER8_MEM_10_D5     ), //i
+    .D6    (oSER8_MEM_10_D6     ), //i
+    .D7    (oSER8_MEM_10_D7     ), //i
+    .TX0   (oSER8_MEM_10_TX0    ), //i
+    .TX1   (oSER8_MEM_10_TX1    ), //i
+    .TX2   (oSER8_MEM_10_TX2    ), //i
+    .TX3   (oSER8_MEM_10_TX3    ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .TCLK  (clk_dqsw270_0       ), //i
+    .RESET (fclkRstArea_rst_dq0b), //i
+    .Q0    (oSER8_MEM_10_Q0     ), //o
+    .Q1    (oSER8_MEM_10_Q1     )  //o
   );
   IOBUF iOBUF_8 (
     .I   (iOBUF_8_I        ), //i
@@ -1542,44 +1539,44 @@ module GowinDdr3Phy (
     .IO  (io_pad_DDR3_DQ[5])  //~
   );
   IDES8_MEM iDES8_MEM_6 (
-    .D     (iDES8_MEM_6_D    ), //i
-    .ICLK  (clk_dqsr_0       ), //i
-    .FCLK  (io_fclk          ), //i
-    .PCLK  (io_pclk          ), //i
-    .CALIB (1'b0             ), //i
-    .RESET (iDES8_MEM_6_RESET), //i
-    .WADDR (dqs_waddr_0[2:0] ), //i
-    .RADDR (dqs_raddr_0[2:0] ), //i
-    .Q0    (iDES8_MEM_6_Q0   ), //o
-    .Q1    (iDES8_MEM_6_Q1   ), //o
-    .Q2    (iDES8_MEM_6_Q2   ), //o
-    .Q3    (iDES8_MEM_6_Q3   ), //o
-    .Q4    (iDES8_MEM_6_Q4   ), //o
-    .Q5    (iDES8_MEM_6_Q5   ), //o
-    .Q6    (iDES8_MEM_6_Q6   ), //o
-    .Q7    (iDES8_MEM_6_Q7   )  //o
+    .D     (iDES8_MEM_6_D       ), //i
+    .ICLK  (clk_dqsr_0          ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .CALIB (1'b0                ), //i
+    .RESET (fclkRstArea_rst_dq0b), //i
+    .WADDR (dqs_waddr_0[2:0]    ), //i
+    .RADDR (dqs_raddr_0[2:0]    ), //i
+    .Q0    (iDES8_MEM_6_Q0      ), //o
+    .Q1    (iDES8_MEM_6_Q1      ), //o
+    .Q2    (iDES8_MEM_6_Q2      ), //o
+    .Q3    (iDES8_MEM_6_Q3      ), //o
+    .Q4    (iDES8_MEM_6_Q4      ), //o
+    .Q5    (iDES8_MEM_6_Q5      ), //o
+    .Q6    (iDES8_MEM_6_Q6      ), //o
+    .Q7    (iDES8_MEM_6_Q7      )  //o
   );
   OSER8_MEM #(
     .TCLK_SOURCE ("DQSW270")
   ) oSER8_MEM_11 (
-    .D0    (oSER8_MEM_11_D0   ), //i
-    .D1    (oSER8_MEM_11_D1   ), //i
-    .D2    (oSER8_MEM_11_D2   ), //i
-    .D3    (oSER8_MEM_11_D3   ), //i
-    .D4    (oSER8_MEM_11_D4   ), //i
-    .D5    (oSER8_MEM_11_D5   ), //i
-    .D6    (oSER8_MEM_11_D6   ), //i
-    .D7    (oSER8_MEM_11_D7   ), //i
-    .TX0   (oSER8_MEM_11_TX0  ), //i
-    .TX1   (oSER8_MEM_11_TX1  ), //i
-    .TX2   (oSER8_MEM_11_TX2  ), //i
-    .TX3   (oSER8_MEM_11_TX3  ), //i
-    .FCLK  (io_fclk           ), //i
-    .PCLK  (io_pclk           ), //i
-    .TCLK  (clk_dqsw270_0     ), //i
-    .RESET (oSER8_MEM_11_RESET), //i
-    .Q0    (oSER8_MEM_11_Q0   ), //o
-    .Q1    (oSER8_MEM_11_Q1   )  //o
+    .D0    (oSER8_MEM_11_D0     ), //i
+    .D1    (oSER8_MEM_11_D1     ), //i
+    .D2    (oSER8_MEM_11_D2     ), //i
+    .D3    (oSER8_MEM_11_D3     ), //i
+    .D4    (oSER8_MEM_11_D4     ), //i
+    .D5    (oSER8_MEM_11_D5     ), //i
+    .D6    (oSER8_MEM_11_D6     ), //i
+    .D7    (oSER8_MEM_11_D7     ), //i
+    .TX0   (oSER8_MEM_11_TX0    ), //i
+    .TX1   (oSER8_MEM_11_TX1    ), //i
+    .TX2   (oSER8_MEM_11_TX2    ), //i
+    .TX3   (oSER8_MEM_11_TX3    ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .TCLK  (clk_dqsw270_0       ), //i
+    .RESET (fclkRstArea_rst_dq0b), //i
+    .Q0    (oSER8_MEM_11_Q0     ), //o
+    .Q1    (oSER8_MEM_11_Q1     )  //o
   );
   IOBUF iOBUF_9 (
     .I   (iOBUF_9_I        ), //i
@@ -1588,44 +1585,44 @@ module GowinDdr3Phy (
     .IO  (io_pad_DDR3_DQ[6])  //~
   );
   IDES8_MEM iDES8_MEM_7 (
-    .D     (iDES8_MEM_7_D    ), //i
-    .ICLK  (clk_dqsr_0       ), //i
-    .FCLK  (io_fclk          ), //i
-    .PCLK  (io_pclk          ), //i
-    .CALIB (1'b0             ), //i
-    .RESET (iDES8_MEM_7_RESET), //i
-    .WADDR (dqs_waddr_0[2:0] ), //i
-    .RADDR (dqs_raddr_0[2:0] ), //i
-    .Q0    (iDES8_MEM_7_Q0   ), //o
-    .Q1    (iDES8_MEM_7_Q1   ), //o
-    .Q2    (iDES8_MEM_7_Q2   ), //o
-    .Q3    (iDES8_MEM_7_Q3   ), //o
-    .Q4    (iDES8_MEM_7_Q4   ), //o
-    .Q5    (iDES8_MEM_7_Q5   ), //o
-    .Q6    (iDES8_MEM_7_Q6   ), //o
-    .Q7    (iDES8_MEM_7_Q7   )  //o
+    .D     (iDES8_MEM_7_D       ), //i
+    .ICLK  (clk_dqsr_0          ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .CALIB (1'b0                ), //i
+    .RESET (fclkRstArea_rst_dq0b), //i
+    .WADDR (dqs_waddr_0[2:0]    ), //i
+    .RADDR (dqs_raddr_0[2:0]    ), //i
+    .Q0    (iDES8_MEM_7_Q0      ), //o
+    .Q1    (iDES8_MEM_7_Q1      ), //o
+    .Q2    (iDES8_MEM_7_Q2      ), //o
+    .Q3    (iDES8_MEM_7_Q3      ), //o
+    .Q4    (iDES8_MEM_7_Q4      ), //o
+    .Q5    (iDES8_MEM_7_Q5      ), //o
+    .Q6    (iDES8_MEM_7_Q6      ), //o
+    .Q7    (iDES8_MEM_7_Q7      )  //o
   );
   OSER8_MEM #(
     .TCLK_SOURCE ("DQSW270")
   ) oSER8_MEM_12 (
-    .D0    (oSER8_MEM_12_D0   ), //i
-    .D1    (oSER8_MEM_12_D1   ), //i
-    .D2    (oSER8_MEM_12_D2   ), //i
-    .D3    (oSER8_MEM_12_D3   ), //i
-    .D4    (oSER8_MEM_12_D4   ), //i
-    .D5    (oSER8_MEM_12_D5   ), //i
-    .D6    (oSER8_MEM_12_D6   ), //i
-    .D7    (oSER8_MEM_12_D7   ), //i
-    .TX0   (oSER8_MEM_12_TX0  ), //i
-    .TX1   (oSER8_MEM_12_TX1  ), //i
-    .TX2   (oSER8_MEM_12_TX2  ), //i
-    .TX3   (oSER8_MEM_12_TX3  ), //i
-    .FCLK  (io_fclk           ), //i
-    .PCLK  (io_pclk           ), //i
-    .TCLK  (clk_dqsw270_0     ), //i
-    .RESET (oSER8_MEM_12_RESET), //i
-    .Q0    (oSER8_MEM_12_Q0   ), //o
-    .Q1    (oSER8_MEM_12_Q1   )  //o
+    .D0    (oSER8_MEM_12_D0     ), //i
+    .D1    (oSER8_MEM_12_D1     ), //i
+    .D2    (oSER8_MEM_12_D2     ), //i
+    .D3    (oSER8_MEM_12_D3     ), //i
+    .D4    (oSER8_MEM_12_D4     ), //i
+    .D5    (oSER8_MEM_12_D5     ), //i
+    .D6    (oSER8_MEM_12_D6     ), //i
+    .D7    (oSER8_MEM_12_D7     ), //i
+    .TX0   (oSER8_MEM_12_TX0    ), //i
+    .TX1   (oSER8_MEM_12_TX1    ), //i
+    .TX2   (oSER8_MEM_12_TX2    ), //i
+    .TX3   (oSER8_MEM_12_TX3    ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .TCLK  (clk_dqsw270_0       ), //i
+    .RESET (fclkRstArea_rst_dq0b), //i
+    .Q0    (oSER8_MEM_12_Q0     ), //o
+    .Q1    (oSER8_MEM_12_Q1     )  //o
   );
   IOBUF iOBUF_10 (
     .I   (iOBUF_10_I       ), //i
@@ -1634,44 +1631,44 @@ module GowinDdr3Phy (
     .IO  (io_pad_DDR3_DQ[7])  //~
   );
   IDES8_MEM iDES8_MEM_8 (
-    .D     (iDES8_MEM_8_D    ), //i
-    .ICLK  (clk_dqsr_0       ), //i
-    .FCLK  (io_fclk          ), //i
-    .PCLK  (io_pclk          ), //i
-    .CALIB (1'b0             ), //i
-    .RESET (iDES8_MEM_8_RESET), //i
-    .WADDR (dqs_waddr_0[2:0] ), //i
-    .RADDR (dqs_raddr_0[2:0] ), //i
-    .Q0    (iDES8_MEM_8_Q0   ), //o
-    .Q1    (iDES8_MEM_8_Q1   ), //o
-    .Q2    (iDES8_MEM_8_Q2   ), //o
-    .Q3    (iDES8_MEM_8_Q3   ), //o
-    .Q4    (iDES8_MEM_8_Q4   ), //o
-    .Q5    (iDES8_MEM_8_Q5   ), //o
-    .Q6    (iDES8_MEM_8_Q6   ), //o
-    .Q7    (iDES8_MEM_8_Q7   )  //o
+    .D     (iDES8_MEM_8_D       ), //i
+    .ICLK  (clk_dqsr_0          ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .CALIB (1'b0                ), //i
+    .RESET (fclkRstArea_rst_dq0b), //i
+    .WADDR (dqs_waddr_0[2:0]    ), //i
+    .RADDR (dqs_raddr_0[2:0]    ), //i
+    .Q0    (iDES8_MEM_8_Q0      ), //o
+    .Q1    (iDES8_MEM_8_Q1      ), //o
+    .Q2    (iDES8_MEM_8_Q2      ), //o
+    .Q3    (iDES8_MEM_8_Q3      ), //o
+    .Q4    (iDES8_MEM_8_Q4      ), //o
+    .Q5    (iDES8_MEM_8_Q5      ), //o
+    .Q6    (iDES8_MEM_8_Q6      ), //o
+    .Q7    (iDES8_MEM_8_Q7      )  //o
   );
   OSER8_MEM #(
     .TCLK_SOURCE ("DQSW270")
   ) oSER8_MEM_13 (
-    .D0    (oSER8_MEM_13_D0   ), //i
-    .D1    (oSER8_MEM_13_D1   ), //i
-    .D2    (oSER8_MEM_13_D2   ), //i
-    .D3    (oSER8_MEM_13_D3   ), //i
-    .D4    (oSER8_MEM_13_D4   ), //i
-    .D5    (oSER8_MEM_13_D5   ), //i
-    .D6    (oSER8_MEM_13_D6   ), //i
-    .D7    (oSER8_MEM_13_D7   ), //i
-    .TX0   (oSER8_MEM_13_TX0  ), //i
-    .TX1   (oSER8_MEM_13_TX1  ), //i
-    .TX2   (oSER8_MEM_13_TX2  ), //i
-    .TX3   (oSER8_MEM_13_TX3  ), //i
-    .FCLK  (io_fclk           ), //i
-    .PCLK  (io_pclk           ), //i
-    .TCLK  (clk_dqsw270_1     ), //i
-    .RESET (oSER8_MEM_13_RESET), //i
-    .Q0    (oSER8_MEM_13_Q0   ), //o
-    .Q1    (oSER8_MEM_13_Q1   )  //o
+    .D0    (oSER8_MEM_13_D0     ), //i
+    .D1    (oSER8_MEM_13_D1     ), //i
+    .D2    (oSER8_MEM_13_D2     ), //i
+    .D3    (oSER8_MEM_13_D3     ), //i
+    .D4    (oSER8_MEM_13_D4     ), //i
+    .D5    (oSER8_MEM_13_D5     ), //i
+    .D6    (oSER8_MEM_13_D6     ), //i
+    .D7    (oSER8_MEM_13_D7     ), //i
+    .TX0   (oSER8_MEM_13_TX0    ), //i
+    .TX1   (oSER8_MEM_13_TX1    ), //i
+    .TX2   (oSER8_MEM_13_TX2    ), //i
+    .TX3   (oSER8_MEM_13_TX3    ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .TCLK  (clk_dqsw270_1       ), //i
+    .RESET (fclkRstArea_rst_dq1a), //i
+    .Q0    (oSER8_MEM_13_Q0     ), //o
+    .Q1    (oSER8_MEM_13_Q1     )  //o
   );
   IOBUF iOBUF_11 (
     .I   (iOBUF_11_I       ), //i
@@ -1680,44 +1677,44 @@ module GowinDdr3Phy (
     .IO  (io_pad_DDR3_DQ[8])  //~
   );
   IDES8_MEM iDES8_MEM_9 (
-    .D     (iDES8_MEM_9_D    ), //i
-    .ICLK  (clk_dqsr_1       ), //i
-    .FCLK  (io_fclk          ), //i
-    .PCLK  (io_pclk          ), //i
-    .CALIB (1'b0             ), //i
-    .RESET (iDES8_MEM_9_RESET), //i
-    .WADDR (dqs_waddr_1[2:0] ), //i
-    .RADDR (dqs_raddr_1[2:0] ), //i
-    .Q0    (iDES8_MEM_9_Q0   ), //o
-    .Q1    (iDES8_MEM_9_Q1   ), //o
-    .Q2    (iDES8_MEM_9_Q2   ), //o
-    .Q3    (iDES8_MEM_9_Q3   ), //o
-    .Q4    (iDES8_MEM_9_Q4   ), //o
-    .Q5    (iDES8_MEM_9_Q5   ), //o
-    .Q6    (iDES8_MEM_9_Q6   ), //o
-    .Q7    (iDES8_MEM_9_Q7   )  //o
+    .D     (iDES8_MEM_9_D       ), //i
+    .ICLK  (clk_dqsr_1          ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .CALIB (1'b0                ), //i
+    .RESET (fclkRstArea_rst_dq1a), //i
+    .WADDR (dqs_waddr_1[2:0]    ), //i
+    .RADDR (dqs_raddr_1[2:0]    ), //i
+    .Q0    (iDES8_MEM_9_Q0      ), //o
+    .Q1    (iDES8_MEM_9_Q1      ), //o
+    .Q2    (iDES8_MEM_9_Q2      ), //o
+    .Q3    (iDES8_MEM_9_Q3      ), //o
+    .Q4    (iDES8_MEM_9_Q4      ), //o
+    .Q5    (iDES8_MEM_9_Q5      ), //o
+    .Q6    (iDES8_MEM_9_Q6      ), //o
+    .Q7    (iDES8_MEM_9_Q7      )  //o
   );
   OSER8_MEM #(
     .TCLK_SOURCE ("DQSW270")
   ) oSER8_MEM_14 (
-    .D0    (oSER8_MEM_14_D0   ), //i
-    .D1    (oSER8_MEM_14_D1   ), //i
-    .D2    (oSER8_MEM_14_D2   ), //i
-    .D3    (oSER8_MEM_14_D3   ), //i
-    .D4    (oSER8_MEM_14_D4   ), //i
-    .D5    (oSER8_MEM_14_D5   ), //i
-    .D6    (oSER8_MEM_14_D6   ), //i
-    .D7    (oSER8_MEM_14_D7   ), //i
-    .TX0   (oSER8_MEM_14_TX0  ), //i
-    .TX1   (oSER8_MEM_14_TX1  ), //i
-    .TX2   (oSER8_MEM_14_TX2  ), //i
-    .TX3   (oSER8_MEM_14_TX3  ), //i
-    .FCLK  (io_fclk           ), //i
-    .PCLK  (io_pclk           ), //i
-    .TCLK  (clk_dqsw270_1     ), //i
-    .RESET (oSER8_MEM_14_RESET), //i
-    .Q0    (oSER8_MEM_14_Q0   ), //o
-    .Q1    (oSER8_MEM_14_Q1   )  //o
+    .D0    (oSER8_MEM_14_D0     ), //i
+    .D1    (oSER8_MEM_14_D1     ), //i
+    .D2    (oSER8_MEM_14_D2     ), //i
+    .D3    (oSER8_MEM_14_D3     ), //i
+    .D4    (oSER8_MEM_14_D4     ), //i
+    .D5    (oSER8_MEM_14_D5     ), //i
+    .D6    (oSER8_MEM_14_D6     ), //i
+    .D7    (oSER8_MEM_14_D7     ), //i
+    .TX0   (oSER8_MEM_14_TX0    ), //i
+    .TX1   (oSER8_MEM_14_TX1    ), //i
+    .TX2   (oSER8_MEM_14_TX2    ), //i
+    .TX3   (oSER8_MEM_14_TX3    ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .TCLK  (clk_dqsw270_1       ), //i
+    .RESET (fclkRstArea_rst_dq1a), //i
+    .Q0    (oSER8_MEM_14_Q0     ), //o
+    .Q1    (oSER8_MEM_14_Q1     )  //o
   );
   IOBUF iOBUF_12 (
     .I   (iOBUF_12_I       ), //i
@@ -1726,44 +1723,44 @@ module GowinDdr3Phy (
     .IO  (io_pad_DDR3_DQ[9])  //~
   );
   IDES8_MEM iDES8_MEM_10 (
-    .D     (iDES8_MEM_10_D    ), //i
-    .ICLK  (clk_dqsr_1        ), //i
-    .FCLK  (io_fclk           ), //i
-    .PCLK  (io_pclk           ), //i
-    .CALIB (1'b0              ), //i
-    .RESET (iDES8_MEM_10_RESET), //i
-    .WADDR (dqs_waddr_1[2:0]  ), //i
-    .RADDR (dqs_raddr_1[2:0]  ), //i
-    .Q0    (iDES8_MEM_10_Q0   ), //o
-    .Q1    (iDES8_MEM_10_Q1   ), //o
-    .Q2    (iDES8_MEM_10_Q2   ), //o
-    .Q3    (iDES8_MEM_10_Q3   ), //o
-    .Q4    (iDES8_MEM_10_Q4   ), //o
-    .Q5    (iDES8_MEM_10_Q5   ), //o
-    .Q6    (iDES8_MEM_10_Q6   ), //o
-    .Q7    (iDES8_MEM_10_Q7   )  //o
+    .D     (iDES8_MEM_10_D      ), //i
+    .ICLK  (clk_dqsr_1          ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .CALIB (1'b0                ), //i
+    .RESET (fclkRstArea_rst_dq1a), //i
+    .WADDR (dqs_waddr_1[2:0]    ), //i
+    .RADDR (dqs_raddr_1[2:0]    ), //i
+    .Q0    (iDES8_MEM_10_Q0     ), //o
+    .Q1    (iDES8_MEM_10_Q1     ), //o
+    .Q2    (iDES8_MEM_10_Q2     ), //o
+    .Q3    (iDES8_MEM_10_Q3     ), //o
+    .Q4    (iDES8_MEM_10_Q4     ), //o
+    .Q5    (iDES8_MEM_10_Q5     ), //o
+    .Q6    (iDES8_MEM_10_Q6     ), //o
+    .Q7    (iDES8_MEM_10_Q7     )  //o
   );
   OSER8_MEM #(
     .TCLK_SOURCE ("DQSW270")
   ) oSER8_MEM_15 (
-    .D0    (oSER8_MEM_15_D0   ), //i
-    .D1    (oSER8_MEM_15_D1   ), //i
-    .D2    (oSER8_MEM_15_D2   ), //i
-    .D3    (oSER8_MEM_15_D3   ), //i
-    .D4    (oSER8_MEM_15_D4   ), //i
-    .D5    (oSER8_MEM_15_D5   ), //i
-    .D6    (oSER8_MEM_15_D6   ), //i
-    .D7    (oSER8_MEM_15_D7   ), //i
-    .TX0   (oSER8_MEM_15_TX0  ), //i
-    .TX1   (oSER8_MEM_15_TX1  ), //i
-    .TX2   (oSER8_MEM_15_TX2  ), //i
-    .TX3   (oSER8_MEM_15_TX3  ), //i
-    .FCLK  (io_fclk           ), //i
-    .PCLK  (io_pclk           ), //i
-    .TCLK  (clk_dqsw270_1     ), //i
-    .RESET (oSER8_MEM_15_RESET), //i
-    .Q0    (oSER8_MEM_15_Q0   ), //o
-    .Q1    (oSER8_MEM_15_Q1   )  //o
+    .D0    (oSER8_MEM_15_D0     ), //i
+    .D1    (oSER8_MEM_15_D1     ), //i
+    .D2    (oSER8_MEM_15_D2     ), //i
+    .D3    (oSER8_MEM_15_D3     ), //i
+    .D4    (oSER8_MEM_15_D4     ), //i
+    .D5    (oSER8_MEM_15_D5     ), //i
+    .D6    (oSER8_MEM_15_D6     ), //i
+    .D7    (oSER8_MEM_15_D7     ), //i
+    .TX0   (oSER8_MEM_15_TX0    ), //i
+    .TX1   (oSER8_MEM_15_TX1    ), //i
+    .TX2   (oSER8_MEM_15_TX2    ), //i
+    .TX3   (oSER8_MEM_15_TX3    ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .TCLK  (clk_dqsw270_1       ), //i
+    .RESET (fclkRstArea_rst_dq1a), //i
+    .Q0    (oSER8_MEM_15_Q0     ), //o
+    .Q1    (oSER8_MEM_15_Q1     )  //o
   );
   IOBUF iOBUF_13 (
     .I   (iOBUF_13_I        ), //i
@@ -1772,44 +1769,44 @@ module GowinDdr3Phy (
     .IO  (io_pad_DDR3_DQ[10])  //~
   );
   IDES8_MEM iDES8_MEM_11 (
-    .D     (iDES8_MEM_11_D    ), //i
-    .ICLK  (clk_dqsr_1        ), //i
-    .FCLK  (io_fclk           ), //i
-    .PCLK  (io_pclk           ), //i
-    .CALIB (1'b0              ), //i
-    .RESET (iDES8_MEM_11_RESET), //i
-    .WADDR (dqs_waddr_1[2:0]  ), //i
-    .RADDR (dqs_raddr_1[2:0]  ), //i
-    .Q0    (iDES8_MEM_11_Q0   ), //o
-    .Q1    (iDES8_MEM_11_Q1   ), //o
-    .Q2    (iDES8_MEM_11_Q2   ), //o
-    .Q3    (iDES8_MEM_11_Q3   ), //o
-    .Q4    (iDES8_MEM_11_Q4   ), //o
-    .Q5    (iDES8_MEM_11_Q5   ), //o
-    .Q6    (iDES8_MEM_11_Q6   ), //o
-    .Q7    (iDES8_MEM_11_Q7   )  //o
+    .D     (iDES8_MEM_11_D      ), //i
+    .ICLK  (clk_dqsr_1          ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .CALIB (1'b0                ), //i
+    .RESET (fclkRstArea_rst_dq1a), //i
+    .WADDR (dqs_waddr_1[2:0]    ), //i
+    .RADDR (dqs_raddr_1[2:0]    ), //i
+    .Q0    (iDES8_MEM_11_Q0     ), //o
+    .Q1    (iDES8_MEM_11_Q1     ), //o
+    .Q2    (iDES8_MEM_11_Q2     ), //o
+    .Q3    (iDES8_MEM_11_Q3     ), //o
+    .Q4    (iDES8_MEM_11_Q4     ), //o
+    .Q5    (iDES8_MEM_11_Q5     ), //o
+    .Q6    (iDES8_MEM_11_Q6     ), //o
+    .Q7    (iDES8_MEM_11_Q7     )  //o
   );
   OSER8_MEM #(
     .TCLK_SOURCE ("DQSW270")
   ) oSER8_MEM_16 (
-    .D0    (oSER8_MEM_16_D0   ), //i
-    .D1    (oSER8_MEM_16_D1   ), //i
-    .D2    (oSER8_MEM_16_D2   ), //i
-    .D3    (oSER8_MEM_16_D3   ), //i
-    .D4    (oSER8_MEM_16_D4   ), //i
-    .D5    (oSER8_MEM_16_D5   ), //i
-    .D6    (oSER8_MEM_16_D6   ), //i
-    .D7    (oSER8_MEM_16_D7   ), //i
-    .TX0   (oSER8_MEM_16_TX0  ), //i
-    .TX1   (oSER8_MEM_16_TX1  ), //i
-    .TX2   (oSER8_MEM_16_TX2  ), //i
-    .TX3   (oSER8_MEM_16_TX3  ), //i
-    .FCLK  (io_fclk           ), //i
-    .PCLK  (io_pclk           ), //i
-    .TCLK  (clk_dqsw270_1     ), //i
-    .RESET (oSER8_MEM_16_RESET), //i
-    .Q0    (oSER8_MEM_16_Q0   ), //o
-    .Q1    (oSER8_MEM_16_Q1   )  //o
+    .D0    (oSER8_MEM_16_D0     ), //i
+    .D1    (oSER8_MEM_16_D1     ), //i
+    .D2    (oSER8_MEM_16_D2     ), //i
+    .D3    (oSER8_MEM_16_D3     ), //i
+    .D4    (oSER8_MEM_16_D4     ), //i
+    .D5    (oSER8_MEM_16_D5     ), //i
+    .D6    (oSER8_MEM_16_D6     ), //i
+    .D7    (oSER8_MEM_16_D7     ), //i
+    .TX0   (oSER8_MEM_16_TX0    ), //i
+    .TX1   (oSER8_MEM_16_TX1    ), //i
+    .TX2   (oSER8_MEM_16_TX2    ), //i
+    .TX3   (oSER8_MEM_16_TX3    ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .TCLK  (clk_dqsw270_1       ), //i
+    .RESET (fclkRstArea_rst_dq1a), //i
+    .Q0    (oSER8_MEM_16_Q0     ), //o
+    .Q1    (oSER8_MEM_16_Q1     )  //o
   );
   IOBUF iOBUF_14 (
     .I   (iOBUF_14_I        ), //i
@@ -1818,44 +1815,44 @@ module GowinDdr3Phy (
     .IO  (io_pad_DDR3_DQ[11])  //~
   );
   IDES8_MEM iDES8_MEM_12 (
-    .D     (iDES8_MEM_12_D    ), //i
-    .ICLK  (clk_dqsr_1        ), //i
-    .FCLK  (io_fclk           ), //i
-    .PCLK  (io_pclk           ), //i
-    .CALIB (1'b0              ), //i
-    .RESET (iDES8_MEM_12_RESET), //i
-    .WADDR (dqs_waddr_1[2:0]  ), //i
-    .RADDR (dqs_raddr_1[2:0]  ), //i
-    .Q0    (iDES8_MEM_12_Q0   ), //o
-    .Q1    (iDES8_MEM_12_Q1   ), //o
-    .Q2    (iDES8_MEM_12_Q2   ), //o
-    .Q3    (iDES8_MEM_12_Q3   ), //o
-    .Q4    (iDES8_MEM_12_Q4   ), //o
-    .Q5    (iDES8_MEM_12_Q5   ), //o
-    .Q6    (iDES8_MEM_12_Q6   ), //o
-    .Q7    (iDES8_MEM_12_Q7   )  //o
+    .D     (iDES8_MEM_12_D      ), //i
+    .ICLK  (clk_dqsr_1          ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .CALIB (1'b0                ), //i
+    .RESET (fclkRstArea_rst_dq1a), //i
+    .WADDR (dqs_waddr_1[2:0]    ), //i
+    .RADDR (dqs_raddr_1[2:0]    ), //i
+    .Q0    (iDES8_MEM_12_Q0     ), //o
+    .Q1    (iDES8_MEM_12_Q1     ), //o
+    .Q2    (iDES8_MEM_12_Q2     ), //o
+    .Q3    (iDES8_MEM_12_Q3     ), //o
+    .Q4    (iDES8_MEM_12_Q4     ), //o
+    .Q5    (iDES8_MEM_12_Q5     ), //o
+    .Q6    (iDES8_MEM_12_Q6     ), //o
+    .Q7    (iDES8_MEM_12_Q7     )  //o
   );
   OSER8_MEM #(
     .TCLK_SOURCE ("DQSW270")
   ) oSER8_MEM_17 (
-    .D0    (oSER8_MEM_17_D0   ), //i
-    .D1    (oSER8_MEM_17_D1   ), //i
-    .D2    (oSER8_MEM_17_D2   ), //i
-    .D3    (oSER8_MEM_17_D3   ), //i
-    .D4    (oSER8_MEM_17_D4   ), //i
-    .D5    (oSER8_MEM_17_D5   ), //i
-    .D6    (oSER8_MEM_17_D6   ), //i
-    .D7    (oSER8_MEM_17_D7   ), //i
-    .TX0   (oSER8_MEM_17_TX0  ), //i
-    .TX1   (oSER8_MEM_17_TX1  ), //i
-    .TX2   (oSER8_MEM_17_TX2  ), //i
-    .TX3   (oSER8_MEM_17_TX3  ), //i
-    .FCLK  (io_fclk           ), //i
-    .PCLK  (io_pclk           ), //i
-    .TCLK  (clk_dqsw270_1     ), //i
-    .RESET (oSER8_MEM_17_RESET), //i
-    .Q0    (oSER8_MEM_17_Q0   ), //o
-    .Q1    (oSER8_MEM_17_Q1   )  //o
+    .D0    (oSER8_MEM_17_D0     ), //i
+    .D1    (oSER8_MEM_17_D1     ), //i
+    .D2    (oSER8_MEM_17_D2     ), //i
+    .D3    (oSER8_MEM_17_D3     ), //i
+    .D4    (oSER8_MEM_17_D4     ), //i
+    .D5    (oSER8_MEM_17_D5     ), //i
+    .D6    (oSER8_MEM_17_D6     ), //i
+    .D7    (oSER8_MEM_17_D7     ), //i
+    .TX0   (oSER8_MEM_17_TX0    ), //i
+    .TX1   (oSER8_MEM_17_TX1    ), //i
+    .TX2   (oSER8_MEM_17_TX2    ), //i
+    .TX3   (oSER8_MEM_17_TX3    ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .TCLK  (clk_dqsw270_1       ), //i
+    .RESET (fclkRstArea_rst_dq1b), //i
+    .Q0    (oSER8_MEM_17_Q0     ), //o
+    .Q1    (oSER8_MEM_17_Q1     )  //o
   );
   IOBUF iOBUF_15 (
     .I   (iOBUF_15_I        ), //i
@@ -1864,44 +1861,44 @@ module GowinDdr3Phy (
     .IO  (io_pad_DDR3_DQ[12])  //~
   );
   IDES8_MEM iDES8_MEM_13 (
-    .D     (iDES8_MEM_13_D    ), //i
-    .ICLK  (clk_dqsr_1        ), //i
-    .FCLK  (io_fclk           ), //i
-    .PCLK  (io_pclk           ), //i
-    .CALIB (1'b0              ), //i
-    .RESET (iDES8_MEM_13_RESET), //i
-    .WADDR (dqs_waddr_1[2:0]  ), //i
-    .RADDR (dqs_raddr_1[2:0]  ), //i
-    .Q0    (iDES8_MEM_13_Q0   ), //o
-    .Q1    (iDES8_MEM_13_Q1   ), //o
-    .Q2    (iDES8_MEM_13_Q2   ), //o
-    .Q3    (iDES8_MEM_13_Q3   ), //o
-    .Q4    (iDES8_MEM_13_Q4   ), //o
-    .Q5    (iDES8_MEM_13_Q5   ), //o
-    .Q6    (iDES8_MEM_13_Q6   ), //o
-    .Q7    (iDES8_MEM_13_Q7   )  //o
+    .D     (iDES8_MEM_13_D      ), //i
+    .ICLK  (clk_dqsr_1          ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .CALIB (1'b0                ), //i
+    .RESET (fclkRstArea_rst_dq1b), //i
+    .WADDR (dqs_waddr_1[2:0]    ), //i
+    .RADDR (dqs_raddr_1[2:0]    ), //i
+    .Q0    (iDES8_MEM_13_Q0     ), //o
+    .Q1    (iDES8_MEM_13_Q1     ), //o
+    .Q2    (iDES8_MEM_13_Q2     ), //o
+    .Q3    (iDES8_MEM_13_Q3     ), //o
+    .Q4    (iDES8_MEM_13_Q4     ), //o
+    .Q5    (iDES8_MEM_13_Q5     ), //o
+    .Q6    (iDES8_MEM_13_Q6     ), //o
+    .Q7    (iDES8_MEM_13_Q7     )  //o
   );
   OSER8_MEM #(
     .TCLK_SOURCE ("DQSW270")
   ) oSER8_MEM_18 (
-    .D0    (oSER8_MEM_18_D0   ), //i
-    .D1    (oSER8_MEM_18_D1   ), //i
-    .D2    (oSER8_MEM_18_D2   ), //i
-    .D3    (oSER8_MEM_18_D3   ), //i
-    .D4    (oSER8_MEM_18_D4   ), //i
-    .D5    (oSER8_MEM_18_D5   ), //i
-    .D6    (oSER8_MEM_18_D6   ), //i
-    .D7    (oSER8_MEM_18_D7   ), //i
-    .TX0   (oSER8_MEM_18_TX0  ), //i
-    .TX1   (oSER8_MEM_18_TX1  ), //i
-    .TX2   (oSER8_MEM_18_TX2  ), //i
-    .TX3   (oSER8_MEM_18_TX3  ), //i
-    .FCLK  (io_fclk           ), //i
-    .PCLK  (io_pclk           ), //i
-    .TCLK  (clk_dqsw270_1     ), //i
-    .RESET (oSER8_MEM_18_RESET), //i
-    .Q0    (oSER8_MEM_18_Q0   ), //o
-    .Q1    (oSER8_MEM_18_Q1   )  //o
+    .D0    (oSER8_MEM_18_D0     ), //i
+    .D1    (oSER8_MEM_18_D1     ), //i
+    .D2    (oSER8_MEM_18_D2     ), //i
+    .D3    (oSER8_MEM_18_D3     ), //i
+    .D4    (oSER8_MEM_18_D4     ), //i
+    .D5    (oSER8_MEM_18_D5     ), //i
+    .D6    (oSER8_MEM_18_D6     ), //i
+    .D7    (oSER8_MEM_18_D7     ), //i
+    .TX0   (oSER8_MEM_18_TX0    ), //i
+    .TX1   (oSER8_MEM_18_TX1    ), //i
+    .TX2   (oSER8_MEM_18_TX2    ), //i
+    .TX3   (oSER8_MEM_18_TX3    ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .TCLK  (clk_dqsw270_1       ), //i
+    .RESET (fclkRstArea_rst_dq1b), //i
+    .Q0    (oSER8_MEM_18_Q0     ), //o
+    .Q1    (oSER8_MEM_18_Q1     )  //o
   );
   IOBUF iOBUF_16 (
     .I   (iOBUF_16_I        ), //i
@@ -1910,44 +1907,44 @@ module GowinDdr3Phy (
     .IO  (io_pad_DDR3_DQ[13])  //~
   );
   IDES8_MEM iDES8_MEM_14 (
-    .D     (iDES8_MEM_14_D    ), //i
-    .ICLK  (clk_dqsr_1        ), //i
-    .FCLK  (io_fclk           ), //i
-    .PCLK  (io_pclk           ), //i
-    .CALIB (1'b0              ), //i
-    .RESET (iDES8_MEM_14_RESET), //i
-    .WADDR (dqs_waddr_1[2:0]  ), //i
-    .RADDR (dqs_raddr_1[2:0]  ), //i
-    .Q0    (iDES8_MEM_14_Q0   ), //o
-    .Q1    (iDES8_MEM_14_Q1   ), //o
-    .Q2    (iDES8_MEM_14_Q2   ), //o
-    .Q3    (iDES8_MEM_14_Q3   ), //o
-    .Q4    (iDES8_MEM_14_Q4   ), //o
-    .Q5    (iDES8_MEM_14_Q5   ), //o
-    .Q6    (iDES8_MEM_14_Q6   ), //o
-    .Q7    (iDES8_MEM_14_Q7   )  //o
+    .D     (iDES8_MEM_14_D      ), //i
+    .ICLK  (clk_dqsr_1          ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .CALIB (1'b0                ), //i
+    .RESET (fclkRstArea_rst_dq1b), //i
+    .WADDR (dqs_waddr_1[2:0]    ), //i
+    .RADDR (dqs_raddr_1[2:0]    ), //i
+    .Q0    (iDES8_MEM_14_Q0     ), //o
+    .Q1    (iDES8_MEM_14_Q1     ), //o
+    .Q2    (iDES8_MEM_14_Q2     ), //o
+    .Q3    (iDES8_MEM_14_Q3     ), //o
+    .Q4    (iDES8_MEM_14_Q4     ), //o
+    .Q5    (iDES8_MEM_14_Q5     ), //o
+    .Q6    (iDES8_MEM_14_Q6     ), //o
+    .Q7    (iDES8_MEM_14_Q7     )  //o
   );
   OSER8_MEM #(
     .TCLK_SOURCE ("DQSW270")
   ) oSER8_MEM_19 (
-    .D0    (oSER8_MEM_19_D0   ), //i
-    .D1    (oSER8_MEM_19_D1   ), //i
-    .D2    (oSER8_MEM_19_D2   ), //i
-    .D3    (oSER8_MEM_19_D3   ), //i
-    .D4    (oSER8_MEM_19_D4   ), //i
-    .D5    (oSER8_MEM_19_D5   ), //i
-    .D6    (oSER8_MEM_19_D6   ), //i
-    .D7    (oSER8_MEM_19_D7   ), //i
-    .TX0   (oSER8_MEM_19_TX0  ), //i
-    .TX1   (oSER8_MEM_19_TX1  ), //i
-    .TX2   (oSER8_MEM_19_TX2  ), //i
-    .TX3   (oSER8_MEM_19_TX3  ), //i
-    .FCLK  (io_fclk           ), //i
-    .PCLK  (io_pclk           ), //i
-    .TCLK  (clk_dqsw270_1     ), //i
-    .RESET (oSER8_MEM_19_RESET), //i
-    .Q0    (oSER8_MEM_19_Q0   ), //o
-    .Q1    (oSER8_MEM_19_Q1   )  //o
+    .D0    (oSER8_MEM_19_D0     ), //i
+    .D1    (oSER8_MEM_19_D1     ), //i
+    .D2    (oSER8_MEM_19_D2     ), //i
+    .D3    (oSER8_MEM_19_D3     ), //i
+    .D4    (oSER8_MEM_19_D4     ), //i
+    .D5    (oSER8_MEM_19_D5     ), //i
+    .D6    (oSER8_MEM_19_D6     ), //i
+    .D7    (oSER8_MEM_19_D7     ), //i
+    .TX0   (oSER8_MEM_19_TX0    ), //i
+    .TX1   (oSER8_MEM_19_TX1    ), //i
+    .TX2   (oSER8_MEM_19_TX2    ), //i
+    .TX3   (oSER8_MEM_19_TX3    ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .TCLK  (clk_dqsw270_1       ), //i
+    .RESET (fclkRstArea_rst_dq1b), //i
+    .Q0    (oSER8_MEM_19_Q0     ), //o
+    .Q1    (oSER8_MEM_19_Q1     )  //o
   );
   IOBUF iOBUF_17 (
     .I   (iOBUF_17_I        ), //i
@@ -1956,44 +1953,44 @@ module GowinDdr3Phy (
     .IO  (io_pad_DDR3_DQ[14])  //~
   );
   IDES8_MEM iDES8_MEM_15 (
-    .D     (iDES8_MEM_15_D    ), //i
-    .ICLK  (clk_dqsr_1        ), //i
-    .FCLK  (io_fclk           ), //i
-    .PCLK  (io_pclk           ), //i
-    .CALIB (1'b0              ), //i
-    .RESET (iDES8_MEM_15_RESET), //i
-    .WADDR (dqs_waddr_1[2:0]  ), //i
-    .RADDR (dqs_raddr_1[2:0]  ), //i
-    .Q0    (iDES8_MEM_15_Q0   ), //o
-    .Q1    (iDES8_MEM_15_Q1   ), //o
-    .Q2    (iDES8_MEM_15_Q2   ), //o
-    .Q3    (iDES8_MEM_15_Q3   ), //o
-    .Q4    (iDES8_MEM_15_Q4   ), //o
-    .Q5    (iDES8_MEM_15_Q5   ), //o
-    .Q6    (iDES8_MEM_15_Q6   ), //o
-    .Q7    (iDES8_MEM_15_Q7   )  //o
+    .D     (iDES8_MEM_15_D      ), //i
+    .ICLK  (clk_dqsr_1          ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .CALIB (1'b0                ), //i
+    .RESET (fclkRstArea_rst_dq1b), //i
+    .WADDR (dqs_waddr_1[2:0]    ), //i
+    .RADDR (dqs_raddr_1[2:0]    ), //i
+    .Q0    (iDES8_MEM_15_Q0     ), //o
+    .Q1    (iDES8_MEM_15_Q1     ), //o
+    .Q2    (iDES8_MEM_15_Q2     ), //o
+    .Q3    (iDES8_MEM_15_Q3     ), //o
+    .Q4    (iDES8_MEM_15_Q4     ), //o
+    .Q5    (iDES8_MEM_15_Q5     ), //o
+    .Q6    (iDES8_MEM_15_Q6     ), //o
+    .Q7    (iDES8_MEM_15_Q7     )  //o
   );
   OSER8_MEM #(
     .TCLK_SOURCE ("DQSW270")
   ) oSER8_MEM_20 (
-    .D0    (oSER8_MEM_20_D0   ), //i
-    .D1    (oSER8_MEM_20_D1   ), //i
-    .D2    (oSER8_MEM_20_D2   ), //i
-    .D3    (oSER8_MEM_20_D3   ), //i
-    .D4    (oSER8_MEM_20_D4   ), //i
-    .D5    (oSER8_MEM_20_D5   ), //i
-    .D6    (oSER8_MEM_20_D6   ), //i
-    .D7    (oSER8_MEM_20_D7   ), //i
-    .TX0   (oSER8_MEM_20_TX0  ), //i
-    .TX1   (oSER8_MEM_20_TX1  ), //i
-    .TX2   (oSER8_MEM_20_TX2  ), //i
-    .TX3   (oSER8_MEM_20_TX3  ), //i
-    .FCLK  (io_fclk           ), //i
-    .PCLK  (io_pclk           ), //i
-    .TCLK  (clk_dqsw270_1     ), //i
-    .RESET (oSER8_MEM_20_RESET), //i
-    .Q0    (oSER8_MEM_20_Q0   ), //o
-    .Q1    (oSER8_MEM_20_Q1   )  //o
+    .D0    (oSER8_MEM_20_D0     ), //i
+    .D1    (oSER8_MEM_20_D1     ), //i
+    .D2    (oSER8_MEM_20_D2     ), //i
+    .D3    (oSER8_MEM_20_D3     ), //i
+    .D4    (oSER8_MEM_20_D4     ), //i
+    .D5    (oSER8_MEM_20_D5     ), //i
+    .D6    (oSER8_MEM_20_D6     ), //i
+    .D7    (oSER8_MEM_20_D7     ), //i
+    .TX0   (oSER8_MEM_20_TX0    ), //i
+    .TX1   (oSER8_MEM_20_TX1    ), //i
+    .TX2   (oSER8_MEM_20_TX2    ), //i
+    .TX3   (oSER8_MEM_20_TX3    ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .TCLK  (clk_dqsw270_1       ), //i
+    .RESET (fclkRstArea_rst_dq1b), //i
+    .Q0    (oSER8_MEM_20_Q0     ), //o
+    .Q1    (oSER8_MEM_20_Q1     )  //o
   );
   IOBUF iOBUF_18 (
     .I   (iOBUF_18_I        ), //i
@@ -2002,414 +1999,418 @@ module GowinDdr3Phy (
     .IO  (io_pad_DDR3_DQ[15])  //~
   );
   IDES8_MEM iDES8_MEM_16 (
-    .D     (iDES8_MEM_16_D    ), //i
-    .ICLK  (clk_dqsr_1        ), //i
-    .FCLK  (io_fclk           ), //i
-    .PCLK  (io_pclk           ), //i
-    .CALIB (1'b0              ), //i
-    .RESET (iDES8_MEM_16_RESET), //i
-    .WADDR (dqs_waddr_1[2:0]  ), //i
-    .RADDR (dqs_raddr_1[2:0]  ), //i
-    .Q0    (iDES8_MEM_16_Q0   ), //o
-    .Q1    (iDES8_MEM_16_Q1   ), //o
-    .Q2    (iDES8_MEM_16_Q2   ), //o
-    .Q3    (iDES8_MEM_16_Q3   ), //o
-    .Q4    (iDES8_MEM_16_Q4   ), //o
-    .Q5    (iDES8_MEM_16_Q5   ), //o
-    .Q6    (iDES8_MEM_16_Q6   ), //o
-    .Q7    (iDES8_MEM_16_Q7   )  //o
+    .D     (iDES8_MEM_16_D      ), //i
+    .ICLK  (clk_dqsr_1          ), //i
+    .FCLK  (io_fclk             ), //i
+    .PCLK  (io_pclk             ), //i
+    .CALIB (1'b0                ), //i
+    .RESET (fclkRstArea_rst_dq1b), //i
+    .WADDR (dqs_waddr_1[2:0]    ), //i
+    .RADDR (dqs_raddr_1[2:0]    ), //i
+    .Q0    (iDES8_MEM_16_Q0     ), //o
+    .Q1    (iDES8_MEM_16_Q1     ), //o
+    .Q2    (iDES8_MEM_16_Q2     ), //o
+    .Q3    (iDES8_MEM_16_Q3     ), //o
+    .Q4    (iDES8_MEM_16_Q4     ), //o
+    .Q5    (iDES8_MEM_16_Q5     ), //o
+    .Q6    (iDES8_MEM_16_Q6     ), //o
+    .Q7    (iDES8_MEM_16_Q7     )  //o
   );
   OSER8 oSER8_1 (
-    .D0    (io_nRAS_0    ), //i
-    .D1    (io_nRAS_0    ), //i
-    .D2    (io_nRAS_1    ), //i
-    .D3    (io_nRAS_1    ), //i
-    .D4    (io_nRAS_2    ), //i
-    .D5    (io_nRAS_2    ), //i
-    .D6    (io_nRAS_3    ), //i
-    .D7    (io_nRAS_3    ), //i
-    .TX0   (1'b0         ), //i
-    .TX1   (1'b0         ), //i
-    .TX2   (1'b0         ), //i
-    .TX3   (1'b0         ), //i
-    .FCLK  (io_fclk      ), //i
-    .PCLK  (io_pclk      ), //i
-    .RESET (oSER8_1_RESET), //i
-    .Q0    (oSER8_1_Q0   ), //o
-    .Q1    (oSER8_1_Q1   )  //o
+    .D0    (io_nRAS_0            ), //i
+    .D1    (io_nRAS_0            ), //i
+    .D2    (io_nRAS_1            ), //i
+    .D3    (io_nRAS_1            ), //i
+    .D4    (io_nRAS_2            ), //i
+    .D5    (io_nRAS_2            ), //i
+    .D6    (io_nRAS_3            ), //i
+    .D7    (io_nRAS_3            ), //i
+    .TX0   (1'b0                 ), //i
+    .TX1   (1'b0                 ), //i
+    .TX2   (1'b0                 ), //i
+    .TX3   (1'b0                 ), //i
+    .FCLK  (io_fclk              ), //i
+    .PCLK  (io_pclk              ), //i
+    .RESET (fclkRstArea_rst_cmd_a), //i
+    .Q0    (oSER8_1_Q0           ), //o
+    .Q1    (oSER8_1_Q1           )  //o
   );
   OSER8 oSER8_2 (
-    .D0    (io_nCAS_0    ), //i
-    .D1    (io_nCAS_0    ), //i
-    .D2    (io_nCAS_1    ), //i
-    .D3    (io_nCAS_1    ), //i
-    .D4    (io_nCAS_2    ), //i
-    .D5    (io_nCAS_2    ), //i
-    .D6    (io_nCAS_3    ), //i
-    .D7    (io_nCAS_3    ), //i
-    .TX0   (1'b0         ), //i
-    .TX1   (1'b0         ), //i
-    .TX2   (1'b0         ), //i
-    .TX3   (1'b0         ), //i
-    .FCLK  (io_fclk      ), //i
-    .PCLK  (io_pclk      ), //i
-    .RESET (oSER8_2_RESET), //i
-    .Q0    (oSER8_2_Q0   ), //o
-    .Q1    (oSER8_2_Q1   )  //o
+    .D0    (io_nCAS_0            ), //i
+    .D1    (io_nCAS_0            ), //i
+    .D2    (io_nCAS_1            ), //i
+    .D3    (io_nCAS_1            ), //i
+    .D4    (io_nCAS_2            ), //i
+    .D5    (io_nCAS_2            ), //i
+    .D6    (io_nCAS_3            ), //i
+    .D7    (io_nCAS_3            ), //i
+    .TX0   (1'b0                 ), //i
+    .TX1   (1'b0                 ), //i
+    .TX2   (1'b0                 ), //i
+    .TX3   (1'b0                 ), //i
+    .FCLK  (io_fclk              ), //i
+    .PCLK  (io_pclk              ), //i
+    .RESET (fclkRstArea_rst_cmd_a), //i
+    .Q0    (oSER8_2_Q0           ), //o
+    .Q1    (oSER8_2_Q1           )  //o
   );
   OSER8 oSER8_3 (
-    .D0    (io_nWE_0     ), //i
-    .D1    (io_nWE_0     ), //i
-    .D2    (io_nWE_1     ), //i
-    .D3    (io_nWE_1     ), //i
-    .D4    (io_nWE_2     ), //i
-    .D5    (io_nWE_2     ), //i
-    .D6    (io_nWE_3     ), //i
-    .D7    (io_nWE_3     ), //i
-    .TX0   (1'b0         ), //i
-    .TX1   (1'b0         ), //i
-    .TX2   (1'b0         ), //i
-    .TX3   (1'b0         ), //i
-    .FCLK  (io_fclk      ), //i
-    .PCLK  (io_pclk      ), //i
-    .RESET (oSER8_3_RESET), //i
-    .Q0    (oSER8_3_Q0   ), //o
-    .Q1    (oSER8_3_Q1   )  //o
+    .D0    (io_nWE_0             ), //i
+    .D1    (io_nWE_0             ), //i
+    .D2    (io_nWE_1             ), //i
+    .D3    (io_nWE_1             ), //i
+    .D4    (io_nWE_2             ), //i
+    .D5    (io_nWE_2             ), //i
+    .D6    (io_nWE_3             ), //i
+    .D7    (io_nWE_3             ), //i
+    .TX0   (1'b0                 ), //i
+    .TX1   (1'b0                 ), //i
+    .TX2   (1'b0                 ), //i
+    .TX3   (1'b0                 ), //i
+    .FCLK  (io_fclk              ), //i
+    .PCLK  (io_pclk              ), //i
+    .RESET (fclkRstArea_rst_cmd_a), //i
+    .Q0    (oSER8_3_Q0           ), //o
+    .Q1    (oSER8_3_Q1           )  //o
   );
   OSER8 oSER8_4 (
-    .D0    (oSER8_4_D0   ), //i
-    .D1    (oSER8_4_D1   ), //i
-    .D2    (oSER8_4_D2   ), //i
-    .D3    (oSER8_4_D3   ), //i
-    .D4    (oSER8_4_D4   ), //i
-    .D5    (oSER8_4_D5   ), //i
-    .D6    (oSER8_4_D6   ), //i
-    .D7    (oSER8_4_D7   ), //i
-    .TX0   (1'b0         ), //i
-    .TX1   (1'b0         ), //i
-    .TX2   (1'b0         ), //i
-    .TX3   (1'b0         ), //i
-    .FCLK  (io_fclk      ), //i
-    .PCLK  (io_pclk      ), //i
-    .RESET (oSER8_4_RESET), //i
-    .Q0    (oSER8_4_Q0   ), //o
-    .Q1    (oSER8_4_Q1   )  //o
+    .D0    (oSER8_4_D0           ), //i
+    .D1    (oSER8_4_D1           ), //i
+    .D2    (oSER8_4_D2           ), //i
+    .D3    (oSER8_4_D3           ), //i
+    .D4    (oSER8_4_D4           ), //i
+    .D5    (oSER8_4_D5           ), //i
+    .D6    (oSER8_4_D6           ), //i
+    .D7    (oSER8_4_D7           ), //i
+    .TX0   (1'b0                 ), //i
+    .TX1   (1'b0                 ), //i
+    .TX2   (1'b0                 ), //i
+    .TX3   (1'b0                 ), //i
+    .FCLK  (io_fclk              ), //i
+    .PCLK  (io_pclk              ), //i
+    .RESET (fclkRstArea_rst_cmd_a), //i
+    .Q0    (oSER8_4_Q0           ), //o
+    .Q1    (oSER8_4_Q1           )  //o
   );
   OSER8 oSER8_5 (
-    .D0    (oSER8_5_D0   ), //i
-    .D1    (oSER8_5_D1   ), //i
-    .D2    (oSER8_5_D2   ), //i
-    .D3    (oSER8_5_D3   ), //i
-    .D4    (oSER8_5_D4   ), //i
-    .D5    (oSER8_5_D5   ), //i
-    .D6    (oSER8_5_D6   ), //i
-    .D7    (oSER8_5_D7   ), //i
-    .TX0   (1'b0         ), //i
-    .TX1   (1'b0         ), //i
-    .TX2   (1'b0         ), //i
-    .TX3   (1'b0         ), //i
-    .FCLK  (io_fclk      ), //i
-    .PCLK  (io_pclk      ), //i
-    .RESET (oSER8_5_RESET), //i
-    .Q0    (oSER8_5_Q0   ), //o
-    .Q1    (oSER8_5_Q1   )  //o
+    .D0    (oSER8_5_D0           ), //i
+    .D1    (oSER8_5_D1           ), //i
+    .D2    (oSER8_5_D2           ), //i
+    .D3    (oSER8_5_D3           ), //i
+    .D4    (oSER8_5_D4           ), //i
+    .D5    (oSER8_5_D5           ), //i
+    .D6    (oSER8_5_D6           ), //i
+    .D7    (oSER8_5_D7           ), //i
+    .TX0   (1'b0                 ), //i
+    .TX1   (1'b0                 ), //i
+    .TX2   (1'b0                 ), //i
+    .TX3   (1'b0                 ), //i
+    .FCLK  (io_fclk              ), //i
+    .PCLK  (io_pclk              ), //i
+    .RESET (fclkRstArea_rst_cmd_a), //i
+    .Q0    (oSER8_5_Q0           ), //o
+    .Q1    (oSER8_5_Q1           )  //o
   );
   OSER8 oSER8_6 (
-    .D0    (oSER8_6_D0   ), //i
-    .D1    (oSER8_6_D1   ), //i
-    .D2    (oSER8_6_D2   ), //i
-    .D3    (oSER8_6_D3   ), //i
-    .D4    (oSER8_6_D4   ), //i
-    .D5    (oSER8_6_D5   ), //i
-    .D6    (oSER8_6_D6   ), //i
-    .D7    (oSER8_6_D7   ), //i
-    .TX0   (1'b0         ), //i
-    .TX1   (1'b0         ), //i
-    .TX2   (1'b0         ), //i
-    .TX3   (1'b0         ), //i
-    .FCLK  (io_fclk      ), //i
-    .PCLK  (io_pclk      ), //i
-    .RESET (oSER8_6_RESET), //i
-    .Q0    (oSER8_6_Q0   ), //o
-    .Q1    (oSER8_6_Q1   )  //o
+    .D0    (oSER8_6_D0           ), //i
+    .D1    (oSER8_6_D1           ), //i
+    .D2    (oSER8_6_D2           ), //i
+    .D3    (oSER8_6_D3           ), //i
+    .D4    (oSER8_6_D4           ), //i
+    .D5    (oSER8_6_D5           ), //i
+    .D6    (oSER8_6_D6           ), //i
+    .D7    (oSER8_6_D7           ), //i
+    .TX0   (1'b0                 ), //i
+    .TX1   (1'b0                 ), //i
+    .TX2   (1'b0                 ), //i
+    .TX3   (1'b0                 ), //i
+    .FCLK  (io_fclk              ), //i
+    .PCLK  (io_pclk              ), //i
+    .RESET (fclkRstArea_rst_cmd_a), //i
+    .Q0    (oSER8_6_Q0           ), //o
+    .Q1    (oSER8_6_Q1           )  //o
   );
   OSER8 oSER8_7 (
-    .D0    (oSER8_7_D0   ), //i
-    .D1    (oSER8_7_D1   ), //i
-    .D2    (oSER8_7_D2   ), //i
-    .D3    (oSER8_7_D3   ), //i
-    .D4    (oSER8_7_D4   ), //i
-    .D5    (oSER8_7_D5   ), //i
-    .D6    (oSER8_7_D6   ), //i
-    .D7    (oSER8_7_D7   ), //i
-    .TX0   (1'b0         ), //i
-    .TX1   (1'b0         ), //i
-    .TX2   (1'b0         ), //i
-    .TX3   (1'b0         ), //i
-    .FCLK  (io_fclk      ), //i
-    .PCLK  (io_pclk      ), //i
-    .RESET (oSER8_7_RESET), //i
-    .Q0    (oSER8_7_Q0   ), //o
-    .Q1    (oSER8_7_Q1   )  //o
+    .D0    (oSER8_7_D0           ), //i
+    .D1    (oSER8_7_D1           ), //i
+    .D2    (oSER8_7_D2           ), //i
+    .D3    (oSER8_7_D3           ), //i
+    .D4    (oSER8_7_D4           ), //i
+    .D5    (oSER8_7_D5           ), //i
+    .D6    (oSER8_7_D6           ), //i
+    .D7    (oSER8_7_D7           ), //i
+    .TX0   (1'b0                 ), //i
+    .TX1   (1'b0                 ), //i
+    .TX2   (1'b0                 ), //i
+    .TX3   (1'b0                 ), //i
+    .FCLK  (io_fclk              ), //i
+    .PCLK  (io_pclk              ), //i
+    .RESET (fclkRstArea_rst_cmd_a), //i
+    .Q0    (oSER8_7_Q0           ), //o
+    .Q1    (oSER8_7_Q1           )  //o
   );
   OSER8 oSER8_8 (
-    .D0    (oSER8_8_D0   ), //i
-    .D1    (oSER8_8_D1   ), //i
-    .D2    (oSER8_8_D2   ), //i
-    .D3    (oSER8_8_D3   ), //i
-    .D4    (oSER8_8_D4   ), //i
-    .D5    (oSER8_8_D5   ), //i
-    .D6    (oSER8_8_D6   ), //i
-    .D7    (oSER8_8_D7   ), //i
-    .TX0   (1'b0         ), //i
-    .TX1   (1'b0         ), //i
-    .TX2   (1'b0         ), //i
-    .TX3   (1'b0         ), //i
-    .FCLK  (io_fclk      ), //i
-    .PCLK  (io_pclk      ), //i
-    .RESET (oSER8_8_RESET), //i
-    .Q0    (oSER8_8_Q0   ), //o
-    .Q1    (oSER8_8_Q1   )  //o
+    .D0    (oSER8_8_D0           ), //i
+    .D1    (oSER8_8_D1           ), //i
+    .D2    (oSER8_8_D2           ), //i
+    .D3    (oSER8_8_D3           ), //i
+    .D4    (oSER8_8_D4           ), //i
+    .D5    (oSER8_8_D5           ), //i
+    .D6    (oSER8_8_D6           ), //i
+    .D7    (oSER8_8_D7           ), //i
+    .TX0   (1'b0                 ), //i
+    .TX1   (1'b0                 ), //i
+    .TX2   (1'b0                 ), //i
+    .TX3   (1'b0                 ), //i
+    .FCLK  (io_fclk              ), //i
+    .PCLK  (io_pclk              ), //i
+    .RESET (fclkRstArea_rst_cmd_a), //i
+    .Q0    (oSER8_8_Q0           ), //o
+    .Q1    (oSER8_8_Q1           )  //o
   );
   OSER8 oSER8_9 (
-    .D0    (oSER8_9_D0   ), //i
-    .D1    (oSER8_9_D1   ), //i
-    .D2    (oSER8_9_D2   ), //i
-    .D3    (oSER8_9_D3   ), //i
-    .D4    (oSER8_9_D4   ), //i
-    .D5    (oSER8_9_D5   ), //i
-    .D6    (oSER8_9_D6   ), //i
-    .D7    (oSER8_9_D7   ), //i
-    .TX0   (1'b0         ), //i
-    .TX1   (1'b0         ), //i
-    .TX2   (1'b0         ), //i
-    .TX3   (1'b0         ), //i
-    .FCLK  (io_fclk      ), //i
-    .PCLK  (io_pclk      ), //i
-    .RESET (oSER8_9_RESET), //i
-    .Q0    (oSER8_9_Q0   ), //o
-    .Q1    (oSER8_9_Q1   )  //o
+    .D0    (oSER8_9_D0           ), //i
+    .D1    (oSER8_9_D1           ), //i
+    .D2    (oSER8_9_D2           ), //i
+    .D3    (oSER8_9_D3           ), //i
+    .D4    (oSER8_9_D4           ), //i
+    .D5    (oSER8_9_D5           ), //i
+    .D6    (oSER8_9_D6           ), //i
+    .D7    (oSER8_9_D7           ), //i
+    .TX0   (1'b0                 ), //i
+    .TX1   (1'b0                 ), //i
+    .TX2   (1'b0                 ), //i
+    .TX3   (1'b0                 ), //i
+    .FCLK  (io_fclk              ), //i
+    .PCLK  (io_pclk              ), //i
+    .RESET (fclkRstArea_rst_cmd_a), //i
+    .Q0    (oSER8_9_Q0           ), //o
+    .Q1    (oSER8_9_Q1           )  //o
   );
   OSER8 oSER8_10 (
-    .D0    (oSER8_10_D0   ), //i
-    .D1    (oSER8_10_D1   ), //i
-    .D2    (oSER8_10_D2   ), //i
-    .D3    (oSER8_10_D3   ), //i
-    .D4    (oSER8_10_D4   ), //i
-    .D5    (oSER8_10_D5   ), //i
-    .D6    (oSER8_10_D6   ), //i
-    .D7    (oSER8_10_D7   ), //i
-    .TX0   (1'b0          ), //i
-    .TX1   (1'b0          ), //i
-    .TX2   (1'b0          ), //i
-    .TX3   (1'b0          ), //i
-    .FCLK  (io_fclk       ), //i
-    .PCLK  (io_pclk       ), //i
-    .RESET (oSER8_10_RESET), //i
-    .Q0    (oSER8_10_Q0   ), //o
-    .Q1    (oSER8_10_Q1   )  //o
+    .D0    (oSER8_10_D0          ), //i
+    .D1    (oSER8_10_D1          ), //i
+    .D2    (oSER8_10_D2          ), //i
+    .D3    (oSER8_10_D3          ), //i
+    .D4    (oSER8_10_D4          ), //i
+    .D5    (oSER8_10_D5          ), //i
+    .D6    (oSER8_10_D6          ), //i
+    .D7    (oSER8_10_D7          ), //i
+    .TX0   (1'b0                 ), //i
+    .TX1   (1'b0                 ), //i
+    .TX2   (1'b0                 ), //i
+    .TX3   (1'b0                 ), //i
+    .FCLK  (io_fclk              ), //i
+    .PCLK  (io_pclk              ), //i
+    .RESET (fclkRstArea_rst_cmd_a), //i
+    .Q0    (oSER8_10_Q0          ), //o
+    .Q1    (oSER8_10_Q1          )  //o
   );
   OSER8 oSER8_11 (
-    .D0    (oSER8_11_D0   ), //i
-    .D1    (oSER8_11_D1   ), //i
-    .D2    (oSER8_11_D2   ), //i
-    .D3    (oSER8_11_D3   ), //i
-    .D4    (oSER8_11_D4   ), //i
-    .D5    (oSER8_11_D5   ), //i
-    .D6    (oSER8_11_D6   ), //i
-    .D7    (oSER8_11_D7   ), //i
-    .TX0   (1'b0          ), //i
-    .TX1   (1'b0          ), //i
-    .TX2   (1'b0          ), //i
-    .TX3   (1'b0          ), //i
-    .FCLK  (io_fclk       ), //i
-    .PCLK  (io_pclk       ), //i
-    .RESET (oSER8_11_RESET), //i
-    .Q0    (oSER8_11_Q0   ), //o
-    .Q1    (oSER8_11_Q1   )  //o
+    .D0    (oSER8_11_D0          ), //i
+    .D1    (oSER8_11_D1          ), //i
+    .D2    (oSER8_11_D2          ), //i
+    .D3    (oSER8_11_D3          ), //i
+    .D4    (oSER8_11_D4          ), //i
+    .D5    (oSER8_11_D5          ), //i
+    .D6    (oSER8_11_D6          ), //i
+    .D7    (oSER8_11_D7          ), //i
+    .TX0   (1'b0                 ), //i
+    .TX1   (1'b0                 ), //i
+    .TX2   (1'b0                 ), //i
+    .TX3   (1'b0                 ), //i
+    .FCLK  (io_fclk              ), //i
+    .PCLK  (io_pclk              ), //i
+    .RESET (fclkRstArea_rst_cmd_b), //i
+    .Q0    (oSER8_11_Q0          ), //o
+    .Q1    (oSER8_11_Q1          )  //o
   );
   OSER8 oSER8_12 (
-    .D0    (oSER8_12_D0   ), //i
-    .D1    (oSER8_12_D1   ), //i
-    .D2    (oSER8_12_D2   ), //i
-    .D3    (oSER8_12_D3   ), //i
-    .D4    (oSER8_12_D4   ), //i
-    .D5    (oSER8_12_D5   ), //i
-    .D6    (oSER8_12_D6   ), //i
-    .D7    (oSER8_12_D7   ), //i
-    .TX0   (1'b0          ), //i
-    .TX1   (1'b0          ), //i
-    .TX2   (1'b0          ), //i
-    .TX3   (1'b0          ), //i
-    .FCLK  (io_fclk       ), //i
-    .PCLK  (io_pclk       ), //i
-    .RESET (oSER8_12_RESET), //i
-    .Q0    (oSER8_12_Q0   ), //o
-    .Q1    (oSER8_12_Q1   )  //o
+    .D0    (oSER8_12_D0          ), //i
+    .D1    (oSER8_12_D1          ), //i
+    .D2    (oSER8_12_D2          ), //i
+    .D3    (oSER8_12_D3          ), //i
+    .D4    (oSER8_12_D4          ), //i
+    .D5    (oSER8_12_D5          ), //i
+    .D6    (oSER8_12_D6          ), //i
+    .D7    (oSER8_12_D7          ), //i
+    .TX0   (1'b0                 ), //i
+    .TX1   (1'b0                 ), //i
+    .TX2   (1'b0                 ), //i
+    .TX3   (1'b0                 ), //i
+    .FCLK  (io_fclk              ), //i
+    .PCLK  (io_pclk              ), //i
+    .RESET (fclkRstArea_rst_cmd_b), //i
+    .Q0    (oSER8_12_Q0          ), //o
+    .Q1    (oSER8_12_Q1          )  //o
   );
   OSER8 oSER8_13 (
-    .D0    (oSER8_13_D0   ), //i
-    .D1    (oSER8_13_D1   ), //i
-    .D2    (oSER8_13_D2   ), //i
-    .D3    (oSER8_13_D3   ), //i
-    .D4    (oSER8_13_D4   ), //i
-    .D5    (oSER8_13_D5   ), //i
-    .D6    (oSER8_13_D6   ), //i
-    .D7    (oSER8_13_D7   ), //i
-    .TX0   (1'b0          ), //i
-    .TX1   (1'b0          ), //i
-    .TX2   (1'b0          ), //i
-    .TX3   (1'b0          ), //i
-    .FCLK  (io_fclk       ), //i
-    .PCLK  (io_pclk       ), //i
-    .RESET (oSER8_13_RESET), //i
-    .Q0    (oSER8_13_Q0   ), //o
-    .Q1    (oSER8_13_Q1   )  //o
+    .D0    (oSER8_13_D0          ), //i
+    .D1    (oSER8_13_D1          ), //i
+    .D2    (oSER8_13_D2          ), //i
+    .D3    (oSER8_13_D3          ), //i
+    .D4    (oSER8_13_D4          ), //i
+    .D5    (oSER8_13_D5          ), //i
+    .D6    (oSER8_13_D6          ), //i
+    .D7    (oSER8_13_D7          ), //i
+    .TX0   (1'b0                 ), //i
+    .TX1   (1'b0                 ), //i
+    .TX2   (1'b0                 ), //i
+    .TX3   (1'b0                 ), //i
+    .FCLK  (io_fclk              ), //i
+    .PCLK  (io_pclk              ), //i
+    .RESET (fclkRstArea_rst_cmd_b), //i
+    .Q0    (oSER8_13_Q0          ), //o
+    .Q1    (oSER8_13_Q1          )  //o
   );
   OSER8 oSER8_14 (
-    .D0    (oSER8_14_D0   ), //i
-    .D1    (oSER8_14_D1   ), //i
-    .D2    (oSER8_14_D2   ), //i
-    .D3    (oSER8_14_D3   ), //i
-    .D4    (oSER8_14_D4   ), //i
-    .D5    (oSER8_14_D5   ), //i
-    .D6    (oSER8_14_D6   ), //i
-    .D7    (oSER8_14_D7   ), //i
-    .TX0   (1'b0          ), //i
-    .TX1   (1'b0          ), //i
-    .TX2   (1'b0          ), //i
-    .TX3   (1'b0          ), //i
-    .FCLK  (io_fclk       ), //i
-    .PCLK  (io_pclk       ), //i
-    .RESET (oSER8_14_RESET), //i
-    .Q0    (oSER8_14_Q0   ), //o
-    .Q1    (oSER8_14_Q1   )  //o
+    .D0    (oSER8_14_D0          ), //i
+    .D1    (oSER8_14_D1          ), //i
+    .D2    (oSER8_14_D2          ), //i
+    .D3    (oSER8_14_D3          ), //i
+    .D4    (oSER8_14_D4          ), //i
+    .D5    (oSER8_14_D5          ), //i
+    .D6    (oSER8_14_D6          ), //i
+    .D7    (oSER8_14_D7          ), //i
+    .TX0   (1'b0                 ), //i
+    .TX1   (1'b0                 ), //i
+    .TX2   (1'b0                 ), //i
+    .TX3   (1'b0                 ), //i
+    .FCLK  (io_fclk              ), //i
+    .PCLK  (io_pclk              ), //i
+    .RESET (fclkRstArea_rst_cmd_b), //i
+    .Q0    (oSER8_14_Q0          ), //o
+    .Q1    (oSER8_14_Q1          )  //o
   );
   OSER8 oSER8_15 (
-    .D0    (oSER8_15_D0   ), //i
-    .D1    (oSER8_15_D1   ), //i
-    .D2    (oSER8_15_D2   ), //i
-    .D3    (oSER8_15_D3   ), //i
-    .D4    (oSER8_15_D4   ), //i
-    .D5    (oSER8_15_D5   ), //i
-    .D6    (oSER8_15_D6   ), //i
-    .D7    (oSER8_15_D7   ), //i
-    .TX0   (1'b0          ), //i
-    .TX1   (1'b0          ), //i
-    .TX2   (1'b0          ), //i
-    .TX3   (1'b0          ), //i
-    .FCLK  (io_fclk       ), //i
-    .PCLK  (io_pclk       ), //i
-    .RESET (oSER8_15_RESET), //i
-    .Q0    (oSER8_15_Q0   ), //o
-    .Q1    (oSER8_15_Q1   )  //o
+    .D0    (oSER8_15_D0          ), //i
+    .D1    (oSER8_15_D1          ), //i
+    .D2    (oSER8_15_D2          ), //i
+    .D3    (oSER8_15_D3          ), //i
+    .D4    (oSER8_15_D4          ), //i
+    .D5    (oSER8_15_D5          ), //i
+    .D6    (oSER8_15_D6          ), //i
+    .D7    (oSER8_15_D7          ), //i
+    .TX0   (1'b0                 ), //i
+    .TX1   (1'b0                 ), //i
+    .TX2   (1'b0                 ), //i
+    .TX3   (1'b0                 ), //i
+    .FCLK  (io_fclk              ), //i
+    .PCLK  (io_pclk              ), //i
+    .RESET (fclkRstArea_rst_cmd_b), //i
+    .Q0    (oSER8_15_Q0          ), //o
+    .Q1    (oSER8_15_Q1          )  //o
   );
   OSER8 oSER8_16 (
-    .D0    (oSER8_16_D0   ), //i
-    .D1    (oSER8_16_D1   ), //i
-    .D2    (oSER8_16_D2   ), //i
-    .D3    (oSER8_16_D3   ), //i
-    .D4    (oSER8_16_D4   ), //i
-    .D5    (oSER8_16_D5   ), //i
-    .D6    (oSER8_16_D6   ), //i
-    .D7    (oSER8_16_D7   ), //i
-    .TX0   (1'b0          ), //i
-    .TX1   (1'b0          ), //i
-    .TX2   (1'b0          ), //i
-    .TX3   (1'b0          ), //i
-    .FCLK  (io_fclk       ), //i
-    .PCLK  (io_pclk       ), //i
-    .RESET (oSER8_16_RESET), //i
-    .Q0    (oSER8_16_Q0   ), //o
-    .Q1    (oSER8_16_Q1   )  //o
+    .D0    (oSER8_16_D0          ), //i
+    .D1    (oSER8_16_D1          ), //i
+    .D2    (oSER8_16_D2          ), //i
+    .D3    (oSER8_16_D3          ), //i
+    .D4    (oSER8_16_D4          ), //i
+    .D5    (oSER8_16_D5          ), //i
+    .D6    (oSER8_16_D6          ), //i
+    .D7    (oSER8_16_D7          ), //i
+    .TX0   (1'b0                 ), //i
+    .TX1   (1'b0                 ), //i
+    .TX2   (1'b0                 ), //i
+    .TX3   (1'b0                 ), //i
+    .FCLK  (io_fclk              ), //i
+    .PCLK  (io_pclk              ), //i
+    .RESET (fclkRstArea_rst_cmd_b), //i
+    .Q0    (oSER8_16_Q0          ), //o
+    .Q1    (oSER8_16_Q1          )  //o
   );
   OSER8 oSER8_17 (
-    .D0    (oSER8_17_D0   ), //i
-    .D1    (oSER8_17_D1   ), //i
-    .D2    (oSER8_17_D2   ), //i
-    .D3    (oSER8_17_D3   ), //i
-    .D4    (oSER8_17_D4   ), //i
-    .D5    (oSER8_17_D5   ), //i
-    .D6    (oSER8_17_D6   ), //i
-    .D7    (oSER8_17_D7   ), //i
-    .TX0   (1'b0          ), //i
-    .TX1   (1'b0          ), //i
-    .TX2   (1'b0          ), //i
-    .TX3   (1'b0          ), //i
-    .FCLK  (io_fclk       ), //i
-    .PCLK  (io_pclk       ), //i
-    .RESET (oSER8_17_RESET), //i
-    .Q0    (oSER8_17_Q0   ), //o
-    .Q1    (oSER8_17_Q1   )  //o
+    .D0    (oSER8_17_D0          ), //i
+    .D1    (oSER8_17_D1          ), //i
+    .D2    (oSER8_17_D2          ), //i
+    .D3    (oSER8_17_D3          ), //i
+    .D4    (oSER8_17_D4          ), //i
+    .D5    (oSER8_17_D5          ), //i
+    .D6    (oSER8_17_D6          ), //i
+    .D7    (oSER8_17_D7          ), //i
+    .TX0   (1'b0                 ), //i
+    .TX1   (1'b0                 ), //i
+    .TX2   (1'b0                 ), //i
+    .TX3   (1'b0                 ), //i
+    .FCLK  (io_fclk              ), //i
+    .PCLK  (io_pclk              ), //i
+    .RESET (fclkRstArea_rst_cmd_b), //i
+    .Q0    (oSER8_17_Q0          ), //o
+    .Q1    (oSER8_17_Q1          )  //o
   );
   OSER8 oSER8_18 (
-    .D0    (oSER8_18_D0   ), //i
-    .D1    (oSER8_18_D1   ), //i
-    .D2    (oSER8_18_D2   ), //i
-    .D3    (oSER8_18_D3   ), //i
-    .D4    (oSER8_18_D4   ), //i
-    .D5    (oSER8_18_D5   ), //i
-    .D6    (oSER8_18_D6   ), //i
-    .D7    (oSER8_18_D7   ), //i
-    .TX0   (1'b0          ), //i
-    .TX1   (1'b0          ), //i
-    .TX2   (1'b0          ), //i
-    .TX3   (1'b0          ), //i
-    .FCLK  (io_fclk       ), //i
-    .PCLK  (io_pclk       ), //i
-    .RESET (oSER8_18_RESET), //i
-    .Q0    (oSER8_18_Q0   ), //o
-    .Q1    (oSER8_18_Q1   )  //o
+    .D0    (oSER8_18_D0          ), //i
+    .D1    (oSER8_18_D1          ), //i
+    .D2    (oSER8_18_D2          ), //i
+    .D3    (oSER8_18_D3          ), //i
+    .D4    (oSER8_18_D4          ), //i
+    .D5    (oSER8_18_D5          ), //i
+    .D6    (oSER8_18_D6          ), //i
+    .D7    (oSER8_18_D7          ), //i
+    .TX0   (1'b0                 ), //i
+    .TX1   (1'b0                 ), //i
+    .TX2   (1'b0                 ), //i
+    .TX3   (1'b0                 ), //i
+    .FCLK  (io_fclk              ), //i
+    .PCLK  (io_pclk              ), //i
+    .RESET (fclkRstArea_rst_cmd_b), //i
+    .Q0    (oSER8_18_Q0          ), //o
+    .Q1    (oSER8_18_Q1          )  //o
   );
   OSER8 oSER8_19 (
-    .D0    (oSER8_19_D0   ), //i
-    .D1    (oSER8_19_D1   ), //i
-    .D2    (oSER8_19_D2   ), //i
-    .D3    (oSER8_19_D3   ), //i
-    .D4    (oSER8_19_D4   ), //i
-    .D5    (oSER8_19_D5   ), //i
-    .D6    (oSER8_19_D6   ), //i
-    .D7    (oSER8_19_D7   ), //i
-    .TX0   (1'b0          ), //i
-    .TX1   (1'b0          ), //i
-    .TX2   (1'b0          ), //i
-    .TX3   (1'b0          ), //i
-    .FCLK  (io_fclk       ), //i
-    .PCLK  (io_pclk       ), //i
-    .RESET (oSER8_19_RESET), //i
-    .Q0    (oSER8_19_Q0   ), //o
-    .Q1    (oSER8_19_Q1   )  //o
+    .D0    (oSER8_19_D0          ), //i
+    .D1    (oSER8_19_D1          ), //i
+    .D2    (oSER8_19_D2          ), //i
+    .D3    (oSER8_19_D3          ), //i
+    .D4    (oSER8_19_D4          ), //i
+    .D5    (oSER8_19_D5          ), //i
+    .D6    (oSER8_19_D6          ), //i
+    .D7    (oSER8_19_D7          ), //i
+    .TX0   (1'b0                 ), //i
+    .TX1   (1'b0                 ), //i
+    .TX2   (1'b0                 ), //i
+    .TX3   (1'b0                 ), //i
+    .FCLK  (io_fclk              ), //i
+    .PCLK  (io_pclk              ), //i
+    .RESET (fclkRstArea_rst_cmd_b), //i
+    .Q0    (oSER8_19_Q0          ), //o
+    .Q1    (oSER8_19_Q1          )  //o
   );
   OSER8 oSER8_20 (
-    .D0    (oSER8_20_D0   ), //i
-    .D1    (oSER8_20_D1   ), //i
-    .D2    (oSER8_20_D2   ), //i
-    .D3    (oSER8_20_D3   ), //i
-    .D4    (oSER8_20_D4   ), //i
-    .D5    (oSER8_20_D5   ), //i
-    .D6    (oSER8_20_D6   ), //i
-    .D7    (oSER8_20_D7   ), //i
-    .TX0   (1'b0          ), //i
-    .TX1   (1'b0          ), //i
-    .TX2   (1'b0          ), //i
-    .TX3   (1'b0          ), //i
-    .FCLK  (io_fclk       ), //i
-    .PCLK  (io_pclk       ), //i
-    .RESET (oSER8_20_RESET), //i
-    .Q0    (oSER8_20_Q0   ), //o
-    .Q1    (oSER8_20_Q1   )  //o
+    .D0    (oSER8_20_D0          ), //i
+    .D1    (oSER8_20_D1          ), //i
+    .D2    (oSER8_20_D2          ), //i
+    .D3    (oSER8_20_D3          ), //i
+    .D4    (oSER8_20_D4          ), //i
+    .D5    (oSER8_20_D5          ), //i
+    .D6    (oSER8_20_D6          ), //i
+    .D7    (oSER8_20_D7          ), //i
+    .TX0   (1'b0                 ), //i
+    .TX1   (1'b0                 ), //i
+    .TX2   (1'b0                 ), //i
+    .TX3   (1'b0                 ), //i
+    .FCLK  (io_fclk              ), //i
+    .PCLK  (io_pclk              ), //i
+    .RESET (fclkRstArea_rst_cmd_b), //i
+    .Q0    (oSER8_20_Q0          ), //o
+    .Q1    (oSER8_20_Q1          )  //o
   );
   assign dll_1_RESET = (! io_resetn);
   assign io_dlllock = dll_1_LOCK;
-  assign rst_lock_n = (io_resetn && dll_1_LOCK);
-  assign io_rst_lock_n = rst_lock_n;
-  assign io_pad_DDR3_nRESET = (rst_lock_n && io_resetn_delay);
+  assign raw_rst_n = (io_resetn && dll_1_LOCK);
+  assign _zz_1 = (! raw_rst_n);
+  assign when_GowinDdr3Phy_l93 = (pclkRstArea_holdCnt != 4'b1111);
+  assign _zz_2 = (! raw_rst_n);
+  assign _zz_3 = (! raw_rst_n);
+  assign _zz_4 = (! raw_rst_n);
+  assign io_rst_lock_n = pclkRstArea_rst_pclk_n;
+  assign io_pad_DDR3_nRESET = (pclkRstArea_rst_pclk_n && io_resetn_delay);
   assign io_pad_DDR3_ODT = 1'b1;
   assign io_pad_DDR3_CK = io_ck;
   assign io_pad_DDR3_nCS = 1'b0;
   assign io_pad_DDR3_CKE = io_CKE;
   assign dQS_1_DQSIN = dqs_pad_in[0];
-  assign dQS_1_RESET = (! rst_lock_n);
   assign clk_dqsr_0 = dQS_1_DQSR90;
   assign dqs_waddr_0 = dQS_1_WPOINT;
   assign dqs_raddr_0 = dQS_1_RPOINT;
@@ -2418,6 +2419,11 @@ module GowinDdr3Phy (
   always @(*) begin
     rburst[0] = dQS_1_RBURST;
     rburst[1] = dQS_2_RBURST;
+  end
+
+  always @(*) begin
+    rvalid[0] = dQS_1_RVALID;
+    rvalid[1] = dQS_2_RVALID;
   end
 
   assign oSER8_MEM_1_D0 = io_dqs_out[0];
@@ -2432,7 +2438,6 @@ module GowinDdr3Phy (
   assign oSER8_MEM_1_TX1 = io_dqs_oen[1];
   assign oSER8_MEM_1_TX2 = io_dqs_oen[2];
   assign oSER8_MEM_1_TX3 = io_dqs_oen[3];
-  assign oSER8_MEM_1_RESET = (! rst_lock_n);
   always @(*) begin
     dqs_buf[0] = oSER8_MEM_1_Q0;
     dqs_buf[1] = oSER8_MEM_3_Q0;
@@ -2458,14 +2463,12 @@ module GowinDdr3Phy (
   assign oSER8_MEM_2_D5 = io_dm_out[5];
   assign oSER8_MEM_2_D6 = io_dm_out[6];
   assign oSER8_MEM_2_D7 = io_dm_out[7];
-  assign oSER8_MEM_2_RESET = (! rst_lock_n);
   always @(*) begin
     io_pad_DDR3_DM[0] = oSER8_MEM_2_Q0;
     io_pad_DDR3_DM[1] = oSER8_MEM_4_Q0;
   end
 
   assign dQS_2_DQSIN = dqs_pad_in[1];
-  assign dQS_2_RESET = (! rst_lock_n);
   assign clk_dqsr_1 = dQS_2_DQSR90;
   assign dqs_waddr_1 = dQS_2_WPOINT;
   assign dqs_raddr_1 = dQS_2_RPOINT;
@@ -2483,7 +2486,6 @@ module GowinDdr3Phy (
   assign oSER8_MEM_3_TX1 = io_dqs_oen[1];
   assign oSER8_MEM_3_TX2 = io_dqs_oen[2];
   assign oSER8_MEM_3_TX3 = io_dqs_oen[3];
-  assign oSER8_MEM_3_RESET = (! rst_lock_n);
   assign iOBUF_2_I = dqs_buf[1];
   assign iOBUF_2_OEN = dqs_buf_oen[1];
   assign oSER8_MEM_4_D0 = io_dm_out[0];
@@ -2494,8 +2496,12 @@ module GowinDdr3Phy (
   assign oSER8_MEM_4_D5 = io_dm_out[5];
   assign oSER8_MEM_4_D6 = io_dm_out[6];
   assign oSER8_MEM_4_D7 = io_dm_out[7];
-  assign oSER8_MEM_4_RESET = (! rst_lock_n);
   assign io_rburst = rburst;
+  assign io_rvalid = rvalid;
+  assign io_wpoint_0 = dqs_waddr_0;
+  assign io_wpoint_1 = dqs_waddr_1;
+  assign io_rpoint_0 = dqs_raddr_0;
+  assign io_rpoint_1 = dqs_raddr_1;
   assign oSER8_MEM_5_D0 = io_dq_out_0[0];
   assign oSER8_MEM_5_D1 = io_dq_out_1[0];
   assign oSER8_MEM_5_D2 = io_dq_out_2[0];
@@ -2508,7 +2514,6 @@ module GowinDdr3Phy (
   assign oSER8_MEM_5_TX1 = io_dq_oen[1];
   assign oSER8_MEM_5_TX2 = io_dq_oen[2];
   assign oSER8_MEM_5_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_5_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
   always @(*) begin
     dq_buf[0] = oSER8_MEM_5_Q0;
     dq_buf[1] = oSER8_MEM_6_Q0;
@@ -2569,7 +2574,6 @@ module GowinDdr3Phy (
   end
 
   assign iDES8_MEM_1_D = dq_pad_in[0];
-  assign iDES8_MEM_1_RESET = (! rst_lock_n);
   always @(*) begin
     io_dq_in_0[0] = iDES8_MEM_1_Q0;
     io_dq_in_0[1] = iDES8_MEM_2_Q0;
@@ -2734,11 +2738,9 @@ module GowinDdr3Phy (
   assign oSER8_MEM_6_TX1 = io_dq_oen[1];
   assign oSER8_MEM_6_TX2 = io_dq_oen[2];
   assign oSER8_MEM_6_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_6_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
   assign iOBUF_4_I = dq_buf[1];
   assign iOBUF_4_OEN = dq_buf_oen[1];
   assign iDES8_MEM_2_D = dq_pad_in[1];
-  assign iDES8_MEM_2_RESET = (! rst_lock_n);
   assign oSER8_MEM_7_D0 = io_dq_out_0[2];
   assign oSER8_MEM_7_D1 = io_dq_out_1[2];
   assign oSER8_MEM_7_D2 = io_dq_out_2[2];
@@ -2751,11 +2753,9 @@ module GowinDdr3Phy (
   assign oSER8_MEM_7_TX1 = io_dq_oen[1];
   assign oSER8_MEM_7_TX2 = io_dq_oen[2];
   assign oSER8_MEM_7_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_7_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
   assign iOBUF_5_I = dq_buf[2];
   assign iOBUF_5_OEN = dq_buf_oen[2];
   assign iDES8_MEM_3_D = dq_pad_in[2];
-  assign iDES8_MEM_3_RESET = (! rst_lock_n);
   assign oSER8_MEM_8_D0 = io_dq_out_0[3];
   assign oSER8_MEM_8_D1 = io_dq_out_1[3];
   assign oSER8_MEM_8_D2 = io_dq_out_2[3];
@@ -2768,11 +2768,9 @@ module GowinDdr3Phy (
   assign oSER8_MEM_8_TX1 = io_dq_oen[1];
   assign oSER8_MEM_8_TX2 = io_dq_oen[2];
   assign oSER8_MEM_8_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_8_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
   assign iOBUF_6_I = dq_buf[3];
   assign iOBUF_6_OEN = dq_buf_oen[3];
   assign iDES8_MEM_4_D = dq_pad_in[3];
-  assign iDES8_MEM_4_RESET = (! rst_lock_n);
   assign oSER8_MEM_9_D0 = io_dq_out_0[4];
   assign oSER8_MEM_9_D1 = io_dq_out_1[4];
   assign oSER8_MEM_9_D2 = io_dq_out_2[4];
@@ -2785,11 +2783,9 @@ module GowinDdr3Phy (
   assign oSER8_MEM_9_TX1 = io_dq_oen[1];
   assign oSER8_MEM_9_TX2 = io_dq_oen[2];
   assign oSER8_MEM_9_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_9_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
   assign iOBUF_7_I = dq_buf[4];
   assign iOBUF_7_OEN = dq_buf_oen[4];
   assign iDES8_MEM_5_D = dq_pad_in[4];
-  assign iDES8_MEM_5_RESET = (! rst_lock_n);
   assign oSER8_MEM_10_D0 = io_dq_out_0[5];
   assign oSER8_MEM_10_D1 = io_dq_out_1[5];
   assign oSER8_MEM_10_D2 = io_dq_out_2[5];
@@ -2802,11 +2798,9 @@ module GowinDdr3Phy (
   assign oSER8_MEM_10_TX1 = io_dq_oen[1];
   assign oSER8_MEM_10_TX2 = io_dq_oen[2];
   assign oSER8_MEM_10_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_10_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
   assign iOBUF_8_I = dq_buf[5];
   assign iOBUF_8_OEN = dq_buf_oen[5];
   assign iDES8_MEM_6_D = dq_pad_in[5];
-  assign iDES8_MEM_6_RESET = (! rst_lock_n);
   assign oSER8_MEM_11_D0 = io_dq_out_0[6];
   assign oSER8_MEM_11_D1 = io_dq_out_1[6];
   assign oSER8_MEM_11_D2 = io_dq_out_2[6];
@@ -2819,11 +2813,9 @@ module GowinDdr3Phy (
   assign oSER8_MEM_11_TX1 = io_dq_oen[1];
   assign oSER8_MEM_11_TX2 = io_dq_oen[2];
   assign oSER8_MEM_11_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_11_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
   assign iOBUF_9_I = dq_buf[6];
   assign iOBUF_9_OEN = dq_buf_oen[6];
   assign iDES8_MEM_7_D = dq_pad_in[6];
-  assign iDES8_MEM_7_RESET = (! rst_lock_n);
   assign oSER8_MEM_12_D0 = io_dq_out_0[7];
   assign oSER8_MEM_12_D1 = io_dq_out_1[7];
   assign oSER8_MEM_12_D2 = io_dq_out_2[7];
@@ -2836,11 +2828,9 @@ module GowinDdr3Phy (
   assign oSER8_MEM_12_TX1 = io_dq_oen[1];
   assign oSER8_MEM_12_TX2 = io_dq_oen[2];
   assign oSER8_MEM_12_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_12_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
   assign iOBUF_10_I = dq_buf[7];
   assign iOBUF_10_OEN = dq_buf_oen[7];
   assign iDES8_MEM_8_D = dq_pad_in[7];
-  assign iDES8_MEM_8_RESET = (! rst_lock_n);
   assign oSER8_MEM_13_D0 = io_dq_out_0[8];
   assign oSER8_MEM_13_D1 = io_dq_out_1[8];
   assign oSER8_MEM_13_D2 = io_dq_out_2[8];
@@ -2853,11 +2843,9 @@ module GowinDdr3Phy (
   assign oSER8_MEM_13_TX1 = io_dq_oen[1];
   assign oSER8_MEM_13_TX2 = io_dq_oen[2];
   assign oSER8_MEM_13_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_13_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
   assign iOBUF_11_I = dq_buf[8];
   assign iOBUF_11_OEN = dq_buf_oen[8];
   assign iDES8_MEM_9_D = dq_pad_in[8];
-  assign iDES8_MEM_9_RESET = (! rst_lock_n);
   assign oSER8_MEM_14_D0 = io_dq_out_0[9];
   assign oSER8_MEM_14_D1 = io_dq_out_1[9];
   assign oSER8_MEM_14_D2 = io_dq_out_2[9];
@@ -2870,11 +2858,9 @@ module GowinDdr3Phy (
   assign oSER8_MEM_14_TX1 = io_dq_oen[1];
   assign oSER8_MEM_14_TX2 = io_dq_oen[2];
   assign oSER8_MEM_14_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_14_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
   assign iOBUF_12_I = dq_buf[9];
   assign iOBUF_12_OEN = dq_buf_oen[9];
   assign iDES8_MEM_10_D = dq_pad_in[9];
-  assign iDES8_MEM_10_RESET = (! rst_lock_n);
   assign oSER8_MEM_15_D0 = io_dq_out_0[10];
   assign oSER8_MEM_15_D1 = io_dq_out_1[10];
   assign oSER8_MEM_15_D2 = io_dq_out_2[10];
@@ -2887,11 +2873,9 @@ module GowinDdr3Phy (
   assign oSER8_MEM_15_TX1 = io_dq_oen[1];
   assign oSER8_MEM_15_TX2 = io_dq_oen[2];
   assign oSER8_MEM_15_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_15_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
   assign iOBUF_13_I = dq_buf[10];
   assign iOBUF_13_OEN = dq_buf_oen[10];
   assign iDES8_MEM_11_D = dq_pad_in[10];
-  assign iDES8_MEM_11_RESET = (! rst_lock_n);
   assign oSER8_MEM_16_D0 = io_dq_out_0[11];
   assign oSER8_MEM_16_D1 = io_dq_out_1[11];
   assign oSER8_MEM_16_D2 = io_dq_out_2[11];
@@ -2904,11 +2888,9 @@ module GowinDdr3Phy (
   assign oSER8_MEM_16_TX1 = io_dq_oen[1];
   assign oSER8_MEM_16_TX2 = io_dq_oen[2];
   assign oSER8_MEM_16_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_16_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
   assign iOBUF_14_I = dq_buf[11];
   assign iOBUF_14_OEN = dq_buf_oen[11];
   assign iDES8_MEM_12_D = dq_pad_in[11];
-  assign iDES8_MEM_12_RESET = (! rst_lock_n);
   assign oSER8_MEM_17_D0 = io_dq_out_0[12];
   assign oSER8_MEM_17_D1 = io_dq_out_1[12];
   assign oSER8_MEM_17_D2 = io_dq_out_2[12];
@@ -2921,11 +2903,9 @@ module GowinDdr3Phy (
   assign oSER8_MEM_17_TX1 = io_dq_oen[1];
   assign oSER8_MEM_17_TX2 = io_dq_oen[2];
   assign oSER8_MEM_17_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_17_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
   assign iOBUF_15_I = dq_buf[12];
   assign iOBUF_15_OEN = dq_buf_oen[12];
   assign iDES8_MEM_13_D = dq_pad_in[12];
-  assign iDES8_MEM_13_RESET = (! rst_lock_n);
   assign oSER8_MEM_18_D0 = io_dq_out_0[13];
   assign oSER8_MEM_18_D1 = io_dq_out_1[13];
   assign oSER8_MEM_18_D2 = io_dq_out_2[13];
@@ -2938,11 +2918,9 @@ module GowinDdr3Phy (
   assign oSER8_MEM_18_TX1 = io_dq_oen[1];
   assign oSER8_MEM_18_TX2 = io_dq_oen[2];
   assign oSER8_MEM_18_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_18_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
   assign iOBUF_16_I = dq_buf[13];
   assign iOBUF_16_OEN = dq_buf_oen[13];
   assign iDES8_MEM_14_D = dq_pad_in[13];
-  assign iDES8_MEM_14_RESET = (! rst_lock_n);
   assign oSER8_MEM_19_D0 = io_dq_out_0[14];
   assign oSER8_MEM_19_D1 = io_dq_out_1[14];
   assign oSER8_MEM_19_D2 = io_dq_out_2[14];
@@ -2955,11 +2933,9 @@ module GowinDdr3Phy (
   assign oSER8_MEM_19_TX1 = io_dq_oen[1];
   assign oSER8_MEM_19_TX2 = io_dq_oen[2];
   assign oSER8_MEM_19_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_19_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
   assign iOBUF_17_I = dq_buf[14];
   assign iOBUF_17_OEN = dq_buf_oen[14];
   assign iDES8_MEM_15_D = dq_pad_in[14];
-  assign iDES8_MEM_15_RESET = (! rst_lock_n);
   assign oSER8_MEM_20_D0 = io_dq_out_0[15];
   assign oSER8_MEM_20_D1 = io_dq_out_1[15];
   assign oSER8_MEM_20_D2 = io_dq_out_2[15];
@@ -2972,17 +2948,12 @@ module GowinDdr3Phy (
   assign oSER8_MEM_20_TX1 = io_dq_oen[1];
   assign oSER8_MEM_20_TX2 = io_dq_oen[2];
   assign oSER8_MEM_20_TX3 = io_dq_oen[3];
-  assign oSER8_MEM_20_RESET = ((! rst_lock_n) || (! dll_1_LOCK));
   assign iOBUF_18_I = dq_buf[15];
   assign iOBUF_18_OEN = dq_buf_oen[15];
   assign iDES8_MEM_16_D = dq_pad_in[15];
-  assign iDES8_MEM_16_RESET = (! rst_lock_n);
   assign io_dq_raw = dq_pad_in;
-  assign oSER8_1_RESET = (! rst_lock_n);
   assign io_pad_DDR3_nRAS = oSER8_1_Q0;
-  assign oSER8_2_RESET = (! rst_lock_n);
   assign io_pad_DDR3_nCAS = oSER8_2_Q0;
-  assign oSER8_3_RESET = (! rst_lock_n);
   assign io_pad_DDR3_nWE = oSER8_3_Q0;
   assign oSER8_4_D0 = io_A_0[0];
   assign oSER8_4_D1 = io_A_0[0];
@@ -2992,7 +2963,6 @@ module GowinDdr3Phy (
   assign oSER8_4_D5 = io_A_2[0];
   assign oSER8_4_D6 = io_A_3[0];
   assign oSER8_4_D7 = io_A_3[0];
-  assign oSER8_4_RESET = (! rst_lock_n);
   always @(*) begin
     io_pad_DDR3_A[0] = oSER8_4_Q0;
     io_pad_DDR3_A[1] = oSER8_5_Q0;
@@ -3018,7 +2988,6 @@ module GowinDdr3Phy (
   assign oSER8_5_D5 = io_A_2[1];
   assign oSER8_5_D6 = io_A_3[1];
   assign oSER8_5_D7 = io_A_3[1];
-  assign oSER8_5_RESET = (! rst_lock_n);
   assign oSER8_6_D0 = io_A_0[2];
   assign oSER8_6_D1 = io_A_0[2];
   assign oSER8_6_D2 = io_A_1[2];
@@ -3027,7 +2996,6 @@ module GowinDdr3Phy (
   assign oSER8_6_D5 = io_A_2[2];
   assign oSER8_6_D6 = io_A_3[2];
   assign oSER8_6_D7 = io_A_3[2];
-  assign oSER8_6_RESET = (! rst_lock_n);
   assign oSER8_7_D0 = io_A_0[3];
   assign oSER8_7_D1 = io_A_0[3];
   assign oSER8_7_D2 = io_A_1[3];
@@ -3036,7 +3004,6 @@ module GowinDdr3Phy (
   assign oSER8_7_D5 = io_A_2[3];
   assign oSER8_7_D6 = io_A_3[3];
   assign oSER8_7_D7 = io_A_3[3];
-  assign oSER8_7_RESET = (! rst_lock_n);
   assign oSER8_8_D0 = io_A_0[4];
   assign oSER8_8_D1 = io_A_0[4];
   assign oSER8_8_D2 = io_A_1[4];
@@ -3045,7 +3012,6 @@ module GowinDdr3Phy (
   assign oSER8_8_D5 = io_A_2[4];
   assign oSER8_8_D6 = io_A_3[4];
   assign oSER8_8_D7 = io_A_3[4];
-  assign oSER8_8_RESET = (! rst_lock_n);
   assign oSER8_9_D0 = io_A_0[5];
   assign oSER8_9_D1 = io_A_0[5];
   assign oSER8_9_D2 = io_A_1[5];
@@ -3054,7 +3020,6 @@ module GowinDdr3Phy (
   assign oSER8_9_D5 = io_A_2[5];
   assign oSER8_9_D6 = io_A_3[5];
   assign oSER8_9_D7 = io_A_3[5];
-  assign oSER8_9_RESET = (! rst_lock_n);
   assign oSER8_10_D0 = io_A_0[6];
   assign oSER8_10_D1 = io_A_0[6];
   assign oSER8_10_D2 = io_A_1[6];
@@ -3063,7 +3028,6 @@ module GowinDdr3Phy (
   assign oSER8_10_D5 = io_A_2[6];
   assign oSER8_10_D6 = io_A_3[6];
   assign oSER8_10_D7 = io_A_3[6];
-  assign oSER8_10_RESET = (! rst_lock_n);
   assign oSER8_11_D0 = io_A_0[7];
   assign oSER8_11_D1 = io_A_0[7];
   assign oSER8_11_D2 = io_A_1[7];
@@ -3072,7 +3036,6 @@ module GowinDdr3Phy (
   assign oSER8_11_D5 = io_A_2[7];
   assign oSER8_11_D6 = io_A_3[7];
   assign oSER8_11_D7 = io_A_3[7];
-  assign oSER8_11_RESET = (! rst_lock_n);
   assign oSER8_12_D0 = io_A_0[8];
   assign oSER8_12_D1 = io_A_0[8];
   assign oSER8_12_D2 = io_A_1[8];
@@ -3081,7 +3044,6 @@ module GowinDdr3Phy (
   assign oSER8_12_D5 = io_A_2[8];
   assign oSER8_12_D6 = io_A_3[8];
   assign oSER8_12_D7 = io_A_3[8];
-  assign oSER8_12_RESET = (! rst_lock_n);
   assign oSER8_13_D0 = io_A_0[9];
   assign oSER8_13_D1 = io_A_0[9];
   assign oSER8_13_D2 = io_A_1[9];
@@ -3090,7 +3052,6 @@ module GowinDdr3Phy (
   assign oSER8_13_D5 = io_A_2[9];
   assign oSER8_13_D6 = io_A_3[9];
   assign oSER8_13_D7 = io_A_3[9];
-  assign oSER8_13_RESET = (! rst_lock_n);
   assign oSER8_14_D0 = io_A_0[10];
   assign oSER8_14_D1 = io_A_0[10];
   assign oSER8_14_D2 = io_A_1[10];
@@ -3099,7 +3060,6 @@ module GowinDdr3Phy (
   assign oSER8_14_D5 = io_A_2[10];
   assign oSER8_14_D6 = io_A_3[10];
   assign oSER8_14_D7 = io_A_3[10];
-  assign oSER8_14_RESET = (! rst_lock_n);
   assign oSER8_15_D0 = io_A_0[11];
   assign oSER8_15_D1 = io_A_0[11];
   assign oSER8_15_D2 = io_A_1[11];
@@ -3108,7 +3068,6 @@ module GowinDdr3Phy (
   assign oSER8_15_D5 = io_A_2[11];
   assign oSER8_15_D6 = io_A_3[11];
   assign oSER8_15_D7 = io_A_3[11];
-  assign oSER8_15_RESET = (! rst_lock_n);
   assign oSER8_16_D0 = io_A_0[12];
   assign oSER8_16_D1 = io_A_0[12];
   assign oSER8_16_D2 = io_A_1[12];
@@ -3117,7 +3076,6 @@ module GowinDdr3Phy (
   assign oSER8_16_D5 = io_A_2[12];
   assign oSER8_16_D6 = io_A_3[12];
   assign oSER8_16_D7 = io_A_3[12];
-  assign oSER8_16_RESET = (! rst_lock_n);
   assign oSER8_17_D0 = io_A_0[13];
   assign oSER8_17_D1 = io_A_0[13];
   assign oSER8_17_D2 = io_A_1[13];
@@ -3126,7 +3084,6 @@ module GowinDdr3Phy (
   assign oSER8_17_D5 = io_A_2[13];
   assign oSER8_17_D6 = io_A_3[13];
   assign oSER8_17_D7 = io_A_3[13];
-  assign oSER8_17_RESET = (! rst_lock_n);
   assign oSER8_18_D0 = io_BA_0[0];
   assign oSER8_18_D1 = io_BA_0[0];
   assign oSER8_18_D2 = io_BA_1[0];
@@ -3135,7 +3092,6 @@ module GowinDdr3Phy (
   assign oSER8_18_D5 = io_BA_2[0];
   assign oSER8_18_D6 = io_BA_3[0];
   assign oSER8_18_D7 = io_BA_3[0];
-  assign oSER8_18_RESET = (! rst_lock_n);
   always @(*) begin
     io_pad_DDR3_BA[0] = oSER8_18_Q0;
     io_pad_DDR3_BA[1] = oSER8_19_Q0;
@@ -3150,7 +3106,6 @@ module GowinDdr3Phy (
   assign oSER8_19_D5 = io_BA_2[1];
   assign oSER8_19_D6 = io_BA_3[1];
   assign oSER8_19_D7 = io_BA_3[1];
-  assign oSER8_19_RESET = (! rst_lock_n);
   assign oSER8_20_D0 = io_BA_0[2];
   assign oSER8_20_D1 = io_BA_0[2];
   assign oSER8_20_D2 = io_BA_1[2];
@@ -3159,7 +3114,64 @@ module GowinDdr3Phy (
   assign oSER8_20_D5 = io_BA_2[2];
   assign oSER8_20_D6 = io_BA_3[2];
   assign oSER8_20_D7 = io_BA_3[2];
-  assign oSER8_20_RESET = (! rst_lock_n);
+  always @(posedge io_pclk or posedge _zz_1) begin
+    if(_zz_1) begin
+      pclkRstArea_holdCnt <= 4'b0000;
+      pclkRstArea_rst_pclk_n <= 1'b0;
+      pclkRstArea_rst_cmd_p <= 1'b1;
+      pclkRstArea_rst_io_p <= 1'b1;
+    end else begin
+      if(when_GowinDdr3Phy_l93) begin
+        pclkRstArea_holdCnt <= (pclkRstArea_holdCnt + 4'b0001);
+      end
+      pclkRstArea_rst_pclk_n <= (pclkRstArea_holdCnt == 4'b1111);
+      pclkRstArea_rst_cmd_p <= (pclkRstArea_holdCnt != 4'b1111);
+      pclkRstArea_rst_io_p <= ((pclkRstArea_holdCnt != 4'b1111) || io_wser_rst);
+    end
+  end
+
+  always @(posedge io_fclk or posedge _zz_2) begin
+    if(_zz_2) begin
+      fclkRstArea_s0_cmd <= 1'b1;
+      fclkRstArea_s0_io <= 1'b1;
+    end else begin
+      fclkRstArea_s0_cmd <= pclkRstArea_rst_cmd_p;
+      fclkRstArea_s0_io <= pclkRstArea_rst_io_p;
+    end
+  end
+
+  always @(negedge io_fclk or posedge _zz_3) begin
+    if(_zz_3) begin
+      fclkRstArea_s1_cmd <= 1'b1;
+      fclkRstArea_s0_io_regNext <= 1'b1;
+      fclkRstArea_rst_dqs0 <= 1'b1;
+      fclkRstArea_rst_dqs1 <= 1'b1;
+      fclkRstArea_rst_dq0a <= 1'b1;
+      fclkRstArea_rst_dq0b <= 1'b1;
+      fclkRstArea_rst_dq1a <= 1'b1;
+      fclkRstArea_rst_dq1b <= 1'b1;
+    end else begin
+      fclkRstArea_s1_cmd <= fclkRstArea_s0_cmd;
+      fclkRstArea_s0_io_regNext <= fclkRstArea_s0_io;
+      fclkRstArea_rst_dqs0 <= fclkRstArea_s0_io_regNext;
+      fclkRstArea_rst_dqs1 <= fclkRstArea_s0_io_regNext;
+      fclkRstArea_rst_dq0a <= fclkRstArea_s0_io_regNext;
+      fclkRstArea_rst_dq0b <= fclkRstArea_s0_io_regNext;
+      fclkRstArea_rst_dq1a <= fclkRstArea_s0_io_regNext;
+      fclkRstArea_rst_dq1b <= fclkRstArea_s0_io_regNext;
+    end
+  end
+
+  always @(posedge io_ck or posedge _zz_4) begin
+    if(_zz_4) begin
+      fclkRstArea_rst_cmd_a <= 1'b1;
+      fclkRstArea_rst_cmd_b <= 1'b1;
+    end else begin
+      fclkRstArea_rst_cmd_a <= fclkRstArea_s1_cmd;
+      fclkRstArea_rst_cmd_b <= fclkRstArea_s1_cmd;
+    end
+  end
+
 
 endmodule
 
@@ -3185,6 +3197,9 @@ module Ddr3ControllerCore (
   output wire [7:0]    io_wlFirst,
   output wire [7:0]    io_wlLast,
   output wire [7:0]    io_wlMatchN,
+  output wire [1:0]    io_wr_adv,
+  output wire [11:0]   io_w_scores,
+  output wire [127:0]  io_train_latch,
   input  wire          io_phy_dlllock,
   input  wire          io_phy_rst_lock_n,
   input  wire [1:0]    io_phy_rburst,
@@ -3239,7 +3254,7 @@ module Ddr3ControllerCore (
   output wire [2:0]    io_phy_BA_3,
   output wire          io_phy_CKE,
   output wire          io_phy_resetn_delay,
-  input  wire          _zz_when_Ddr3ControllerCore_l1548,
+  input  wire          _zz_when_Ddr3ControllerCore_l1907,
   input  wire          io_pclk
 );
   localparam Ddr3State_RST_WAIT = 4'd0;
@@ -3438,11 +3453,10 @@ module Ddr3ControllerCore (
   wire       [3:0]    _zz_rotScores_7_21;
   wire       [0:0]    _zz_rotScores_7_22;
   wire       [4:0]    _zz_rdCyc;
-  wire       [4:0]    _zz_rdCyc_1;
-  wire       [1:0]    _zz_rdCyc_2;
-  wire       [4:0]    _zz_when_Ddr3ControllerCore_l488;
-  wire       [4:0]    _zz_when_Ddr3ControllerCore_l488_1;
-  wire       [4:0]    _zz_when_Ddr3ControllerCore_l488_2;
+  wire       [1:0]    _zz_rdCyc_1;
+  wire       [4:0]    _zz_when_Ddr3ControllerCore_l562;
+  wire       [4:0]    _zz_when_Ddr3ControllerCore_l562_1;
+  wire       [4:0]    _zz_when_Ddr3ControllerCore_l562_2;
   wire       [4:0]    _zz_cycle;
   wire       [16:0]   _zz_tick_counter;
   wire       [12:0]   _zz_A_0_1;
@@ -3452,9 +3466,9 @@ module Ddr3ControllerCore (
   wire       [13:0]   _zz_A_0_5;
   wire       [0:0]    _zz_A_0_6;
   wire       [12:0]   _zz_A_0_7;
-  wire       [2:0]    _zz_when_Ddr3ControllerCore_l613;
-  wire       [2:0]    _zz_when_Ddr3ControllerCore_l613_1;
-  wire       [0:0]    _zz_when_Ddr3ControllerCore_l613_2;
+  wire       [2:0]    _zz_when_Ddr3ControllerCore_l702;
+  wire       [2:0]    _zz_when_Ddr3ControllerCore_l702_1;
+  wire       [0:0]    _zz_when_Ddr3ControllerCore_l702_2;
   wire       [12:0]   _zz_A_0_8;
   wire       [7:0]    _zz_wstep;
   wire       [7:0]    _zz_wstep_1;
@@ -3474,17 +3488,18 @@ module Ddr3ControllerCore (
   wire       [0:0]    _zz_A_0_13;
   wire       [2:0]    _zz_rclksel;
   wire       [1:0]    _zz_rclkpos_1;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1101;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1113;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1267;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1279;
   wire       [0:0]    _zz_A_0_14;
   wire       [0:0]    _zz_A_0_15;
   wire       [0:0]    _zz_A_0_16;
   wire       [0:0]    _zz_A_0_17;
+  wire       [0:0]    _zz_A_0_18;
   wire       [15:0]   _zz_A_2_5;
   wire       [15:0]   _zz_A_2_6;
   wire       [15:0]   _zz_A_2_7;
   wire       [15:0]   _zz_A_2_8;
-  wire       [0:0]    _zz_A_0_18;
+  wire       [0:0]    _zz_A_0_19;
   wire       [15:0]   _zz_A_2_9;
   wire       [15:0]   _zz_A_2_10;
   wire       [9:0]    _zz_A_2_11;
@@ -3561,6 +3576,10 @@ module Ddr3ControllerCore (
   reg        [7:0]    wlMatchNR;
   reg        [2:0]    wlVoteN;
   reg        [2:0]    wlVoteCnt;
+  reg        [2:0]    wlVoteCnt0;
+  reg        [2:0]    wlVoteCnt1;
+  reg                 wlLockedR;
+  reg        [7:0]    wlLockedStepR;
   reg        [7:0]    wstep;
   reg                 rcalib_done;
   reg        [3:0]    rcalib_cnt;
@@ -3599,6 +3618,14 @@ module Ddr3ControllerCore (
   wire       [3:0]    rotScores_5;
   wire       [3:0]    rotScores_6;
   wire       [3:0]    rotScores_7;
+  reg        [3:0]    rotScoresReg_0;
+  reg        [3:0]    rotScoresReg_1;
+  reg        [3:0]    rotScoresReg_2;
+  reg        [3:0]    rotScoresReg_3;
+  reg        [3:0]    rotScoresReg_4;
+  reg        [3:0]    rotScoresReg_5;
+  reg        [3:0]    rotScoresReg_6;
+  reg        [3:0]    rotScoresReg_7;
   wire       [3:0]    rotScoreW_0;
   wire       [3:0]    rotScoreW_1;
   wire       [3:0]    rotScoreW_2;
@@ -3615,17 +3642,52 @@ module Ddr3ControllerCore (
   wire       [2:0]    rotIdxW_5;
   wire       [2:0]    rotIdxW_6;
   wire       [2:0]    rotIdxW_7;
-  wire                _zz_rotScoreW_1;
-  wire                _zz_rotScoreW_2;
-  wire                _zz_rotScoreW_3;
-  wire                _zz_rotScoreW_4;
-  wire                _zz_rotScoreW_5;
-  wire                _zz_rotScoreW_6;
+  wire       [3:0]    treeS1_0;
+  wire       [3:0]    treeS1_1;
+  wire       [3:0]    treeS1_2;
+  wire       [3:0]    treeS1_3;
+  wire       [2:0]    treeI1_0;
+  wire       [2:0]    treeI1_1;
+  wire       [2:0]    treeI1_2;
+  wire       [2:0]    treeI1_3;
+  wire                _zz_treeS1_0;
+  wire                _zz_treeS1_1;
+  wire                _zz_treeS1_2;
+  wire                _zz_treeS1_3;
+  wire       [3:0]    treeS2_0;
+  wire       [3:0]    treeS2_1;
+  wire       [2:0]    treeI2_0;
+  wire       [2:0]    treeI2_1;
+  wire                _zz_treeS2_0;
+  wire                _zz_treeS2_1;
   wire                _zz_rotScoreW_7;
+  reg        [3:0]    sweepScoreReg;
+  reg        [2:0]    sweepRotReg;
   reg        [3:0]    bestCnt;
   reg        [1:0]    bestPos;
   reg        [2:0]    bestSel;
   reg        [2:0]    bestRot;
+  reg        [1:0]    wrMode;
+  reg                 shiftCalDone;
+  reg        [1:0]    tryMode;
+  reg                 wCalDone;
+  reg        [1:0]    wTry;
+  reg        [7:0]    wBase;
+  reg        [7:0]    bestWstep;
+  reg        [3:0]    best0;
+  reg        [1:0]    best0Pos;
+  reg        [2:0]    best0Sel;
+  reg        [2:0]    best0Rot;
+  reg        [1:0]    bestMode;
+  reg        [127:0]  bestLatch;
+  reg        [3:0]    bestWCnt;
+  reg        [1:0]    bestWPos;
+  reg        [2:0]    bestWSel;
+  reg        [2:0]    bestWRot;
+  reg        [1:0]    bestWMode;
+  reg        [3:0]    wScores_0;
+  reg        [3:0]    wScores_1;
+  reg        [3:0]    wScores_2;
   reg                 dllSweepOn;
   reg                 dllSweepDone;
   reg        [3:0]    bestCntDll;
@@ -3660,8 +3722,8 @@ module Ddr3ControllerCore (
   reg                 rdir;
   reg        [10:0]   refresh_timer;
   reg                 refresh_due;
-  wire                when_Ddr3ControllerCore_l392;
-  wire                when_Ddr3ControllerCore_l393;
+  wire                when_Ddr3ControllerCore_l449;
+  wire                when_Ddr3ControllerCore_l450;
   reg                 reqReg_write;
   reg        [26:0]   reqReg_addr;
   reg        [127:0]  reqReg_wdata;
@@ -3698,71 +3760,80 @@ module Ddr3ControllerCore (
   reg        [7:0]    dqs_out;
   reg        [3:0]    dqs_oen;
   reg        [7:0]    dm_out;
-  wire                when_Ddr3ControllerCore_l460;
-  wire                when_Ddr3ControllerCore_l461;
+  wire                when_Ddr3ControllerCore_l533;
+  wire                when_Ddr3ControllerCore_l534;
   wire       [4:0]    rdCyc;
   reg        [3:0]    dqs_read;
-  wire                when_Ddr3ControllerCore_l488;
-  wire                when_Ddr3ControllerCore_l491;
+  wire                when_Ddr3ControllerCore_l562;
+  wire                when_Ddr3ControllerCore_l565;
   wire                acceptReq;
-  wire                when_Ddr3ControllerCore_l529;
+  wire                when_Ddr3ControllerCore_l603;
+  wire                when_Ddr3ControllerCore_l618;
   wire       [15:0]   _zz_A_0;
-  wire                when_Ddr3ControllerCore_l654;
-  wire                when_Ddr3ControllerCore_l613;
-  wire                when_Ddr3ControllerCore_l606;
-  wire                when_Ddr3ControllerCore_l614;
-  wire                when_Ddr3ControllerCore_l619;
-  wire                when_Ddr3ControllerCore_l628;
-  wire                when_Ddr3ControllerCore_l643;
-  wire                when_Ddr3ControllerCore_l632;
-  wire                when_Ddr3ControllerCore_l763;
-  wire                when_Ddr3ControllerCore_l768;
-  wire                when_Ddr3ControllerCore_l788;
-  wire                when_Ddr3ControllerCore_l790;
-  wire                when_Ddr3ControllerCore_l802;
-  wire                when_Ddr3ControllerCore_l826;
-  wire                when_Ddr3ControllerCore_l827;
-  wire                when_Ddr3ControllerCore_l842;
-  wire                when_Ddr3ControllerCore_l867;
-  wire                when_Ddr3ControllerCore_l885;
-  wire                when_Ddr3ControllerCore_l910;
-  wire                when_Ddr3ControllerCore_l915;
-  wire                when_Ddr3ControllerCore_l925;
-  wire                when_Ddr3ControllerCore_l950;
+  wire                when_Ddr3ControllerCore_l743;
+  wire                when_Ddr3ControllerCore_l702;
+  wire                when_Ddr3ControllerCore_l695;
+  wire                when_Ddr3ControllerCore_l703;
+  wire                when_Ddr3ControllerCore_l708;
+  wire                when_Ddr3ControllerCore_l717;
+  wire                when_Ddr3ControllerCore_l732;
+  wire                when_Ddr3ControllerCore_l721;
+  wire                when_Ddr3ControllerCore_l882;
+  wire                when_Ddr3ControllerCore_l887;
+  wire                when_Ddr3ControllerCore_l907;
+  wire                when_Ddr3ControllerCore_l909;
+  wire                when_Ddr3ControllerCore_l921;
+  wire                when_Ddr3ControllerCore_l945;
+  wire                when_Ddr3ControllerCore_l946;
+  wire                when_Ddr3ControllerCore_l961;
   wire                when_Ddr3ControllerCore_l986;
-  wire                when_Ddr3ControllerCore_l992;
-  wire                when_Ddr3ControllerCore_l1014;
-  wire                when_Ddr3ControllerCore_l1033;
-  wire                when_Ddr3ControllerCore_l1038;
-  wire                when_Ddr3ControllerCore_l1063;
+  wire                when_Ddr3ControllerCore_l1004;
+  wire                when_Ddr3ControllerCore_l1029;
+  wire                when_Ddr3ControllerCore_l1034;
+  wire                when_Ddr3ControllerCore_l1045;
   wire                when_Ddr3ControllerCore_l1070;
-  wire                when_Ddr3ControllerCore_l1074;
-  wire                when_Ddr3ControllerCore_l1081;
-  wire                when_Ddr3ControllerCore_l1085;
-  wire                when_Ddr3ControllerCore_l1092;
-  wire                when_Ddr3ControllerCore_l1101;
-  wire       [6:0]    _zz_s0Mag;
-  wire                when_Ddr3ControllerCore_l1113;
-  wire       [6:0]    _zz_s0Mag_1;
   wire                when_Ddr3ControllerCore_l1106;
-  wire                when_Ddr3ControllerCore_l1142;
-  wire                when_Ddr3ControllerCore_l1179;
-  wire                when_Ddr3ControllerCore_l1224;
+  wire                when_Ddr3ControllerCore_l1112;
+  wire                when_Ddr3ControllerCore_l1134;
+  wire                when_Ddr3ControllerCore_l1153;
+  wire                when_Ddr3ControllerCore_l1158;
+  wire                when_Ddr3ControllerCore_l1183;
+  wire                when_Ddr3ControllerCore_l1191;
+  wire                when_Ddr3ControllerCore_l1195;
+  wire                when_Ddr3ControllerCore_l1202;
+  wire                when_Ddr3ControllerCore_l1210;
+  wire                when_Ddr3ControllerCore_l1212;
+  wire                when_Ddr3ControllerCore_l1218;
+  wire                when_Ddr3ControllerCore_l1225;
+  wire       [1:0]    _zz_wrMode;
+  wire                when_Ddr3ControllerCore_l1234;
+  wire                when_Ddr3ControllerCore_l1251;
+  wire                when_Ddr3ControllerCore_l1258;
+  wire                when_Ddr3ControllerCore_l1267;
+  wire       [6:0]    _zz_s0Mag;
+  wire                when_Ddr3ControllerCore_l1279;
+  wire       [6:0]    _zz_s0Mag_1;
+  wire                when_Ddr3ControllerCore_l1272;
+  wire                when_Ddr3ControllerCore_l1308;
+  wire                when_Ddr3ControllerCore_l1345;
+  wire                when_Ddr3ControllerCore_l1390;
+  wire       [3:0]    _zz_1;
   wire       [3:0]    _zz_state;
-  wire                when_Ddr3ControllerCore_l1312;
+  wire                when_Ddr3ControllerCore_l1523;
   wire       [9:0]    _zz_A_2;
   wire       [2:0]    _zz_BA_2;
-  wire                when_Ddr3ControllerCore_l1327;
-  wire                when_Ddr3ControllerCore_l1333;
-  wire                when_Ddr3ControllerCore_l1338;
-  wire                when_Ddr3ControllerCore_l1342;
-  wire                when_Ddr3ControllerCore_l1347;
-  wire                when_Ddr3ControllerCore_l1358;
-  wire                when_Ddr3ControllerCore_l1364;
-  wire                when_Ddr3ControllerCore_l1377;
-  wire                when_Ddr3ControllerCore_l1402;
-  wire                when_Ddr3ControllerCore_l1408;
-  wire                when_Ddr3ControllerCore_l1429;
+  wire                when_Ddr3ControllerCore_l1538;
+  wire                when_Ddr3ControllerCore_l1543;
+  wire                when_Ddr3ControllerCore_l1549;
+  wire                when_Ddr3ControllerCore_l1553;
+  wire                when_Ddr3ControllerCore_l1557;
+  wire                when_Ddr3ControllerCore_l1561;
+  wire                when_Ddr3ControllerCore_l1572;
+  wire                when_Ddr3ControllerCore_l1578;
+  wire                when_Ddr3ControllerCore_l1613;
+  wire                when_Ddr3ControllerCore_l1699;
+  wire                when_Ddr3ControllerCore_l1731;
+  wire                when_Ddr3ControllerCore_l1752;
   wire       [15:0]   rdataVec_0;
   wire       [15:0]   rdataVec_1;
   wire       [15:0]   rdataVec_2;
@@ -3771,7 +3842,7 @@ module Ddr3ControllerCore (
   wire       [15:0]   rdataVec_5;
   wire       [15:0]   rdataVec_6;
   wire       [15:0]   rdataVec_7;
-  wire                when_Ddr3ControllerCore_l1548;
+  wire                when_Ddr3ControllerCore_l1907;
   `ifndef SYNTHESIS
   reg [111:0] state_string;
   reg [111:0] _zz_state_string;
@@ -3962,12 +4033,11 @@ module Ddr3ControllerCore (
   assign _zz_rotScores_7_19 = {3'd0, _zz_rotScores_7_20};
   assign _zz_rotScores_7_22 = (latchBeats_7 == patBeats_6);
   assign _zz_rotScores_7_21 = {3'd0, _zz_rotScores_7_22};
-  assign _zz_rdCyc = (_zz_rdCyc_1 + 5'h01);
-  assign _zz_rdCyc_2 = rclkpos;
-  assign _zz_rdCyc_1 = {3'd0, _zz_rdCyc_2};
-  assign _zz_when_Ddr3ControllerCore_l488 = (rdCyc + 5'h01);
-  assign _zz_when_Ddr3ControllerCore_l488_1 = (rdCyc + 5'h02);
-  assign _zz_when_Ddr3ControllerCore_l488_2 = (rdCyc + 5'h03);
+  assign _zz_rdCyc_1 = rclkpos;
+  assign _zz_rdCyc = {3'd0, _zz_rdCyc_1};
+  assign _zz_when_Ddr3ControllerCore_l562 = (rdCyc + 5'h01);
+  assign _zz_when_Ddr3ControllerCore_l562_1 = (rdCyc + 5'h02);
+  assign _zz_when_Ddr3ControllerCore_l562_2 = (rdCyc + 5'h03);
   assign _zz_cycle = (cycle + 5'h01);
   assign _zz_tick_counter = (tick_counter - 17'h00001);
   assign _zz_A_0_1 = MR2[12 : 0];
@@ -3977,12 +4047,12 @@ module Ddr3ControllerCore (
   assign _zz_A_0_6 = 1'b1;
   assign _zz_A_0_5 = {13'd0, _zz_A_0_6};
   assign _zz_A_0_7 = _zz_A_0[12 : 0];
-  assign _zz_when_Ddr3ControllerCore_l613 = (wlVoteCnt + _zz_when_Ddr3ControllerCore_l613_1);
-  assign _zz_when_Ddr3ControllerCore_l613_2 = when_Ddr3ControllerCore_l654;
-  assign _zz_when_Ddr3ControllerCore_l613_1 = {2'd0, _zz_when_Ddr3ControllerCore_l613_2};
+  assign _zz_when_Ddr3ControllerCore_l702 = (wlVoteCnt + _zz_when_Ddr3ControllerCore_l702_1);
+  assign _zz_when_Ddr3ControllerCore_l702_2 = when_Ddr3ControllerCore_l743;
+  assign _zz_when_Ddr3ControllerCore_l702_1 = {2'd0, _zz_when_Ddr3ControllerCore_l702_2};
   assign _zz_A_0_8 = MR1[12 : 0];
   assign _zz_wstep = (wstep + 8'h01);
-  assign _zz_wstep_2 = ($signed(_zz_wstep_3) + $signed(9'h1ff));
+  assign _zz_wstep_2 = ($signed(_zz_wstep_3) + $signed(9'h0));
   assign _zz_wstep_1 = _zz_wstep_2[7 : 0];
   assign _zz_wstep_3 = _zz_wstep_4;
   assign _zz_wstep_5 = wstep;
@@ -3999,17 +4069,18 @@ module Ddr3ControllerCore (
   assign _zz_A_0_13 = 1'b0;
   assign _zz_rclksel = (rclksel + 3'b001);
   assign _zz_rclkpos_1 = (rclkpos + 2'b01);
-  assign _zz_when_Ddr3ControllerCore_l1101 = (scMag + 7'h02);
-  assign _zz_when_Ddr3ControllerCore_l1113 = (scMag + 7'h02);
+  assign _zz_when_Ddr3ControllerCore_l1267 = (scMag + 7'h02);
+  assign _zz_when_Ddr3ControllerCore_l1279 = (scMag + 7'h02);
   assign _zz_A_0_14 = 1'b0;
   assign _zz_A_0_15 = 1'b0;
   assign _zz_A_0_16 = 1'b0;
   assign _zz_A_0_17 = 1'b0;
+  assign _zz_A_0_18 = 1'b0;
   assign _zz_A_2_5 = (_zz_A_2_6 | 16'h1000);
   assign _zz_A_2_6 = {6'd0, _zz_A_2};
   assign _zz_A_2_7 = (_zz_A_2_8 | 16'h1000);
   assign _zz_A_2_8 = {6'd0, _zz_A_2};
-  assign _zz_A_0_18 = 1'b0;
+  assign _zz_A_0_19 = 1'b0;
   assign _zz_A_2_9 = (_zz_A_2_10 | 16'h1400);
   assign _zz_A_2_11 = {reqReg_addr[6 : 0],3'b000};
   assign _zz_A_2_10 = {6'd0, _zz_A_2_11};
@@ -4196,7 +4267,7 @@ module Ddr3ControllerCore (
   assign MR2 = {{{3'b010,7'h0},M_CWL},3'b000};
   assign MR2_RTT_WR = {{{{{3'b010,2'b00},M_RTT_WR},3'b000},M_CWL},3'b000};
   assign MR3 = {3'b011,13'h0};
-  assign trainPat = 128'h10071006100510041003100210011000;
+  assign trainPat = 128'ha707a606a505a404a303a202a101a000;
   assign poisonPat = (~ trainPat);
   assign latchBeats_0 = trainLatch[15 : 0];
   assign patBeats_0 = trainPat[15 : 0];
@@ -4222,99 +4293,120 @@ module Ddr3ControllerCore (
   assign rotScores_5 = (_zz_rotScores_5 + _zz_rotScores_5_21);
   assign rotScores_6 = (_zz_rotScores_6 + _zz_rotScores_6_21);
   assign rotScores_7 = (_zz_rotScores_7 + _zz_rotScores_7_21);
-  assign rotScoreW_0 = rotScores_0;
+  assign _zz_treeS1_0 = (rotScoresReg_0 < rotScoresReg_1);
+  assign treeS1_0 = (_zz_treeS1_0 ? rotScoresReg_1 : rotScoresReg_0);
+  assign treeI1_0 = (_zz_treeS1_0 ? 3'b001 : 3'b000);
+  assign _zz_treeS1_1 = (rotScoresReg_2 < rotScoresReg_3);
+  assign treeS1_1 = (_zz_treeS1_1 ? rotScoresReg_3 : rotScoresReg_2);
+  assign treeI1_1 = (_zz_treeS1_1 ? 3'b011 : 3'b010);
+  assign _zz_treeS1_2 = (rotScoresReg_4 < rotScoresReg_5);
+  assign treeS1_2 = (_zz_treeS1_2 ? rotScoresReg_5 : rotScoresReg_4);
+  assign treeI1_2 = (_zz_treeS1_2 ? 3'b101 : 3'b100);
+  assign _zz_treeS1_3 = (rotScoresReg_6 < rotScoresReg_7);
+  assign treeS1_3 = (_zz_treeS1_3 ? rotScoresReg_7 : rotScoresReg_6);
+  assign treeI1_3 = (_zz_treeS1_3 ? 3'b111 : 3'b110);
+  assign _zz_treeS2_0 = (treeS1_0 < treeS1_1);
+  assign treeS2_0 = (_zz_treeS2_0 ? treeS1_1 : treeS1_0);
+  assign treeI2_0 = (_zz_treeS2_0 ? treeI1_1 : treeI1_0);
+  assign _zz_treeS2_1 = (treeS1_2 < treeS1_3);
+  assign treeS2_1 = (_zz_treeS2_1 ? treeS1_3 : treeS1_2);
+  assign treeI2_1 = (_zz_treeS2_1 ? treeI1_3 : treeI1_2);
+  assign rotScoreW_0 = 4'b0000;
   assign rotIdxW_0 = 3'b000;
-  assign _zz_rotScoreW_1 = (rotScoreW_0 < rotScores_1);
-  assign rotScoreW_1 = (_zz_rotScoreW_1 ? rotScores_1 : rotScoreW_0);
-  assign rotIdxW_1 = (_zz_rotScoreW_1 ? 3'b001 : rotIdxW_0);
-  assign _zz_rotScoreW_2 = (rotScoreW_1 < rotScores_2);
-  assign rotScoreW_2 = (_zz_rotScoreW_2 ? rotScores_2 : rotScoreW_1);
-  assign rotIdxW_2 = (_zz_rotScoreW_2 ? 3'b010 : rotIdxW_1);
-  assign _zz_rotScoreW_3 = (rotScoreW_2 < rotScores_3);
-  assign rotScoreW_3 = (_zz_rotScoreW_3 ? rotScores_3 : rotScoreW_2);
-  assign rotIdxW_3 = (_zz_rotScoreW_3 ? 3'b011 : rotIdxW_2);
-  assign _zz_rotScoreW_4 = (rotScoreW_3 < rotScores_4);
-  assign rotScoreW_4 = (_zz_rotScoreW_4 ? rotScores_4 : rotScoreW_3);
-  assign rotIdxW_4 = (_zz_rotScoreW_4 ? 3'b100 : rotIdxW_3);
-  assign _zz_rotScoreW_5 = (rotScoreW_4 < rotScores_5);
-  assign rotScoreW_5 = (_zz_rotScoreW_5 ? rotScores_5 : rotScoreW_4);
-  assign rotIdxW_5 = (_zz_rotScoreW_5 ? 3'b101 : rotIdxW_4);
-  assign _zz_rotScoreW_6 = (rotScoreW_5 < rotScores_6);
-  assign rotScoreW_6 = (_zz_rotScoreW_6 ? rotScores_6 : rotScoreW_5);
-  assign rotIdxW_6 = (_zz_rotScoreW_6 ? 3'b110 : rotIdxW_5);
-  assign _zz_rotScoreW_7 = (rotScoreW_6 < rotScores_7);
-  assign rotScoreW_7 = (_zz_rotScoreW_7 ? rotScores_7 : rotScoreW_6);
-  assign rotIdxW_7 = (_zz_rotScoreW_7 ? 3'b111 : rotIdxW_6);
+  assign rotScoreW_1 = 4'b0000;
+  assign rotIdxW_1 = 3'b000;
+  assign rotScoreW_2 = 4'b0000;
+  assign rotIdxW_2 = 3'b000;
+  assign rotScoreW_3 = 4'b0000;
+  assign rotIdxW_3 = 3'b000;
+  assign rotScoreW_4 = 4'b0000;
+  assign rotIdxW_4 = 3'b000;
+  assign rotScoreW_5 = 4'b0000;
+  assign rotIdxW_5 = 3'b000;
+  assign rotScoreW_6 = 4'b0000;
+  assign rotIdxW_6 = 3'b000;
+  assign _zz_rotScoreW_7 = (treeS2_0 < treeS2_1);
+  assign rotScoreW_7 = (_zz_rotScoreW_7 ? treeS2_1 : treeS2_0);
+  assign rotIdxW_7 = (_zz_rotScoreW_7 ? treeI2_1 : treeI2_0);
   assign winEndRaw = (sweepMag0 + sweepMagN);
   assign winEnd = (((sweepMagN == 7'h0) || (7'h40 < winEndRaw)) ? 7'h40 : winEndRaw[6 : 0]);
   assign winDoneNow = (((sweepMagN != 7'h0) && (! s2Side)) && (s2Mag == winEnd));
-  assign when_Ddr3ControllerCore_l392 = (((state == Ddr3State_IDLE) || (state == Ddr3State_READ)) || (state == Ddr3State_WRITE));
-  assign when_Ddr3ControllerCore_l393 = (refresh_timer == 11'h0c8);
-  assign when_Ddr3ControllerCore_l460 = io_phy_rburst[0];
-  assign when_Ddr3ControllerCore_l461 = io_phy_rburst[1];
+  assign when_Ddr3ControllerCore_l449 = (((state == Ddr3State_IDLE) || (state == Ddr3State_READ)) || (state == Ddr3State_WRITE));
+  assign when_Ddr3ControllerCore_l450 = (refresh_timer == 11'h0c8);
+  assign when_Ddr3ControllerCore_l533 = io_phy_rburst[0];
+  assign when_Ddr3ControllerCore_l534 = io_phy_rburst[1];
   assign rdCyc = (_zz_rdCyc + 5'h01);
-  assign when_Ddr3ControllerCore_l488 = (((state == Ddr3State_READ) || (state == Ddr3State_READ_CALIB)) && ((((cycle == rdCyc) || (cycle == _zz_when_Ddr3ControllerCore_l488)) || (cycle == _zz_when_Ddr3ControllerCore_l488_1)) || (cycle == _zz_when_Ddr3ControllerCore_l488_2)));
-  assign when_Ddr3ControllerCore_l491 = (state == Ddr3State_WRITE);
+  assign when_Ddr3ControllerCore_l562 = (((state == Ddr3State_READ) || (state == Ddr3State_READ_CALIB)) && ((((cycle == rdCyc) || (cycle == _zz_when_Ddr3ControllerCore_l562)) || (cycle == _zz_when_Ddr3ControllerCore_l562_1)) || (cycle == _zz_when_Ddr3ControllerCore_l562_2)));
+  assign when_Ddr3ControllerCore_l565 = (state == Ddr3State_WRITE);
   assign acceptReq = (((state == Ddr3State_IDLE) && (! busy)) && (! refresh_due));
   assign io_req_ready = acceptReq;
-  assign when_Ddr3ControllerCore_l529 = (tick_counter == 17'h0000f);
+  assign when_Ddr3ControllerCore_l603 = (! 1'b0);
+  assign when_Ddr3ControllerCore_l618 = (tick_counter == 17'h0000f);
   assign _zz_A_0 = (MR1 | 16'h0084);
-  assign when_Ddr3ControllerCore_l654 = (io_phy_dq_raw[0] && io_phy_dq_raw[8]);
-  assign when_Ddr3ControllerCore_l613 = (3'b010 <= _zz_when_Ddr3ControllerCore_l613);
-  assign when_Ddr3ControllerCore_l606 = (wlVoteN == 3'b011);
-  assign when_Ddr3ControllerCore_l614 = (! wlSeenR);
-  assign when_Ddr3ControllerCore_l619 = (wlMatchNR != 8'hff);
-  assign when_Ddr3ControllerCore_l628 = (wlevel_tries == 9'h1ff);
-  assign when_Ddr3ControllerCore_l643 = ((wlevel_cnt == 4'b0001) && (8'h08 <= wstep));
-  assign when_Ddr3ControllerCore_l632 = (! when_Ddr3ControllerCore_l613);
-  assign when_Ddr3ControllerCore_l763 = ((((! aligning) && (anchorLeft == 2'b00)) && (settleLeft == 2'b00)) && (pinLeft == 2'b00));
-  assign when_Ddr3ControllerCore_l768 = ((((! aligning) && (anchorLeft == 2'b00)) && (settleLeft == 2'b00)) && (pinLeft == 2'b00));
-  assign when_Ddr3ControllerCore_l788 = (scanOn && ((aligning || (anchorLeft != 2'b00)) || (settleLeft != 2'b00)));
-  assign when_Ddr3ControllerCore_l790 = (anchorLeft != 2'b00);
-  assign when_Ddr3ControllerCore_l802 = (navigateLeft != 8'h0);
-  assign when_Ddr3ControllerCore_l826 = (((aligning || (anchorLeft != 2'b00)) || (settleLeft != 2'b00)) || (pinLeft != 2'b00));
-  assign when_Ddr3ControllerCore_l827 = (anchorLeft != 2'b00);
-  assign when_Ddr3ControllerCore_l842 = (navigateLeft != 8'h0);
-  assign when_Ddr3ControllerCore_l867 = (pinLeft != 2'b00);
-  assign when_Ddr3ControllerCore_l885 = ((settleLeft == 2'b01) && applyArmed);
-  assign when_Ddr3ControllerCore_l910 = (settleLeft == 2'b00);
-  assign when_Ddr3ControllerCore_l915 = (bestCntDll < rotScoreW_7);
-  assign when_Ddr3ControllerCore_l925 = (bestCntDll == 4'b1000);
-  assign when_Ddr3ControllerCore_l950 = ((s2Side && (s2Mag == 7'h40)) && (rclkpos == 2'b11));
-  assign when_Ddr3ControllerCore_l986 = (rclkpos == 2'b11);
-  assign when_Ddr3ControllerCore_l992 = (((! s2Side) && (s2Mag == 7'h40)) && (! winDoneNow));
-  assign when_Ddr3ControllerCore_l1014 = ((s0Mag != 7'h40) && (! winDoneNow));
-  assign when_Ddr3ControllerCore_l1033 = (! training);
-  assign when_Ddr3ControllerCore_l1038 = (! winDoneNow);
-  assign when_Ddr3ControllerCore_l1063 = (bestCnt < rotScoreW_7);
-  assign when_Ddr3ControllerCore_l1070 = (rclksel == 3'b111);
-  assign when_Ddr3ControllerCore_l1074 = (rcalib_tries == 10'h028);
-  assign when_Ddr3ControllerCore_l1081 = ((! training) && (! dllSweepDone));
-  assign when_Ddr3ControllerCore_l1085 = (bestSurveyCnt < bestCnt);
-  assign when_Ddr3ControllerCore_l1092 = (bestCnt == 4'b1000);
-  assign when_Ddr3ControllerCore_l1101 = ((! scSide) && (_zz_when_Ddr3ControllerCore_l1101 <= 7'h08));
+  assign when_Ddr3ControllerCore_l743 = (io_phy_dq_raw[0] && io_phy_dq_raw[8]);
+  assign when_Ddr3ControllerCore_l702 = (3'b010 <= _zz_when_Ddr3ControllerCore_l702);
+  assign when_Ddr3ControllerCore_l695 = (wlVoteN == 3'b011);
+  assign when_Ddr3ControllerCore_l703 = (! wlSeenR);
+  assign when_Ddr3ControllerCore_l708 = (wlMatchNR != 8'hff);
+  assign when_Ddr3ControllerCore_l717 = (wlevel_tries == 9'h1ff);
+  assign when_Ddr3ControllerCore_l732 = ((wlevel_cnt == 4'b0001) && (8'h08 <= wstep));
+  assign when_Ddr3ControllerCore_l721 = (! when_Ddr3ControllerCore_l702);
+  assign when_Ddr3ControllerCore_l882 = ((((! aligning) && (anchorLeft == 2'b00)) && (settleLeft == 2'b00)) && (pinLeft == 2'b00));
+  assign when_Ddr3ControllerCore_l887 = ((((! aligning) && (anchorLeft == 2'b00)) && (settleLeft == 2'b00)) && (pinLeft == 2'b00));
+  assign when_Ddr3ControllerCore_l907 = (scanOn && ((aligning || (anchorLeft != 2'b00)) || (settleLeft != 2'b00)));
+  assign when_Ddr3ControllerCore_l909 = (anchorLeft != 2'b00);
+  assign when_Ddr3ControllerCore_l921 = (navigateLeft != 8'h0);
+  assign when_Ddr3ControllerCore_l945 = (((aligning || (anchorLeft != 2'b00)) || (settleLeft != 2'b00)) || (pinLeft != 2'b00));
+  assign when_Ddr3ControllerCore_l946 = (anchorLeft != 2'b00);
+  assign when_Ddr3ControllerCore_l961 = (navigateLeft != 8'h0);
+  assign when_Ddr3ControllerCore_l986 = (pinLeft != 2'b00);
+  assign when_Ddr3ControllerCore_l1004 = ((settleLeft == 2'b01) && applyArmed);
+  assign when_Ddr3ControllerCore_l1029 = (settleLeft == 2'b00);
+  assign when_Ddr3ControllerCore_l1034 = (bestCntDll < sweepScoreReg);
+  assign when_Ddr3ControllerCore_l1045 = (bestCntDll == 4'b1000);
+  assign when_Ddr3ControllerCore_l1070 = ((s2Side && (s2Mag == 7'h40)) && (rclkpos == 2'b11));
+  assign when_Ddr3ControllerCore_l1106 = (rclkpos == 2'b11);
+  assign when_Ddr3ControllerCore_l1112 = (((! s2Side) && (s2Mag == 7'h40)) && (! winDoneNow));
+  assign when_Ddr3ControllerCore_l1134 = ((s0Mag != 7'h40) && (! winDoneNow));
+  assign when_Ddr3ControllerCore_l1153 = (! training);
+  assign when_Ddr3ControllerCore_l1158 = (! winDoneNow);
+  assign when_Ddr3ControllerCore_l1183 = (bestCnt < sweepScoreReg);
+  assign when_Ddr3ControllerCore_l1191 = (rclksel == 3'b111);
+  assign when_Ddr3ControllerCore_l1195 = (rcalib_tries == 10'h028);
+  assign when_Ddr3ControllerCore_l1202 = ((! training) && (! dllSweepDone));
+  assign when_Ddr3ControllerCore_l1210 = ((! scanOn) && (! shiftCalDone));
+  assign when_Ddr3ControllerCore_l1212 = ((bestCnt == 4'b1000) && ((tryMode == 2'b00) || (! 1'b1)));
+  assign when_Ddr3ControllerCore_l1218 = ((tryMode == 2'b00) || (best0 < bestCnt));
+  assign when_Ddr3ControllerCore_l1225 = (tryMode < 2'b01);
+  assign _zz_wrMode = (tryMode + 2'b01);
+  assign when_Ddr3ControllerCore_l1234 = (bestCnt <= best0);
+  assign when_Ddr3ControllerCore_l1251 = (bestSurveyCnt < bestCnt);
+  assign when_Ddr3ControllerCore_l1258 = (bestCnt == 4'b1000);
+  assign when_Ddr3ControllerCore_l1267 = ((! scSide) && (_zz_when_Ddr3ControllerCore_l1267 <= 7'h08));
   assign _zz_s0Mag = (scMag + 7'h02);
-  assign when_Ddr3ControllerCore_l1113 = (_zz_when_Ddr3ControllerCore_l1113 <= 7'h08);
+  assign when_Ddr3ControllerCore_l1279 = (_zz_when_Ddr3ControllerCore_l1279 <= 7'h08);
   assign _zz_s0Mag_1 = (scMag + 7'h02);
-  assign when_Ddr3ControllerCore_l1106 = (! scSide);
-  assign when_Ddr3ControllerCore_l1142 = (sweepMagN != 7'h0);
-  assign when_Ddr3ControllerCore_l1179 = (bestCnt == 4'b1000);
-  assign when_Ddr3ControllerCore_l1224 = (! training);
+  assign when_Ddr3ControllerCore_l1272 = (! scSide);
+  assign when_Ddr3ControllerCore_l1308 = (sweepMagN != 7'h0);
+  assign when_Ddr3ControllerCore_l1345 = (bestCnt == 4'b1000);
+  assign when_Ddr3ControllerCore_l1390 = (! training);
+  assign _zz_1 = ({3'd0,1'b1} <<< wTry);
   assign _zz_state = (io_req_payload_write ? Ddr3State_WRITE : Ddr3State_READ);
-  assign when_Ddr3ControllerCore_l1312 = (! io_req_payload_write);
+  assign when_Ddr3ControllerCore_l1523 = (! io_req_payload_write);
   assign _zz_A_2 = {reqReg_addr[6 : 0],3'b000};
   assign _zz_BA_2 = reqReg_addr[23 : 21];
-  assign when_Ddr3ControllerCore_l1327 = (cycle == 5'h01);
-  assign when_Ddr3ControllerCore_l1333 = (cycle == 5'h02);
-  assign when_Ddr3ControllerCore_l1338 = (cycle == 5'h0b);
-  assign when_Ddr3ControllerCore_l1342 = (cycle == 5'h0c);
-  assign when_Ddr3ControllerCore_l1347 = (cycle == 5'h0d);
-  assign when_Ddr3ControllerCore_l1358 = (cycle == 5'h01);
-  assign when_Ddr3ControllerCore_l1364 = (cycle == 5'h02);
-  assign when_Ddr3ControllerCore_l1377 = (cycle == 5'h03);
-  assign when_Ddr3ControllerCore_l1402 = (cycle == 5'h04);
-  assign when_Ddr3ControllerCore_l1408 = (cycle == 5'h07);
-  assign when_Ddr3ControllerCore_l1429 = (cycle == 5'h10);
+  assign when_Ddr3ControllerCore_l1538 = (cycle == 5'h01);
+  assign when_Ddr3ControllerCore_l1543 = (cycle == 5'h02);
+  assign when_Ddr3ControllerCore_l1549 = (cycle == 5'h0a);
+  assign when_Ddr3ControllerCore_l1553 = (cycle == 5'h0b);
+  assign when_Ddr3ControllerCore_l1557 = (cycle == 5'h0c);
+  assign when_Ddr3ControllerCore_l1561 = (cycle == 5'h0d);
+  assign when_Ddr3ControllerCore_l1572 = (cycle == 5'h01);
+  assign when_Ddr3ControllerCore_l1578 = (cycle == 5'h02);
+  assign when_Ddr3ControllerCore_l1613 = (cycle == 5'h03);
+  assign when_Ddr3ControllerCore_l1699 = (cycle == 5'h04);
+  assign when_Ddr3ControllerCore_l1731 = (cycle == ((2'b10 <= wrMode) ? 5'h08 : 5'h07));
+  assign when_Ddr3ControllerCore_l1752 = (cycle == 5'h10);
   assign rdataVec_0 = _zz_rdataVec_0;
   assign rdataVec_1 = _zz_rdataVec_1;
   assign rdataVec_2 = _zz_rdataVec_2;
@@ -4367,7 +4459,7 @@ module Ddr3ControllerCore (
   assign io_phy_BA_3 = BA_3;
   assign io_phy_CKE = CKE;
   assign io_phy_resetn_delay = resetn_delay;
-  assign when_Ddr3ControllerCore_l1548 = (((((io_phy_rst_lock_n && (! _zz_when_Ddr3ControllerCore_l1548)) && (! busy)) && (state == Ddr3State_IDLE)) && wlevel_done) && rcalib_done);
+  assign when_Ddr3ControllerCore_l1907 = (((((io_phy_rst_lock_n && (! _zz_when_Ddr3ControllerCore_l1907)) && (! busy)) && (state == Ddr3State_IDLE)) && wlevel_done) && rcalib_done);
   assign io_init_done = init_done_latched;
   assign io_write_level_done = wlevel_done;
   assign io_read_calib_done = rcalib_done;
@@ -4381,8 +4473,11 @@ module Ddr3ControllerCore (
   assign io_wlFirst = wlFirstR;
   assign io_wlLast = wlLastR;
   assign io_wlMatchN = wlMatchNR;
-  always @(posedge io_pclk or posedge _zz_when_Ddr3ControllerCore_l1548) begin
-    if(_zz_when_Ddr3ControllerCore_l1548) begin
+  assign io_wr_adv = wrMode;
+  assign io_w_scores = {{wScores_2,wScores_1},wScores_0};
+  assign io_train_latch = bestLatch;
+  always @(posedge io_pclk or posedge _zz_when_Ddr3ControllerCore_l1907) begin
+    if(_zz_when_Ddr3ControllerCore_l1907) begin
       state <= Ddr3State_RST_WAIT;
       cycle <= 5'h0;
       tick_counter <= 17'h00001;
@@ -4402,6 +4497,10 @@ module Ddr3ControllerCore (
       wlMatchNR <= 8'h0;
       wlVoteN <= 3'b000;
       wlVoteCnt <= 3'b000;
+      wlVoteCnt0 <= 3'b000;
+      wlVoteCnt1 <= 3'b000;
+      wlLockedR <= 1'b0;
+      wlLockedStepR <= 8'h0;
       wstep <= 8'h18;
       rcalib_done <= 1'b0;
       rcalib_cnt <= 4'b0000;
@@ -4414,10 +4513,41 @@ module Ddr3ControllerCore (
       trainDone <= 1'b0;
       needPoison <= 1'b0;
       trainLatch <= 128'h0;
+      rotScoresReg_0 <= 4'b0000;
+      rotScoresReg_1 <= 4'b0000;
+      rotScoresReg_2 <= 4'b0000;
+      rotScoresReg_3 <= 4'b0000;
+      rotScoresReg_4 <= 4'b0000;
+      rotScoresReg_5 <= 4'b0000;
+      rotScoresReg_6 <= 4'b0000;
+      rotScoresReg_7 <= 4'b0000;
+      sweepScoreReg <= 4'b0000;
+      sweepRotReg <= 3'b000;
       bestCnt <= 4'b0000;
       bestPos <= 2'b00;
       bestSel <= 3'b000;
       bestRot <= 3'b000;
+      wrMode <= 2'b00;
+      shiftCalDone <= 1'b0;
+      tryMode <= 2'b00;
+      wCalDone <= 1'b0;
+      wTry <= 2'b00;
+      wBase <= 8'h0;
+      bestWstep <= 8'h0;
+      best0 <= 4'b0000;
+      best0Pos <= 2'b00;
+      best0Sel <= 3'b000;
+      best0Rot <= 3'b000;
+      bestMode <= 2'b00;
+      bestLatch <= 128'h0;
+      bestWCnt <= 4'b0000;
+      bestWPos <= 2'b00;
+      bestWSel <= 3'b000;
+      bestWRot <= 3'b000;
+      bestWMode <= 2'b00;
+      wScores_0 <= 4'b0000;
+      wScores_1 <= 4'b0000;
+      wScores_2 <= 4'b0000;
       dllSweepOn <= 1'b0;
       dllSweepDone <= 1'b0;
       bestCntDll <= 4'b0000;
@@ -4485,31 +4615,28 @@ module Ddr3ControllerCore (
     end else begin
       sweepMag0 <= 7'h0;
       sweepMagN <= 7'h0;
-      if(when_Ddr3ControllerCore_l392) begin
-        if(when_Ddr3ControllerCore_l393) begin
+      if(when_Ddr3ControllerCore_l449) begin
+        if(when_Ddr3ControllerCore_l450) begin
           refresh_due <= 1'b1;
           refresh_timer <= 11'h0;
         end else begin
           refresh_timer <= (refresh_timer + 11'h001);
         end
       end
-      if(when_Ddr3ControllerCore_l460) begin
+      if(when_Ddr3ControllerCore_l533) begin
         rburst_seen[0] <= 1'b1;
       end
-      if(when_Ddr3ControllerCore_l461) begin
+      if(when_Ddr3ControllerCore_l534) begin
         rburst_seen[1] <= 1'b1;
       end
       dqs_read <= 4'b0000;
-      if(when_Ddr3ControllerCore_l488) begin
+      if(when_Ddr3ControllerCore_l562) begin
         dqs_read <= 4'b1111;
       end
-      if(when_Ddr3ControllerCore_l491) begin
+      if(when_Ddr3ControllerCore_l565) begin
         dqs_read <= 4'b1111;
       end
       if(io_phy_rst_lock_n) begin
-        cycle <= ((cycle == 5'h1f) ? 5'h1f : _zz_cycle);
-        tick <= (tick_counter == 17'h00001);
-        tick_counter <= ((tick_counter == 17'h0) ? 17'h0 : _zz_tick_counter);
         nRAS_0 <= 1'b1;
         nCAS_0 <= 1'b1;
         nWE_0 <= 1'b1;
@@ -4535,357 +4662,373 @@ module Ddr3ControllerCore (
         dq_oen <= 4'b1111;
         dqs_out <= 8'h0;
         dqs_hold <= 1'b0;
-        case(state)
-          Ddr3State_RST_WAIT : begin
-            if(tick) begin
-              resetn_delay <= 1'b1;
-              tick_counter <= 17'h00013;
-              state <= Ddr3State_CKE_WAIT;
+        if(when_Ddr3ControllerCore_l603) begin
+          cycle <= ((cycle == 5'h1f) ? 5'h1f : _zz_cycle);
+          tick <= (tick_counter == 17'h00001);
+          tick_counter <= ((tick_counter == 17'h0) ? 17'h0 : _zz_tick_counter);
+          case(state)
+            Ddr3State_RST_WAIT : begin
+              if(tick) begin
+                resetn_delay <= 1'b1;
+                tick_counter <= 17'h00013;
+                state <= Ddr3State_CKE_WAIT;
+              end
             end
-          end
-          Ddr3State_CKE_WAIT : begin
-            if(when_Ddr3ControllerCore_l529) begin
-              CKE <= 1'b1;
-            end
-            if(tick) begin
-              state <= Ddr3State_CONFIG_1;
-              cycle <= 5'h0;
-            end
-          end
-          Ddr3State_CONFIG_1 : begin
-            case(cycle)
-              5'h0 : begin
-                nRAS_0 <= CMD_SetModeReg[2];
-                nCAS_0 <= CMD_SetModeReg[1];
-                nWE_0 <= CMD_SetModeReg[0];
-                BA_0 <= MR2[15 : 13];
-                A_0 <= {1'd0, _zz_A_0_1};
+            Ddr3State_CKE_WAIT : begin
+              if(when_Ddr3ControllerCore_l618) begin
+                CKE <= 1'b1;
               end
-              5'h02 : begin
-                nRAS_0 <= CMD_SetModeReg[2];
-                nCAS_0 <= CMD_SetModeReg[1];
-                nWE_0 <= CMD_SetModeReg[0];
-                BA_0 <= MR3[15 : 13];
-                A_0 <= {1'd0, _zz_A_0_2};
-              end
-              5'h04 : begin
-                nRAS_0 <= CMD_SetModeReg[2];
-                nCAS_0 <= CMD_SetModeReg[1];
-                nWE_0 <= CMD_SetModeReg[0];
-                BA_0 <= MR1[15 : 13];
-                A_0 <= {1'd0, _zz_A_0_3};
-              end
-              5'h06 : begin
-                nRAS_0 <= CMD_SetModeReg[2];
-                nCAS_0 <= CMD_SetModeReg[1];
-                nWE_0 <= CMD_SetModeReg[0];
-                BA_0 <= MR0[15 : 13];
-                A_0 <= {1'd0, _zz_A_0_4};
-              end
-              5'h0a : begin
-                nRAS_0 <= CMD_ZQCL[2];
-                nCAS_0 <= CMD_ZQCL[1];
-                nWE_0 <= CMD_ZQCL[0];
-                BA_0 <= 3'b000;
-                A_0 <= (_zz_A_0_5 <<< 10);
-                tick_counter <= 17'h00082;
-                state <= Ddr3State_ZQCL;
-              end
-              default : begin
-              end
-            endcase
-          end
-          Ddr3State_ZQCL : begin
-            if(tick) begin
-              state <= Ddr3State_WRITE_LEVELING;
-              cycle <= 5'h0;
-            end
-          end
-          Ddr3State_WRITE_LEVELING : begin
-            case(cycle)
-              5'h0 : begin
-                nRAS_0 <= CMD_SetModeReg[2];
-                nCAS_0 <= CMD_SetModeReg[1];
-                nWE_0 <= CMD_SetModeReg[0];
-                BA_0 <= _zz_A_0[15 : 13];
-                A_0 <= {1'd0, _zz_A_0_7};
-                wlevel_cnt <= 4'b0000;
-                wlMapR <= 256'h0;
-                wlFirstR <= 8'h0;
-                wlLastR <= 8'h0;
-                wlSeenR <= 1'b0;
-                wlMatchNR <= 8'h0;
-                wlVoteN <= 3'b000;
-                wlVoteCnt <= 3'b000;
-              end
-              5'h0a, 5'h0c, 5'h0d, 5'h0e, 5'h0f, 5'h10 : begin
-                dqs_out <= 8'h0;
-                dqs_oen <= 4'b0000;
-              end
-              5'h0b : begin
-                dqs_out <= 8'h55;
-                dqs_oen <= 4'b0000;
-              end
-              5'h11 : begin
-                dqs_out <= 8'h0;
-                dqs_oen <= 4'b0000;
-                if(when_Ddr3ControllerCore_l606) begin
-                  wlVoteN <= 3'b000;
-                  wlVoteCnt <= 3'b000;
-                  wlevel_tries <= (wlevel_tries + 9'h001);
-                  wlMapR[wstep] <= when_Ddr3ControllerCore_l613;
-                  if(when_Ddr3ControllerCore_l613) begin
-                    if(when_Ddr3ControllerCore_l614) begin
-                      wlSeenR <= 1'b1;
-                      wlFirstR <= wstep;
-                    end
-                    wlLastR <= wstep;
-                    if(when_Ddr3ControllerCore_l619) begin
-                      wlMatchNR <= (wlMatchNR + 8'h01);
-                    end
-                  end
-                  if(when_Ddr3ControllerCore_l628) begin
-                    wlevel_done <= 1'b1;
-                    wstep <= 8'hff;
-                    nRAS_0 <= CMD_SetModeReg[2];
-                    nCAS_0 <= CMD_SetModeReg[1];
-                    nWE_0 <= CMD_SetModeReg[0];
-                    BA_0 <= MR1[15 : 13];
-                    A_0 <= {1'd0, _zz_A_0_8};
-                  end else begin
-                    if(when_Ddr3ControllerCore_l632) begin
-                      wstep <= _zz_wstep;
-                      wlevel_cnt <= 4'b0000;
-                      cycle <= 5'h0a;
-                    end else begin
-                      wlevel_cnt <= (wlevel_cnt + 4'b0001);
-                      if(when_Ddr3ControllerCore_l643) begin
-                        wlevel_done <= 1'b1;
-                        wstep <= _zz_wstep_1;
-                        nRAS_0 <= CMD_SetModeReg[2];
-                        nCAS_0 <= CMD_SetModeReg[1];
-                        nWE_0 <= CMD_SetModeReg[0];
-                        BA_0 <= MR1[15 : 13];
-                        A_0 <= {1'd0, _zz_A_0_9};
-                      end else begin
-                        cycle <= 5'h0a;
-                      end
-                    end
-                  end
-                end else begin
-                  if(when_Ddr3ControllerCore_l654) begin
-                    wlVoteCnt <= (wlVoteCnt + 3'b001);
-                  end
-                  wlVoteN <= (wlVoteN + 3'b001);
-                  cycle <= 5'h0a;
-                end
-              end
-              5'h13 : begin
-                nRAS_0 <= CMD_SetModeReg[2];
-                nCAS_0 <= CMD_SetModeReg[1];
-                nWE_0 <= CMD_SetModeReg[0];
-                BA_0 <= MR2_RTT_WR[15 : 13];
-                A_0 <= {1'd0, _zz_A_0_10};
-              end
-              5'h16 : begin
-                state <= Ddr3State_READ_CALIB;
+              if(tick) begin
+                state <= Ddr3State_CONFIG_1;
                 cycle <= 5'h0;
               end
-              default : begin
-              end
-            endcase
-          end
-          Ddr3State_READ_CALIB : begin
-            case(cycle)
-              5'h0 : begin
-                nRAS_0 <= CMD_BankActivate[2];
-                nCAS_0 <= CMD_BankActivate[1];
-                nWE_0 <= CMD_BankActivate[0];
-                BA_0 <= 3'b000;
-                A_0 <= {13'd0, _zz_A_0_11};
-                dqs_hold <= 1'b1;
-                if(bistReturn) begin
-                  bistReturn <= 1'b0;
-                end else begin
-                  rcalib_cnt <= 4'b0000;
-                  rcalib_tries <= 10'h0;
-                  bestCnt <= 4'b0000;
-                  bestPos <= rclkpos;
-                  bestSel <= rclksel;
-                  bestRot <= 3'b000;
-                  dllSweepOn <= 1'b0;
-                  bestCntDll <= 4'b0000;
-                  s0Side <= 1'b0;
-                  s0Mag <= 7'h0;
-                  s1Side <= 1'b0;
-                  s1Mag <= 7'h0;
-                  s2Side <= 1'b0;
-                  s2Mag <= 7'h0;
-                  bestSide <= 1'b0;
-                  bestMag <= 7'h0;
-                  scanOn <= 1'b0;
-                  scSide <= 1'b0;
-                  scMag <= 7'h0;
-                  bestSurveyCnt <= 4'b0000;
-                  bestSurveySide <= 1'b0;
-                  bestSurveyMag <= 7'h0;
-                  anchorLeft <= 2'b00;
-                  aligning <= 1'b0;
-                  settleLeft <= 2'b00;
-                  pinLeft <= 2'b00;
-                  applyArmed <= 1'b0;
-                  navigateLeft <= 8'h0;
+            end
+            Ddr3State_CONFIG_1 : begin
+              case(cycle)
+                5'h0 : begin
+                  nRAS_0 <= CMD_SetModeReg[2];
+                  nCAS_0 <= CMD_SetModeReg[1];
+                  nWE_0 <= CMD_SetModeReg[0];
+                  BA_0 <= MR2[15 : 13];
+                  A_0 <= {1'd0, _zz_A_0_1};
                 end
+                5'h02 : begin
+                  nRAS_0 <= CMD_SetModeReg[2];
+                  nCAS_0 <= CMD_SetModeReg[1];
+                  nWE_0 <= CMD_SetModeReg[0];
+                  BA_0 <= MR3[15 : 13];
+                  A_0 <= {1'd0, _zz_A_0_2};
+                end
+                5'h04 : begin
+                  nRAS_0 <= CMD_SetModeReg[2];
+                  nCAS_0 <= CMD_SetModeReg[1];
+                  nWE_0 <= CMD_SetModeReg[0];
+                  BA_0 <= MR1[15 : 13];
+                  A_0 <= {1'd0, _zz_A_0_3};
+                end
+                5'h06 : begin
+                  nRAS_0 <= CMD_SetModeReg[2];
+                  nCAS_0 <= CMD_SetModeReg[1];
+                  nWE_0 <= CMD_SetModeReg[0];
+                  BA_0 <= MR0[15 : 13];
+                  A_0 <= {1'd0, _zz_A_0_4};
+                end
+                5'h0a : begin
+                  nRAS_0 <= CMD_ZQCL[2];
+                  nCAS_0 <= CMD_ZQCL[1];
+                  nWE_0 <= CMD_ZQCL[0];
+                  BA_0 <= 3'b000;
+                  A_0 <= (_zz_A_0_5 <<< 10);
+                  tick_counter <= 17'h00082;
+                  state <= Ddr3State_ZQCL;
+                end
+                default : begin
+                end
+              endcase
+            end
+            Ddr3State_ZQCL : begin
+              if(tick) begin
+                state <= Ddr3State_WRITE_LEVELING;
+                cycle <= 5'h0;
               end
-              5'h01 : begin
-                nRAS_2 <= CMD_Read[2];
-                nCAS_2 <= CMD_Read[1];
-                nWE_2 <= CMD_Read[0];
-                BA_2 <= 3'b000;
-                A_2 <= (_zz_A_2_1 <<< 12);
-                rburst_seen <= 2'b00;
-              end
-              5'h02 : begin
-                nRAS_2 <= CMD_Read[2];
-                nCAS_2 <= CMD_Read[1];
-                nWE_2 <= CMD_Read[0];
-                BA_2 <= 3'b000;
-                A_2 <= (_zz_A_2_3 <<< 12);
-              end
-              5'h0b : begin
-                trainLatch <= {{{{{{{io_phy_dq_in_7,io_phy_dq_in_6},io_phy_dq_in_5},io_phy_dq_in_4},io_phy_dq_in_3},io_phy_dq_in_2},io_phy_dq_in_1},io_phy_dq_in_0};
-              end
-              5'h0c : begin
-                if(when_Ddr3ControllerCore_l763) begin
-                  `ifndef SYNTHESIS
-                    `ifdef FORMAL
-                      assert(1'b0); // Ddr3ControllerCore.scala:L764
-                    `else
-                      if(!1'b0) begin
-                        $display("NOTE RCALIB chk pos=%x sel=%x seen=%x score=%x rot=%x latch=%x best=%x tries=%x", rclkpos, rclksel, rburst_seen, rotScoreW_7, rotIdxW_7, trainLatch, bestCnt, rcalib_tries); // Ddr3ControllerCore.scala:L764
+            end
+            Ddr3State_WRITE_LEVELING : begin
+              case(cycle)
+                5'h0 : begin
+                  nRAS_0 <= CMD_SetModeReg[2];
+                  nCAS_0 <= CMD_SetModeReg[1];
+                  nWE_0 <= CMD_SetModeReg[0];
+                  BA_0 <= _zz_A_0[15 : 13];
+                  A_0 <= {1'd0, _zz_A_0_7};
+                  wlevel_cnt <= 4'b0000;
+                  wlMapR <= 256'h0;
+                  wlFirstR <= 8'h0;
+                  wlLastR <= 8'h0;
+                  wlSeenR <= 1'b0;
+                  wlMatchNR <= 8'h0;
+                  wlVoteN <= 3'b000;
+                  wlVoteCnt <= 3'b000;
+                end
+                5'h0a, 5'h0c, 5'h0d, 5'h0e, 5'h0f, 5'h10 : begin
+                  dqs_out <= 8'h0;
+                  dqs_oen <= 4'b0000;
+                end
+                5'h0b : begin
+                  dqs_out <= 8'h55;
+                  dqs_oen <= 4'b0000;
+                end
+                5'h11 : begin
+                  dqs_out <= 8'h0;
+                  dqs_oen <= 4'b0000;
+                  if(when_Ddr3ControllerCore_l695) begin
+                    wlVoteN <= 3'b000;
+                    wlVoteCnt <= 3'b000;
+                    wlevel_tries <= (wlevel_tries + 9'h001);
+                    wlMapR[wstep] <= when_Ddr3ControllerCore_l702;
+                    if(when_Ddr3ControllerCore_l702) begin
+                      if(when_Ddr3ControllerCore_l703) begin
+                        wlSeenR <= 1'b1;
+                        wlFirstR <= wstep;
                       end
-                    `endif
-                  `endif
-                end
-                rcalib_cnt <= 4'b0000;
-                if(when_Ddr3ControllerCore_l768) begin
-                  rcalib_tries <= (rcalib_tries + 10'h001);
-                end
-                if(when_Ddr3ControllerCore_l788) begin
-                  rmove <= 1'b0;
-                  if(when_Ddr3ControllerCore_l790) begin
-                    anchorLeft <= (anchorLeft - 2'b01);
-                    cycle <= 5'h01;
-                  end else begin
-                    if(aligning) begin
-                      if(when_Ddr3ControllerCore_l802) begin
-                        rdir <= s0Side;
-                        rmove <= navigateLeft[0];
-                        navigateLeft <= (navigateLeft - 8'h01);
-                        cycle <= 5'h01;
-                      end else begin
-                        settleLeft <= 2'b10;
-                        aligning <= 1'b0;
-                        cycle <= 5'h01;
+                      wlLastR <= wstep;
+                      if(when_Ddr3ControllerCore_l708) begin
+                        wlMatchNR <= (wlMatchNR + 8'h01);
                       end
-                    end else begin
-                      settleLeft <= (settleLeft - 2'b01);
-                      cycle <= 5'h01;
                     end
-                  end
-                end else begin
-                  if(dllSweepOn) begin
-                    rmove <= 1'b0;
-                    if(when_Ddr3ControllerCore_l826) begin
-                      if(when_Ddr3ControllerCore_l827) begin
-                        anchorLeft <= (anchorLeft - 2'b01);
-                        cycle <= 5'h01;
+                    if(when_Ddr3ControllerCore_l717) begin
+                      wlevel_done <= 1'b1;
+                      wstep <= 8'hff;
+                      nRAS_0 <= CMD_SetModeReg[2];
+                      nCAS_0 <= CMD_SetModeReg[1];
+                      nWE_0 <= CMD_SetModeReg[0];
+                      BA_0 <= MR1[15 : 13];
+                      A_0 <= {1'd0, _zz_A_0_8};
+                    end else begin
+                      if(when_Ddr3ControllerCore_l721) begin
+                        wstep <= _zz_wstep;
+                        wlevel_cnt <= 4'b0000;
+                        cycle <= 5'h0a;
                       end else begin
-                        if(aligning) begin
-                          if(when_Ddr3ControllerCore_l842) begin
-                            rdir <= (applyArmed ? bestSide : s0Side);
-                            rmove <= navigateLeft[0];
-                            navigateLeft <= (navigateLeft - 8'h01);
-                            cycle <= 5'h01;
-                          end else begin
-                            settleLeft <= 2'b10;
-                            aligning <= 1'b0;
-                            cycle <= 5'h01;
-                          end
+                        wlevel_cnt <= (wlevel_cnt + 4'b0001);
+                        if(when_Ddr3ControllerCore_l732) begin
+                          wlevel_done <= 1'b1;
+                          wstep <= _zz_wstep_1;
+                          nRAS_0 <= CMD_SetModeReg[2];
+                          nCAS_0 <= CMD_SetModeReg[1];
+                          nWE_0 <= CMD_SetModeReg[0];
+                          BA_0 <= MR1[15 : 13];
+                          A_0 <= {1'd0, _zz_A_0_9};
                         end else begin
-                          if(when_Ddr3ControllerCore_l867) begin
-                            dqs_hold <= 1'b1;
-                            s1Side <= s0Side;
-                            s1Mag <= s0Mag;
-                            s2Side <= s1Side;
-                            s2Mag <= s1Mag;
-                            pinLeft <= (pinLeft - 2'b01);
-                            cycle <= 5'h01;
-                          end else begin
-                            settleLeft <= (settleLeft - 2'b01);
-                            s1Side <= s0Side;
-                            s1Mag <= s0Mag;
-                            s2Side <= s1Side;
-                            s2Mag <= s1Mag;
-                            if(when_Ddr3ControllerCore_l885) begin
-                              rclkpos <= bestPos;
-                              needFinalSurvey <= 1'b1;
-                              dllSweepDone <= 1'b1;
-                              dllSweepOn <= 1'b0;
-                              applyArmed <= 1'b0;
-                              `ifndef SYNTHESIS
-                                `ifdef FORMAL
-                                  assert(1'b0); // Ddr3ControllerCore.scala:L895
-                                `else
-                                  if(!1'b0) begin
-                                    $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L895
-                                  end
-                                `endif
-                              `endif
-                              nRAS_0 <= CMD_PreCharge[2];
-                              nCAS_0 <= CMD_PreCharge[1];
-                              nWE_0 <= CMD_PreCharge[0];
-                              BA_0 <= 3'b000;
-                              A_0 <= {13'd0, _zz_A_0_12};
-                            end else begin
+                          cycle <= 5'h0a;
+                        end
+                      end
+                    end
+                  end else begin
+                    if(when_Ddr3ControllerCore_l743) begin
+                      wlVoteCnt <= (wlVoteCnt + 3'b001);
+                    end
+                    wlVoteN <= (wlVoteN + 3'b001);
+                    cycle <= 5'h0a;
+                  end
+                end
+                5'h13 : begin
+                  nRAS_0 <= CMD_SetModeReg[2];
+                  nCAS_0 <= CMD_SetModeReg[1];
+                  nWE_0 <= CMD_SetModeReg[0];
+                  BA_0 <= MR2_RTT_WR[15 : 13];
+                  A_0 <= {1'd0, _zz_A_0_10};
+                end
+                5'h16 : begin
+                  state <= Ddr3State_READ_CALIB;
+                  cycle <= 5'h0;
+                end
+                default : begin
+                end
+              endcase
+            end
+            Ddr3State_READ_CALIB : begin
+              case(cycle)
+                5'h0 : begin
+                  nRAS_0 <= CMD_BankActivate[2];
+                  nCAS_0 <= CMD_BankActivate[1];
+                  nWE_0 <= CMD_BankActivate[0];
+                  BA_0 <= 3'b000;
+                  A_0 <= {13'd0, _zz_A_0_11};
+                  dqs_hold <= 1'b1;
+                  if(bistReturn) begin
+                    bistReturn <= 1'b0;
+                  end else begin
+                    if(training) begin
+                      shiftCalDone <= 1'b0;
+                      tryMode <= 2'b00;
+                      wrMode <= 2'b00;
+                      bestMode <= 2'b00;
+                      wCalDone <= 1'b0;
+                      wTry <= 2'b00;
+                      wBase <= 8'h0;
+                      bestWstep <= 8'h0;
+                      bestWCnt <= 4'b0000;
+                      bestWPos <= 2'b00;
+                      bestWSel <= 3'b000;
+                      bestWRot <= 3'b000;
+                      bestWMode <= 2'b00;
+                      wScores_0 <= 4'b0000;
+                      wScores_1 <= 4'b0000;
+                      wScores_2 <= 4'b0000;
+                    end
+                    rcalib_cnt <= 4'b0000;
+                    rcalib_tries <= 10'h0;
+                    bestCnt <= 4'b0000;
+                    bestLatch <= 128'h0;
+                    bestPos <= rclkpos;
+                    bestSel <= rclksel;
+                    bestRot <= 3'b000;
+                    dllSweepOn <= 1'b0;
+                    bestCntDll <= 4'b0000;
+                    s0Side <= 1'b0;
+                    s0Mag <= 7'h0;
+                    s1Side <= 1'b0;
+                    s1Mag <= 7'h0;
+                    s2Side <= 1'b0;
+                    s2Mag <= 7'h0;
+                    bestSide <= 1'b0;
+                    bestMag <= 7'h0;
+                    scanOn <= 1'b0;
+                    scSide <= 1'b0;
+                    scMag <= 7'h0;
+                    bestSurveyCnt <= 4'b0000;
+                    bestSurveySide <= 1'b0;
+                    bestSurveyMag <= 7'h0;
+                    anchorLeft <= 2'b00;
+                    aligning <= 1'b0;
+                    settleLeft <= 2'b00;
+                    pinLeft <= 2'b00;
+                    applyArmed <= 1'b0;
+                    navigateLeft <= 8'h0;
+                  end
+                end
+                5'h01 : begin
+                  nRAS_2 <= CMD_Read[2];
+                  nCAS_2 <= CMD_Read[1];
+                  nWE_2 <= CMD_Read[0];
+                  BA_2 <= 3'b000;
+                  A_2 <= (_zz_A_2_1 <<< 12);
+                  rburst_seen <= 2'b00;
+                end
+                5'h02 : begin
+                  nRAS_2 <= CMD_Read[2];
+                  nCAS_2 <= CMD_Read[1];
+                  nWE_2 <= CMD_Read[0];
+                  BA_2 <= 3'b000;
+                  A_2 <= (_zz_A_2_3 <<< 12);
+                end
+                5'h0b : begin
+                  trainLatch <= {{{{{{{io_phy_dq_in_7,io_phy_dq_in_6},io_phy_dq_in_5},io_phy_dq_in_4},io_phy_dq_in_3},io_phy_dq_in_2},io_phy_dq_in_1},io_phy_dq_in_0};
+                end
+                5'h0c : begin
+                  rotScoresReg_0 <= rotScores_0;
+                  rotScoresReg_1 <= rotScores_1;
+                  rotScoresReg_2 <= rotScores_2;
+                  rotScoresReg_3 <= rotScores_3;
+                  rotScoresReg_4 <= rotScores_4;
+                  rotScoresReg_5 <= rotScores_5;
+                  rotScoresReg_6 <= rotScores_6;
+                  rotScoresReg_7 <= rotScores_7;
+                end
+                5'h0d : begin
+                  sweepScoreReg <= rotScoreW_7;
+                  sweepRotReg <= rotIdxW_7;
+                end
+                5'h0e : begin
+                  if(when_Ddr3ControllerCore_l882) begin
+                    `ifndef SYNTHESIS
+                      `ifdef FORMAL
+                        assert(1'b0); // Ddr3ControllerCore.scala:L883
+                      `else
+                        if(!1'b0) begin
+                          $display("NOTE RCALIB chk pos=%x sel=%x seen=%x score=%x rot=%x latch=%x best=%x tries=%x", rclkpos, rclksel, rburst_seen, sweepScoreReg, sweepRotReg, trainLatch, bestCnt, rcalib_tries); // Ddr3ControllerCore.scala:L883
+                        end
+                      `endif
+                    `endif
+                  end
+                  rcalib_cnt <= 4'b0000;
+                  if(when_Ddr3ControllerCore_l887) begin
+                    rcalib_tries <= (rcalib_tries + 10'h001);
+                  end
+                  if(when_Ddr3ControllerCore_l907) begin
+                    rmove <= 1'b0;
+                    if(when_Ddr3ControllerCore_l909) begin
+                      anchorLeft <= (anchorLeft - 2'b01);
+                      cycle <= 5'h01;
+                    end else begin
+                      if(aligning) begin
+                        if(when_Ddr3ControllerCore_l921) begin
+                          rdir <= s0Side;
+                          rmove <= navigateLeft[0];
+                          navigateLeft <= (navigateLeft - 8'h01);
+                          cycle <= 5'h01;
+                        end else begin
+                          settleLeft <= 2'b10;
+                          aligning <= 1'b0;
+                          cycle <= 5'h01;
+                        end
+                      end else begin
+                        settleLeft <= (settleLeft - 2'b01);
+                        cycle <= 5'h01;
+                      end
+                    end
+                  end else begin
+                    if(dllSweepOn) begin
+                      rmove <= 1'b0;
+                      if(when_Ddr3ControllerCore_l945) begin
+                        if(when_Ddr3ControllerCore_l946) begin
+                          anchorLeft <= (anchorLeft - 2'b01);
+                          cycle <= 5'h01;
+                        end else begin
+                          if(aligning) begin
+                            if(when_Ddr3ControllerCore_l961) begin
+                              rdir <= (applyArmed ? bestSide : s0Side);
+                              rmove <= navigateLeft[0];
+                              navigateLeft <= (navigateLeft - 8'h01);
                               cycle <= 5'h01;
+                            end else begin
+                              settleLeft <= 2'b10;
+                              aligning <= 1'b0;
+                              cycle <= 5'h01;
+                            end
+                          end else begin
+                            if(when_Ddr3ControllerCore_l986) begin
+                              dqs_hold <= 1'b1;
+                              s1Side <= s0Side;
+                              s1Mag <= s0Mag;
+                              s2Side <= s1Side;
+                              s2Mag <= s1Mag;
+                              pinLeft <= (pinLeft - 2'b01);
+                              cycle <= 5'h01;
+                            end else begin
+                              settleLeft <= (settleLeft - 2'b01);
+                              s1Side <= s0Side;
+                              s1Mag <= s0Mag;
+                              s2Side <= s1Side;
+                              s2Mag <= s1Mag;
+                              if(when_Ddr3ControllerCore_l1004) begin
+                                rclkpos <= bestPos;
+                                needFinalSurvey <= 1'b1;
+                                dllSweepDone <= 1'b1;
+                                dllSweepOn <= 1'b0;
+                                applyArmed <= 1'b0;
+                                `ifndef SYNTHESIS
+                                  `ifdef FORMAL
+                                    assert(1'b0); // Ddr3ControllerCore.scala:L1014
+                                  `else
+                                    if(!1'b0) begin
+                                      $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L1014
+                                    end
+                                  `endif
+                                `endif
+                                nRAS_0 <= CMD_PreCharge[2];
+                                nCAS_0 <= CMD_PreCharge[1];
+                                nWE_0 <= CMD_PreCharge[0];
+                                BA_0 <= 3'b000;
+                                A_0 <= {13'd0, _zz_A_0_12};
+                              end else begin
+                                cycle <= 5'h01;
+                              end
                             end
                           end
                         end
-                      end
-                    end else begin
-                      if(when_Ddr3ControllerCore_l910) begin
-                        if(when_Ddr3ControllerCore_l915) begin
-                          bestCntDll <= rotScoreW_7;
-                          bestMag <= s2Mag;
-                          bestSide <= s2Side;
-                          bestPos <= rclkpos;
-                          bestSel <= rclksel;
-                          bestRot <= rotIdxW_7;
-                        end
-                        if(when_Ddr3ControllerCore_l925) begin
-                          aligning <= 1'b1;
-                          anchorLeft <= 2'b10;
-                          navigateLeft <= ({1'd0,bestMag} <<< 1'd1);
-                          applyArmed <= 1'b1;
-                          s0Side <= bestSide;
-                          s0Mag <= bestMag;
-                          s1Side <= bestSide;
-                          s1Mag <= bestMag;
-                          s2Side <= bestSide;
-                          s2Mag <= bestMag;
-                          `ifndef SYNTHESIS
-                            `ifdef FORMAL
-                              assert(1'b0); // Ddr3ControllerCore.scala:L940
-                            `else
-                              if(!1'b0) begin
-                                $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L940
-                              end
-                            `endif
-                          `endif
-                          cycle <= 5'h01;
-                        end else begin
-                          if(when_Ddr3ControllerCore_l950) begin
+                      end else begin
+                        if(when_Ddr3ControllerCore_l1029) begin
+                          if(when_Ddr3ControllerCore_l1034) begin
+                            bestCntDll <= sweepScoreReg;
+                            bestLatch <= trainLatch;
+                            bestMag <= s2Mag;
+                            bestSide <= s2Side;
+                            bestPos <= rclkpos;
+                            bestSel <= rclksel;
+                            bestRot <= sweepRotReg;
+                          end
+                          if(when_Ddr3ControllerCore_l1045) begin
                             aligning <= 1'b1;
                             anchorLeft <= 2'b10;
                             navigateLeft <= ({1'd0,bestMag} <<< 1'd1);
@@ -4898,210 +5041,355 @@ module Ddr3ControllerCore (
                             s2Mag <= bestMag;
                             `ifndef SYNTHESIS
                               `ifdef FORMAL
-                                assert(1'b0); // Ddr3ControllerCore.scala:L963
+                                assert(1'b0); // Ddr3ControllerCore.scala:L1060
                               `else
                                 if(!1'b0) begin
-                                  $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L963
+                                  $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L1060
                                 end
                               `endif
                             `endif
                             cycle <= 5'h01;
                           end else begin
-                            s1Side <= s0Side;
-                            s1Mag <= s0Mag;
-                            s2Side <= s1Side;
-                            s2Mag <= s1Mag;
-                            rclkpos <= _zz_rclkpos;
-                            rdir <= s0Side;
-                            if(when_Ddr3ControllerCore_l986) begin
-                              if(when_Ddr3ControllerCore_l992) begin
-                                s0Side <= 1'b1;
-                                s0Mag <= 7'h01;
-                                s1Side <= 1'b1;
-                                s1Mag <= 7'h01;
-                                s2Side <= 1'b1;
-                                s2Mag <= 7'h01;
-                                aligning <= 1'b1;
-                                anchorLeft <= 2'b10;
-                                navigateLeft <= 8'h02;
-                                applyArmed <= 1'b0;
-                                `ifndef SYNTHESIS
-                                  `ifdef FORMAL
-                                    assert(1'b0); // Ddr3ControllerCore.scala:L1004
-                                  `else
-                                    if(!1'b0) begin
-                                      $display("NOTE RCALIB dll side switch to minus"); // Ddr3ControllerCore.scala:L1004
-                                    end
-                                  `endif
-                                `endif
-                              end else begin
-                                if(when_Ddr3ControllerCore_l1014) begin
-                                  s0Mag <= (s0Mag + 7'h01);
-                                  rmove <= 1'b1;
-                                  pinLeft <= 2'b10;
-                                end
-                              end
-                            end
-                            if(winDoneNow) begin
-                              dllSweepOn <= 1'b0;
+                            if(when_Ddr3ControllerCore_l1070) begin
+                              aligning <= 1'b1;
+                              anchorLeft <= 2'b10;
+                              navigateLeft <= ({1'd0,bestMag} <<< 1'd1);
+                              applyArmed <= 1'b1;
+                              s0Side <= bestSide;
+                              s0Mag <= bestMag;
+                              s1Side <= bestSide;
+                              s1Mag <= bestMag;
+                              s2Side <= bestSide;
+                              s2Mag <= bestMag;
                               `ifndef SYNTHESIS
                                 `ifdef FORMAL
-                                  assert(1'b0); // Ddr3ControllerCore.scala:L1031
+                                  assert(1'b0); // Ddr3ControllerCore.scala:L1083
                                 `else
                                   if(!1'b0) begin
-                                    $display("NOTE RCALIB window side=%x mag=%x pos=%x rot=%x score=%x", bestSide, bestMag, bestPos, bestRot, bestCntDll); // Ddr3ControllerCore.scala:L1031
+                                    $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L1083
                                   end
                                 `endif
                               `endif
-                              if(when_Ddr3ControllerCore_l1033) begin
-                                rcalib_done <= 1'b1;
+                              cycle <= 5'h01;
+                            end else begin
+                              s1Side <= s0Side;
+                              s1Mag <= s0Mag;
+                              s2Side <= s1Side;
+                              s2Mag <= s1Mag;
+                              rclkpos <= _zz_rclkpos;
+                              rdir <= s0Side;
+                              if(when_Ddr3ControllerCore_l1106) begin
+                                if(when_Ddr3ControllerCore_l1112) begin
+                                  s0Side <= 1'b1;
+                                  s0Mag <= 7'h01;
+                                  s1Side <= 1'b1;
+                                  s1Mag <= 7'h01;
+                                  s2Side <= 1'b1;
+                                  s2Mag <= 7'h01;
+                                  aligning <= 1'b1;
+                                  anchorLeft <= 2'b10;
+                                  navigateLeft <= 8'h02;
+                                  applyArmed <= 1'b0;
+                                  `ifndef SYNTHESIS
+                                    `ifdef FORMAL
+                                      assert(1'b0); // Ddr3ControllerCore.scala:L1124
+                                    `else
+                                      if(!1'b0) begin
+                                        $display("NOTE RCALIB dll side switch to minus"); // Ddr3ControllerCore.scala:L1124
+                                      end
+                                    `endif
+                                  `endif
+                                end else begin
+                                  if(when_Ddr3ControllerCore_l1134) begin
+                                    s0Mag <= (s0Mag + 7'h01);
+                                    rmove <= 1'b1;
+                                    pinLeft <= 2'b10;
+                                  end
+                                end
                               end
-                              nRAS_0 <= CMD_PreCharge[2];
-                              nCAS_0 <= CMD_PreCharge[1];
-                              nWE_0 <= CMD_PreCharge[0];
-                              BA_0 <= 3'b000;
-                              A_0 <= {13'd0, _zz_A_0_13};
+                              if(winDoneNow) begin
+                                dllSweepOn <= 1'b0;
+                                `ifndef SYNTHESIS
+                                  `ifdef FORMAL
+                                    assert(1'b0); // Ddr3ControllerCore.scala:L1151
+                                  `else
+                                    if(!1'b0) begin
+                                      $display("NOTE RCALIB window side=%x mag=%x pos=%x rot=%x score=%x", bestSide, bestMag, bestPos, bestRot, bestCntDll); // Ddr3ControllerCore.scala:L1151
+                                    end
+                                  `endif
+                                `endif
+                                if(when_Ddr3ControllerCore_l1153) begin
+                                  rcalib_done <= 1'b1;
+                                end
+                                nRAS_0 <= CMD_PreCharge[2];
+                                nCAS_0 <= CMD_PreCharge[1];
+                                nWE_0 <= CMD_PreCharge[0];
+                                BA_0 <= 3'b000;
+                                A_0 <= {13'd0, _zz_A_0_13};
+                              end
+                              if(when_Ddr3ControllerCore_l1158) begin
+                                trainDone <= 1'b1;
+                                needPoison <= 1'b0;
+                                bistReturn <= 1'b1;
+                                state <= Ddr3State_WRITE;
+                                cycle <= 5'h0;
+                              end
                             end
-                            if(when_Ddr3ControllerCore_l1038) begin
+                          end
+                        end
+                      end
+                    end else begin
+                      if(when_Ddr3ControllerCore_l1183) begin
+                        bestCnt <= sweepScoreReg;
+                        bestLatch <= trainLatch;
+                        bestPos <= rclkpos;
+                        bestSel <= rclksel;
+                        bestRot <= sweepRotReg;
+                      end
+                      rclksel <= _zz_rclksel;
+                      if(when_Ddr3ControllerCore_l1191) begin
+                        rclkpos <= _zz_rclkpos_1;
+                      end
+                      if(when_Ddr3ControllerCore_l1195) begin
+                        rclkpos <= bestPos;
+                        rclksel <= bestSel;
+                        if(when_Ddr3ControllerCore_l1202) begin
+                          if(when_Ddr3ControllerCore_l1210) begin
+                            if(when_Ddr3ControllerCore_l1212) begin
+                              shiftCalDone <= 1'b1;
+                              rcalib_tries <= 10'h028;
                               trainDone <= 1'b1;
                               needPoison <= 1'b0;
                               bistReturn <= 1'b1;
                               state <= Ddr3State_WRITE;
                               cycle <= 5'h0;
+                            end else begin
+                              if(when_Ddr3ControllerCore_l1218) begin
+                                best0 <= bestCnt;
+                                bestMode <= wrMode;
+                                best0Pos <= bestPos;
+                                best0Sel <= bestSel;
+                                best0Rot <= bestRot;
+                              end
+                              if(when_Ddr3ControllerCore_l1225) begin
+                                tryMode <= _zz_wrMode;
+                                wrMode <= _zz_wrMode;
+                                rcalib_tries <= 10'h0;
+                                bestCnt <= 4'b0000;
+                                bestLatch <= 128'h0;
+                                trainDone <= 1'b1;
+                                needPoison <= 1'b0;
+                                bistReturn <= 1'b1;
+                                state <= Ddr3State_WRITE;
+                                cycle <= 5'h0;
+                              end else begin
+                                if(when_Ddr3ControllerCore_l1234) begin
+                                  bestCnt <= best0;
+                                  bestPos <= best0Pos;
+                                  bestSel <= best0Sel;
+                                  bestRot <= best0Rot;
+                                  wrMode <= bestMode;
+                                end
+                                shiftCalDone <= 1'b1;
+                                rcalib_tries <= 10'h028;
+                                trainDone <= 1'b1;
+                                needPoison <= 1'b0;
+                                bistReturn <= 1'b1;
+                                state <= Ddr3State_WRITE;
+                                cycle <= 5'h0;
+                              end
                             end
                           end
-                        end
-                      end
-                    end
-                  end else begin
-                    if(when_Ddr3ControllerCore_l1063) begin
-                      bestCnt <= rotScoreW_7;
-                      bestPos <= rclkpos;
-                      bestSel <= rclksel;
-                      bestRot <= rotIdxW_7;
-                    end
-                    rclksel <= _zz_rclksel;
-                    if(when_Ddr3ControllerCore_l1070) begin
-                      rclkpos <= _zz_rclkpos_1;
-                    end
-                    if(when_Ddr3ControllerCore_l1074) begin
-                      rclkpos <= bestPos;
-                      rclksel <= bestSel;
-                      if(when_Ddr3ControllerCore_l1081) begin
-                        if(scanOn) begin
-                          if(when_Ddr3ControllerCore_l1085) begin
-                            bestSurveyCnt <= bestCnt;
-                            bestSurveySide <= scSide;
-                            bestSurveyMag <= scMag;
-                          end
-                          if(when_Ddr3ControllerCore_l1092) begin
-                            `ifndef SYNTHESIS
-                              `ifdef FORMAL
-                                assert(1'b0); // Ddr3ControllerCore.scala:L1094
-                              `else
-                                if(!1'b0) begin
-                                  $display("NOTE RCALIB scan sweep at side=%x mag=%x score=%x", scSide, scMag, bestCnt); // Ddr3ControllerCore.scala:L1094
-                                end
+                          if(scanOn) begin
+                            if(when_Ddr3ControllerCore_l1251) begin
+                              bestSurveyCnt <= bestCnt;
+                              bestSurveySide <= scSide;
+                              bestSurveyMag <= scMag;
+                            end
+                            if(when_Ddr3ControllerCore_l1258) begin
+                              `ifndef SYNTHESIS
+                                `ifdef FORMAL
+                                  assert(1'b0); // Ddr3ControllerCore.scala:L1260
+                                `else
+                                  if(!1'b0) begin
+                                    $display("NOTE RCALIB scan sweep at side=%x mag=%x score=%x", scSide, scMag, bestCnt); // Ddr3ControllerCore.scala:L1260
+                                  end
+                                `endif
                               `endif
-                            `endif
-                            scanOn <= 1'b0;
-                            dllSweepOn <= 1'b1;
-                            bestCntDll <= 4'b0000;
-                            bestSide <= 1'b0;
-                            bestMag <= 7'h0;
-                            rcalib_tries <= 10'h0;
-                            rclksel[0] <= 1'b0;
-                            s0Side <= scSide;
-                            s0Mag <= scMag;
-                            s1Side <= scSide;
-                            s1Mag <= scMag;
-                            s2Side <= scSide;
-                            s2Mag <= scMag;
-                            rclkpos <= 2'b00;
-                            aligning <= 1'b1;
-                            anchorLeft <= 2'b10;
-                            navigateLeft <= ({1'd0,scMag} <<< 1'd1);
-                            applyArmed <= 1'b0;
-                            cycle <= 5'h01;
-                          end else begin
-                            if(when_Ddr3ControllerCore_l1101) begin
-                              scMag <= (scMag + 7'h02);
+                              scanOn <= 1'b0;
+                              dllSweepOn <= 1'b1;
+                              bestCntDll <= 4'b0000;
+                              bestSide <= 1'b0;
+                              bestMag <= 7'h0;
                               rcalib_tries <= 10'h0;
-                              bestCnt <= 4'b0000;
-                              s0Side <= 1'b0;
-                              s0Mag <= _zz_s0Mag;
-                              s1Side <= 1'b0;
-                              s1Mag <= _zz_s0Mag;
-                              s2Side <= 1'b0;
-                              s2Mag <= _zz_s0Mag;
+                              rclksel[0] <= 1'b0;
+                              s0Side <= scSide;
+                              s0Mag <= scMag;
+                              s1Side <= scSide;
+                              s1Mag <= scMag;
+                              s2Side <= scSide;
+                              s2Mag <= scMag;
                               rclkpos <= 2'b00;
                               aligning <= 1'b1;
                               anchorLeft <= 2'b10;
-                              navigateLeft <= ({1'd0,_zz_s0Mag} <<< 1'd1);
+                              navigateLeft <= ({1'd0,scMag} <<< 1'd1);
                               applyArmed <= 1'b0;
                               cycle <= 5'h01;
                             end else begin
-                              if(when_Ddr3ControllerCore_l1106) begin
-                                scSide <= 1'b1;
-                                scMag <= 7'h02;
+                              if(when_Ddr3ControllerCore_l1267) begin
+                                scMag <= (scMag + 7'h02);
                                 rcalib_tries <= 10'h0;
                                 bestCnt <= 4'b0000;
-                                s0Side <= 1'b1;
-                                s0Mag <= 7'h02;
-                                s1Side <= 1'b1;
-                                s1Mag <= 7'h02;
-                                s2Side <= 1'b1;
-                                s2Mag <= 7'h02;
+                                s0Side <= 1'b0;
+                                s0Mag <= _zz_s0Mag;
+                                s1Side <= 1'b0;
+                                s1Mag <= _zz_s0Mag;
+                                s2Side <= 1'b0;
+                                s2Mag <= _zz_s0Mag;
                                 rclkpos <= 2'b00;
                                 aligning <= 1'b1;
                                 anchorLeft <= 2'b10;
-                                navigateLeft <= ({1'd0,7'h02} <<< 1'd1);
+                                navigateLeft <= ({1'd0,_zz_s0Mag} <<< 1'd1);
                                 applyArmed <= 1'b0;
                                 cycle <= 5'h01;
                               end else begin
-                                if(when_Ddr3ControllerCore_l1113) begin
-                                  scMag <= (scMag + 7'h02);
+                                if(when_Ddr3ControllerCore_l1272) begin
+                                  scSide <= 1'b1;
+                                  scMag <= 7'h02;
                                   rcalib_tries <= 10'h0;
                                   bestCnt <= 4'b0000;
                                   s0Side <= 1'b1;
-                                  s0Mag <= _zz_s0Mag_1;
+                                  s0Mag <= 7'h02;
                                   s1Side <= 1'b1;
-                                  s1Mag <= _zz_s0Mag_1;
+                                  s1Mag <= 7'h02;
                                   s2Side <= 1'b1;
-                                  s2Mag <= _zz_s0Mag_1;
+                                  s2Mag <= 7'h02;
                                   rclkpos <= 2'b00;
                                   aligning <= 1'b1;
                                   anchorLeft <= 2'b10;
-                                  navigateLeft <= ({1'd0,_zz_s0Mag_1} <<< 1'd1);
+                                  navigateLeft <= ({1'd0,7'h02} <<< 1'd1);
                                   applyArmed <= 1'b0;
                                   cycle <= 5'h01;
                                 end else begin
-                                  `ifndef SYNTHESIS
-                                    `ifdef FORMAL
-                                      assert(1'b0); // Ddr3ControllerCore.scala:L1121
-                                    `else
-                                      if(!1'b0) begin
-                                        $display("NOTE RCALIB scan done best side=%x mag=%x score=%x", bestSurveySide, bestSurveyMag, bestSurveyCnt); // Ddr3ControllerCore.scala:L1121
-                                      end
+                                  if(when_Ddr3ControllerCore_l1279) begin
+                                    scMag <= (scMag + 7'h02);
+                                    rcalib_tries <= 10'h0;
+                                    bestCnt <= 4'b0000;
+                                    s0Side <= 1'b1;
+                                    s0Mag <= _zz_s0Mag_1;
+                                    s1Side <= 1'b1;
+                                    s1Mag <= _zz_s0Mag_1;
+                                    s2Side <= 1'b1;
+                                    s2Mag <= _zz_s0Mag_1;
+                                    rclkpos <= 2'b00;
+                                    aligning <= 1'b1;
+                                    anchorLeft <= 2'b10;
+                                    navigateLeft <= ({1'd0,_zz_s0Mag_1} <<< 1'd1);
+                                    applyArmed <= 1'b0;
+                                    cycle <= 5'h01;
+                                  end else begin
+                                    `ifndef SYNTHESIS
+                                      `ifdef FORMAL
+                                        assert(1'b0); // Ddr3ControllerCore.scala:L1287
+                                      `else
+                                        if(!1'b0) begin
+                                          $display("NOTE RCALIB scan done best side=%x mag=%x score=%x", bestSurveySide, bestSurveyMag, bestSurveyCnt); // Ddr3ControllerCore.scala:L1287
+                                        end
+                                      `endif
                                     `endif
+                                    scanOn <= 1'b0;
+                                    dllSweepOn <= 1'b1;
+                                    bestCntDll <= 4'b0000;
+                                    bestSide <= 1'b0;
+                                    bestMag <= 7'h0;
+                                    rcalib_tries <= 10'h0;
+                                    rclksel[0] <= 1'b0;
+                                    s0Side <= bestSurveySide;
+                                    s0Mag <= bestSurveyMag;
+                                    s1Side <= bestSurveySide;
+                                    s1Mag <= bestSurveyMag;
+                                    s2Side <= bestSurveySide;
+                                    s2Mag <= bestSurveyMag;
+                                    rclkpos <= 2'b00;
+                                    aligning <= 1'b1;
+                                    anchorLeft <= 2'b10;
+                                    navigateLeft <= ({1'd0,bestSurveyMag} <<< 1'd1);
+                                    applyArmed <= 1'b0;
+                                    cycle <= 5'h01;
+                                  end
+                                end
+                              end
+                            end
+                          end else begin
+                            if(shiftCalDone) begin
+                              bestSurveyCnt <= bestCnt;
+                              bestSurveySide <= 1'b0;
+                              bestSurveyMag <= 7'h0;
+                              rclksel[0] <= 1'b0;
+                              if(when_Ddr3ControllerCore_l1308) begin
+                                dllSweepOn <= 1'b1;
+                                bestCntDll <= 4'b0000;
+                                bestSide <= 1'b0;
+                                bestMag <= 7'h0;
+                                rcalib_tries <= 10'h0;
+                                s0Side <= 1'b0;
+                                s0Mag <= sweepMag0;
+                                s1Side <= 1'b0;
+                                s1Mag <= sweepMag0;
+                                s2Side <= 1'b0;
+                                s2Mag <= sweepMag0;
+                                rclkpos <= 2'b00;
+                                aligning <= 1'b1;
+                                anchorLeft <= 2'b10;
+                                navigateLeft <= ({1'd0,sweepMag0} <<< 1'd1);
+                                applyArmed <= 1'b0;
+                                `ifndef SYNTHESIS
+                                  `ifdef FORMAL
+                                    assert(1'b0); // Ddr3ControllerCore.scala:L1337
+                                  `else
+                                    if(!1'b0) begin
+                                      $display("NOTE RCALIB window start mag0=%x n=%x", sweepMag0, sweepMagN); // Ddr3ControllerCore.scala:L1337
+                                    end
                                   `endif
-                                  scanOn <= 1'b0;
+                                `endif
+                                cycle <= 5'h01;
+                              end else begin
+                                if(when_Ddr3ControllerCore_l1345) begin
                                   dllSweepOn <= 1'b1;
                                   bestCntDll <= 4'b0000;
                                   bestSide <= 1'b0;
                                   bestMag <= 7'h0;
                                   rcalib_tries <= 10'h0;
-                                  rclksel[0] <= 1'b0;
-                                  s0Side <= bestSurveySide;
-                                  s0Mag <= bestSurveyMag;
-                                  s1Side <= bestSurveySide;
-                                  s1Mag <= bestSurveyMag;
-                                  s2Side <= bestSurveySide;
-                                  s2Mag <= bestSurveyMag;
+                                  trainDone <= 1'b1;
+                                  needPoison <= 1'b0;
+                                  bistReturn <= 1'b1;
+                                  state <= Ddr3State_WRITE;
+                                  cycle <= 5'h0;
+                                end else begin
+                                  scanOn <= 1'b1;
+                                  scSide <= 1'b0;
+                                  scMag <= 7'h02;
+                                  rcalib_tries <= 10'h0;
+                                  bestCnt <= 4'b0000;
+                                  `ifndef SYNTHESIS
+                                    `ifdef FORMAL
+                                      assert(1'b0); // Ddr3ControllerCore.scala:L1374
+                                    `else
+                                      if(!1'b0) begin
+                                        $display("NOTE RCALIB scan start"); // Ddr3ControllerCore.scala:L1374
+                                      end
+                                    `endif
+                                  `endif
+                                  s0Side <= 1'b0;
+                                  s0Mag <= 7'h02;
+                                  s1Side <= 1'b0;
+                                  s1Mag <= 7'h02;
+                                  s2Side <= 1'b0;
+                                  s2Mag <= 7'h02;
                                   rclkpos <= 2'b00;
                                   aligning <= 1'b1;
                                   anchorLeft <= 2'b10;
-                                  navigateLeft <= ({1'd0,bestSurveyMag} <<< 1'd1);
+                                  navigateLeft <= ({1'd0,7'h02} <<< 1'd1);
                                   applyArmed <= 1'b0;
                                   cycle <= 5'h01;
                                 end
@@ -5109,134 +5397,63 @@ module Ddr3ControllerCore (
                             end
                           end
                         end else begin
-                          bestSurveyCnt <= bestCnt;
-                          bestSurveySide <= 1'b0;
-                          bestSurveyMag <= 7'h0;
-                          rclksel[0] <= 1'b0;
-                          if(when_Ddr3ControllerCore_l1142) begin
-                            dllSweepOn <= 1'b1;
-                            bestCntDll <= 4'b0000;
-                            bestSide <= 1'b0;
-                            bestMag <= 7'h0;
-                            rcalib_tries <= 10'h0;
-                            s0Side <= 1'b0;
-                            s0Mag <= sweepMag0;
-                            s1Side <= 1'b0;
-                            s1Mag <= sweepMag0;
-                            s2Side <= 1'b0;
-                            s2Mag <= sweepMag0;
-                            rclkpos <= 2'b00;
-                            aligning <= 1'b1;
-                            anchorLeft <= 2'b10;
-                            navigateLeft <= ({1'd0,sweepMag0} <<< 1'd1);
-                            applyArmed <= 1'b0;
-                            `ifndef SYNTHESIS
-                              `ifdef FORMAL
-                                assert(1'b0); // Ddr3ControllerCore.scala:L1171
-                              `else
-                                if(!1'b0) begin
-                                  $display("NOTE RCALIB window start mag0=%x n=%x", sweepMag0, sweepMagN); // Ddr3ControllerCore.scala:L1171
-                                end
-                              `endif
+                          dllSweepOn <= 1'b0;
+                          `ifndef SYNTHESIS
+                            `ifdef FORMAL
+                              assert(1'b0); // Ddr3ControllerCore.scala:L1383
+                            `else
+                              if(!1'b0) begin
+                                $display("NOTE RCALIB lock best pos=%x sel=%x rot=%x score=%x", bestPos, bestSel, bestRot, bestCnt); // Ddr3ControllerCore.scala:L1383
+                              end
                             `endif
-                            cycle <= 5'h01;
-                          end else begin
-                            if(when_Ddr3ControllerCore_l1179) begin
-                              dllSweepOn <= 1'b1;
-                              bestCntDll <= 4'b0000;
-                              bestSide <= 1'b0;
-                              bestMag <= 7'h0;
-                              rcalib_tries <= 10'h0;
-                              trainDone <= 1'b1;
-                              needPoison <= 1'b0;
-                              bistReturn <= 1'b1;
-                              state <= Ddr3State_WRITE;
-                              cycle <= 5'h0;
-                            end else begin
-                              scanOn <= 1'b1;
-                              scSide <= 1'b0;
-                              scMag <= 7'h02;
-                              rcalib_tries <= 10'h0;
-                              bestCnt <= 4'b0000;
-                              `ifndef SYNTHESIS
-                                `ifdef FORMAL
-                                  assert(1'b0); // Ddr3ControllerCore.scala:L1208
-                                `else
-                                  if(!1'b0) begin
-                                    $display("NOTE RCALIB scan start"); // Ddr3ControllerCore.scala:L1208
-                                  end
-                                `endif
-                              `endif
-                              s0Side <= 1'b0;
-                              s0Mag <= 7'h02;
-                              s1Side <= 1'b0;
-                              s1Mag <= 7'h02;
-                              s2Side <= 1'b0;
-                              s2Mag <= 7'h02;
-                              rclkpos <= 2'b00;
-                              aligning <= 1'b1;
-                              anchorLeft <= 2'b10;
-                              navigateLeft <= ({1'd0,7'h02} <<< 1'd1);
-                              applyArmed <= 1'b0;
-                              cycle <= 5'h01;
+                          `endif
+                          if(when_Ddr3ControllerCore_l1390) begin
+                            if(_zz_1[0]) begin
+                              wScores_0 <= bestCnt;
                             end
+                            if(_zz_1[1]) begin
+                              wScores_1 <= bestCnt;
+                            end
+                            if(_zz_1[2]) begin
+                              wScores_2 <= bestCnt;
+                            end
+                            rcalib_done <= 1'b1;
+                            nRAS_0 <= CMD_PreCharge[2];
+                            nCAS_0 <= CMD_PreCharge[1];
+                            nWE_0 <= CMD_PreCharge[0];
+                            BA_0 <= 3'b000;
+                            A_0 <= {13'd0, _zz_A_0_14};
+                          end else begin
+                            nRAS_0 <= CMD_PreCharge[2];
+                            nCAS_0 <= CMD_PreCharge[1];
+                            nWE_0 <= CMD_PreCharge[0];
+                            BA_0 <= 3'b000;
+                            A_0 <= {13'd0, _zz_A_0_15};
                           end
                         end
                       end else begin
-                        dllSweepOn <= 1'b0;
-                        `ifndef SYNTHESIS
-                          `ifdef FORMAL
-                            assert(1'b0); // Ddr3ControllerCore.scala:L1217
-                          `else
-                            if(!1'b0) begin
-                              $display("NOTE RCALIB lock best pos=%x sel=%x rot=%x score=%x", bestPos, bestSel, bestRot, bestCnt); // Ddr3ControllerCore.scala:L1217
-                            end
-                          `endif
-                        `endif
-                        if(when_Ddr3ControllerCore_l1224) begin
-                          rcalib_done <= 1'b1;
-                        end
-                        nRAS_0 <= CMD_PreCharge[2];
-                        nCAS_0 <= CMD_PreCharge[1];
-                        nWE_0 <= CMD_PreCharge[0];
-                        BA_0 <= 3'b000;
-                        A_0 <= {13'd0, _zz_A_0_14};
+                        trainDone <= 1'b1;
+                        needPoison <= 1'b0;
+                        bistReturn <= 1'b1;
+                        state <= Ddr3State_WRITE;
+                        cycle <= 5'h0;
                       end
-                    end else begin
-                      trainDone <= 1'b1;
-                      needPoison <= 1'b0;
-                      bistReturn <= 1'b1;
-                      state <= Ddr3State_WRITE;
-                      cycle <= 5'h0;
                     end
                   end
                 end
-              end
-              5'h0d : begin
-                busy <= 1'b0;
-                state <= Ddr3State_IDLE;
-              end
-              default : begin
-              end
-            endcase
-          end
-          Ddr3State_IDLE : begin
-            if(training) begin
-              training <= 1'b0;
-              trainDone <= 1'b1;
-              needPoison <= 1'b1;
-              nRAS_0 <= CMD_BankActivate[2];
-              nCAS_0 <= CMD_BankActivate[1];
-              nWE_0 <= CMD_BankActivate[0];
-              BA_0 <= 3'b000;
-              A_0 <= {13'd0, _zz_A_0_15};
-              state <= Ddr3State_WRITE;
-              cycle <= 5'h01;
-              busy <= 1'b1;
-            end else begin
-              if(needPoison) begin
-                needPoison <= 1'b0;
+                5'h0f : begin
+                  busy <= 1'b0;
+                  state <= Ddr3State_IDLE;
+                end
+                default : begin
+                end
+              endcase
+            end
+            Ddr3State_IDLE : begin
+              if(training) begin
+                training <= 1'b0;
                 trainDone <= 1'b1;
+                needPoison <= 1'b1;
                 nRAS_0 <= CMD_BankActivate[2];
                 nCAS_0 <= CMD_BankActivate[1];
                 nWE_0 <= CMD_BankActivate[0];
@@ -5246,138 +5463,264 @@ module Ddr3ControllerCore (
                 cycle <= 5'h01;
                 busy <= 1'b1;
               end else begin
-                if(refresh_due) begin
-                  nRAS_0 <= CMD_AutoRefresh[2];
-                  nCAS_0 <= CMD_AutoRefresh[1];
-                  nWE_0 <= CMD_AutoRefresh[0];
+                if(needPoison) begin
+                  needPoison <= 1'b0;
+                  trainDone <= 1'b1;
+                  nRAS_0 <= CMD_BankActivate[2];
+                  nCAS_0 <= CMD_BankActivate[1];
+                  nWE_0 <= CMD_BankActivate[0];
                   BA_0 <= 3'b000;
                   A_0 <= {13'd0, _zz_A_0_17};
-                  state <= Ddr3State_REFRESH;
+                  state <= Ddr3State_WRITE;
                   cycle <= 5'h01;
                   busy <= 1'b1;
-                  refresh_due <= 1'b0;
                 end else begin
-                  if(needFinalSurvey) begin
-                    needFinalSurvey <= 1'b0;
-                    state <= Ddr3State_READ_CALIB;
-                    cycle <= 5'h0;
+                  if(refresh_due) begin
+                    nRAS_0 <= CMD_AutoRefresh[2];
+                    nCAS_0 <= CMD_AutoRefresh[1];
+                    nWE_0 <= CMD_AutoRefresh[0];
+                    BA_0 <= 3'b000;
+                    A_0 <= {13'd0, _zz_A_0_18};
+                    state <= Ddr3State_REFRESH;
+                    cycle <= 5'h01;
+                    busy <= 1'b1;
+                    refresh_due <= 1'b0;
                   end else begin
-                    if(io_req_valid) begin
-                      nRAS_0 <= CMD_BankActivate[2];
-                      nCAS_0 <= CMD_BankActivate[1];
-                      nWE_0 <= CMD_BankActivate[0];
-                      BA_0 <= io_req_payload_addr[23 : 21];
-                      A_0 <= io_req_payload_addr[20 : 7];
-                      state <= _zz_state;
-                      cycle <= 5'h01;
-                      busy <= 1'b1;
-                      if(when_Ddr3ControllerCore_l1312) begin
-                        dqs_hold <= 1'b1;
+                    if(needFinalSurvey) begin
+                      needFinalSurvey <= 1'b0;
+                      state <= Ddr3State_READ_CALIB;
+                      cycle <= 5'h0;
+                    end else begin
+                      if(io_req_valid) begin
+                        nRAS_0 <= CMD_BankActivate[2];
+                        nCAS_0 <= CMD_BankActivate[1];
+                        nWE_0 <= CMD_BankActivate[0];
+                        BA_0 <= io_req_payload_addr[23 : 21];
+                        A_0 <= io_req_payload_addr[20 : 7];
+                        state <= _zz_state;
+                        cycle <= 5'h01;
+                        busy <= 1'b1;
+                        if(when_Ddr3ControllerCore_l1523) begin
+                          dqs_hold <= 1'b1;
+                        end
                       end
                     end
                   end
                 end
               end
             end
-          end
-          Ddr3State_READ : begin
-            if(when_Ddr3ControllerCore_l1327) begin
-              nRAS_2 <= CMD_Read[2];
-              nCAS_2 <= CMD_Read[1];
-              nWE_2 <= CMD_Read[0];
-              BA_2 <= _zz_BA_2;
-              A_2 <= _zz_A_2_5[13:0];
-              dqs_hold <= 1'b1;
-            end
-            if(when_Ddr3ControllerCore_l1333) begin
-              nRAS_2 <= CMD_Read[2];
-              nCAS_2 <= CMD_Read[1];
-              nWE_2 <= CMD_Read[0];
-              BA_2 <= _zz_BA_2;
-              A_2 <= _zz_A_2_7[13:0];
-            end
-            if(when_Ddr3ControllerCore_l1338) begin
-              data_ready <= 1'b1;
-            end
-            if(when_Ddr3ControllerCore_l1342) begin
-              data_ready <= 1'b0;
-              nRAS_0 <= CMD_PreCharge[2];
-              nCAS_0 <= CMD_PreCharge[1];
-              nWE_0 <= CMD_PreCharge[0];
-              BA_0 <= 3'b000;
-              A_0 <= {13'd0, _zz_A_0_18};
-            end
-            if(when_Ddr3ControllerCore_l1347) begin
-              busy <= 1'b0;
-              state <= Ddr3State_IDLE;
-            end
-          end
-          Ddr3State_WRITE : begin
-            if(when_Ddr3ControllerCore_l1358) begin
-              nRAS_2 <= CMD_Write[2];
-              nCAS_2 <= CMD_Write[1];
-              nWE_2 <= CMD_Write[0];
-              BA_2 <= reqReg_addr[23 : 21];
-              A_2 <= _zz_A_2_9[13:0];
-            end
-            if(when_Ddr3ControllerCore_l1364) begin
-              dqs_out <= 8'h40;
-              dqs_oen <= 4'b0011;
-              dq_oen <= 4'b0111;
-              dq_out_6 <= 16'h0;
-              dq_out_7 <= reqReg_wdata[15 : 0];
-              dm_out[6] <= 1'b1;
-              dm_out[7] <= (! (|reqReg_wstrb[1 : 0]));
-            end
-            if(when_Ddr3ControllerCore_l1377) begin
-              dqs_out <= 8'h55;
-              dqs_oen <= 4'b0000;
-              dq_oen <= 4'b0000;
-              dq_out_0 <= reqReg_wdata[31 : 16];
-              dq_out_1 <= reqReg_wdata[47 : 32];
-              dq_out_2 <= reqReg_wdata[63 : 48];
-              dq_out_3 <= reqReg_wdata[79 : 64];
-              dq_out_4 <= reqReg_wdata[95 : 80];
-              dq_out_5 <= reqReg_wdata[111 : 96];
-              dq_out_6 <= reqReg_wdata[127 : 112];
-              dq_out_7 <= 16'h0;
-              dm_out[0] <= (! (|reqReg_wstrb[3 : 2]));
-              dm_out[1] <= (! (|reqReg_wstrb[5 : 4]));
-              dm_out[2] <= (! (|reqReg_wstrb[7 : 6]));
-              dm_out[3] <= (! (|reqReg_wstrb[9 : 8]));
-              dm_out[4] <= (! (|reqReg_wstrb[11 : 10]));
-              dm_out[5] <= (! (|reqReg_wstrb[13 : 12]));
-              dm_out[6] <= (! (|reqReg_wstrb[15 : 14]));
-              dm_out[7] <= 1'b1;
-            end
-            if(when_Ddr3ControllerCore_l1402) begin
-              dqs_out <= 8'h0;
-              dqs_oen <= 4'b1110;
-              dq_oen <= 4'b1111;
-            end
-            if(when_Ddr3ControllerCore_l1408) begin
-              if(trainDone) begin
-                trainDone <= 1'b0;
-                if(needPoison) begin
-                  state <= Ddr3State_IDLE;
-                  cycle <= 5'h0;
-                end else begin
-                  state <= Ddr3State_READ_CALIB;
-                  cycle <= 5'h0;
-                end
-              end else begin
+            Ddr3State_READ : begin
+              if(when_Ddr3ControllerCore_l1538) begin
+                nRAS_2 <= CMD_Read[2];
+                nCAS_2 <= CMD_Read[1];
+                nWE_2 <= CMD_Read[0];
+                BA_2 <= _zz_BA_2;
+                A_2 <= _zz_A_2_5[13:0];
+              end
+              if(when_Ddr3ControllerCore_l1543) begin
+                nRAS_2 <= CMD_Read[2];
+                nCAS_2 <= CMD_Read[1];
+                nWE_2 <= CMD_Read[0];
+                BA_2 <= _zz_BA_2;
+                A_2 <= _zz_A_2_7[13:0];
+              end
+              if(when_Ddr3ControllerCore_l1549) begin
+                data_ready <= 1'b1;
+              end
+              if(when_Ddr3ControllerCore_l1553) begin
+                data_ready <= 1'b0;
+              end
+              if(when_Ddr3ControllerCore_l1557) begin
+                nRAS_0 <= CMD_PreCharge[2];
+                nCAS_0 <= CMD_PreCharge[1];
+                nWE_0 <= CMD_PreCharge[0];
+                BA_0 <= 3'b000;
+                A_0 <= {13'd0, _zz_A_0_19};
+              end
+              if(when_Ddr3ControllerCore_l1561) begin
                 busy <= 1'b0;
                 state <= Ddr3State_IDLE;
               end
             end
-          end
-          default : begin
-            if(when_Ddr3ControllerCore_l1429) begin
-              busy <= 1'b0;
-              state <= Ddr3State_IDLE;
+            Ddr3State_WRITE : begin
+              if(when_Ddr3ControllerCore_l1572) begin
+                nRAS_2 <= CMD_Write[2];
+                nCAS_2 <= CMD_Write[1];
+                nWE_2 <= CMD_Write[0];
+                BA_2 <= reqReg_addr[23 : 21];
+                A_2 <= _zz_A_2_9[13:0];
+              end
+              if(when_Ddr3ControllerCore_l1578) begin
+                case(wrMode)
+                  2'b00 : begin
+                    dqs_out <= 8'h40;
+                    dqs_oen <= 4'b0011;
+                    dq_oen <= 4'b0111;
+                    dq_out_6 <= 16'h0;
+                    dq_out_7 <= reqReg_wdata[15 : 0];
+                    dm_out[6] <= 1'b1;
+                    dm_out[7] <= (! (|reqReg_wstrb[1 : 0]));
+                  end
+                  2'b01 : begin
+                    dqs_out <= 8'h40;
+                    dqs_oen <= 4'b0011;
+                    dq_oen <= 4'b0011;
+                    dq_out_4 <= 16'h0;
+                    dq_out_5 <= reqReg_wdata[15 : 0];
+                    dq_out_6 <= reqReg_wdata[31 : 16];
+                    dq_out_7 <= reqReg_wdata[47 : 32];
+                    dm_out[4] <= 1'b1;
+                    dm_out[5] <= (! (|reqReg_wstrb[1 : 0]));
+                    dm_out[6] <= (! (|reqReg_wstrb[3 : 2]));
+                    dm_out[7] <= (! (|reqReg_wstrb[5 : 4]));
+                  end
+                  2'b10 : begin
+                    dqs_out <= 8'h0;
+                    dqs_oen <= 4'b0111;
+                  end
+                  default : begin
+                  end
+                endcase
+              end
+              if(when_Ddr3ControllerCore_l1613) begin
+                case(wrMode)
+                  2'b00 : begin
+                    dqs_out <= 8'h55;
+                    dqs_oen <= 4'b0000;
+                    dq_oen <= 4'b0000;
+                    dq_out_0 <= reqReg_wdata[31 : 16];
+                    dq_out_1 <= reqReg_wdata[47 : 32];
+                    dq_out_2 <= reqReg_wdata[63 : 48];
+                    dq_out_3 <= reqReg_wdata[79 : 64];
+                    dq_out_4 <= reqReg_wdata[95 : 80];
+                    dq_out_5 <= reqReg_wdata[111 : 96];
+                    dq_out_6 <= reqReg_wdata[127 : 112];
+                    dq_out_7 <= 16'h0;
+                    dm_out[0] <= (! (|reqReg_wstrb[3 : 2]));
+                    dm_out[1] <= (! (|reqReg_wstrb[5 : 4]));
+                    dm_out[2] <= (! (|reqReg_wstrb[7 : 6]));
+                    dm_out[3] <= (! (|reqReg_wstrb[9 : 8]));
+                    dm_out[4] <= (! (|reqReg_wstrb[11 : 10]));
+                    dm_out[5] <= (! (|reqReg_wstrb[13 : 12]));
+                    dm_out[6] <= (! (|reqReg_wstrb[15 : 14]));
+                    dm_out[7] <= 1'b1;
+                  end
+                  2'b01 : begin
+                    dqs_out <= 8'h55;
+                    dqs_oen <= 4'b0000;
+                    dq_oen <= 4'b0000;
+                    dq_out_0 <= reqReg_wdata[63 : 48];
+                    dq_out_1 <= reqReg_wdata[79 : 64];
+                    dq_out_2 <= reqReg_wdata[95 : 80];
+                    dq_out_3 <= reqReg_wdata[111 : 96];
+                    dq_out_4 <= reqReg_wdata[127 : 112];
+                    dq_out_5 <= 16'h0;
+                    dq_out_6 <= 16'h0;
+                    dq_out_7 <= 16'h0;
+                    dm_out[0] <= (! (|reqReg_wstrb[7 : 6]));
+                    dm_out[1] <= (! (|reqReg_wstrb[9 : 8]));
+                    dm_out[2] <= (! (|reqReg_wstrb[11 : 10]));
+                    dm_out[3] <= (! (|reqReg_wstrb[13 : 12]));
+                    dm_out[4] <= (! (|reqReg_wstrb[15 : 14]));
+                    dm_out[5] <= 1'b1;
+                    dm_out[6] <= 1'b1;
+                    dm_out[7] <= 1'b1;
+                  end
+                  2'b10 : begin
+                    dqs_out <= 8'h55;
+                    dqs_oen <= 4'b0000;
+                    dq_oen <= 4'b0000;
+                    dq_out_0 <= 16'h0;
+                    dq_out_1 <= reqReg_wdata[15 : 0];
+                    dq_out_2 <= reqReg_wdata[31 : 16];
+                    dq_out_3 <= reqReg_wdata[47 : 32];
+                    dq_out_4 <= reqReg_wdata[63 : 48];
+                    dq_out_5 <= reqReg_wdata[79 : 64];
+                    dq_out_6 <= reqReg_wdata[95 : 80];
+                    dq_out_7 <= reqReg_wdata[111 : 96];
+                    dm_out[0] <= 1'b1;
+                    dm_out[1] <= (! (|reqReg_wstrb[1 : 0]));
+                    dm_out[2] <= (! (|reqReg_wstrb[3 : 2]));
+                    dm_out[3] <= (! (|reqReg_wstrb[5 : 4]));
+                    dm_out[4] <= (! (|reqReg_wstrb[7 : 6]));
+                    dm_out[5] <= (! (|reqReg_wstrb[9 : 8]));
+                    dm_out[6] <= (! (|reqReg_wstrb[11 : 10]));
+                    dm_out[7] <= (! (|reqReg_wstrb[13 : 12]));
+                  end
+                  default : begin
+                    dqs_out <= 8'h54;
+                    dqs_oen <= 4'b0000;
+                    dq_oen <= 4'b0001;
+                    dq_out_2 <= 16'h0;
+                    dq_out_3 <= reqReg_wdata[15 : 0];
+                    dq_out_4 <= reqReg_wdata[31 : 16];
+                    dq_out_5 <= reqReg_wdata[47 : 32];
+                    dq_out_6 <= reqReg_wdata[63 : 48];
+                    dq_out_7 <= reqReg_wdata[79 : 64];
+                    dm_out[2] <= 1'b1;
+                    dm_out[3] <= (! (|reqReg_wstrb[1 : 0]));
+                    dm_out[4] <= (! (|reqReg_wstrb[3 : 2]));
+                    dm_out[5] <= (! (|reqReg_wstrb[5 : 4]));
+                    dm_out[6] <= (! (|reqReg_wstrb[7 : 6]));
+                    dm_out[7] <= (! (|reqReg_wstrb[9 : 8]));
+                  end
+                endcase
+              end
+              if(when_Ddr3ControllerCore_l1699) begin
+                case(wrMode)
+                  2'b00, 2'b01 : begin
+                    dqs_out <= 8'h0;
+                    dqs_oen <= 4'b1110;
+                    dq_oen <= 4'b1111;
+                  end
+                  2'b10 : begin
+                    dqs_out <= 8'h01;
+                    dqs_oen <= 4'b1100;
+                    dq_oen <= 4'b1110;
+                    dq_out_0 <= reqReg_wdata[127 : 112];
+                    dq_out_1 <= 16'h0;
+                    dm_out[0] <= (! (|reqReg_wstrb[15 : 14]));
+                    dm_out[1] <= 1'b1;
+                  end
+                  default : begin
+                    dqs_out <= 8'h05;
+                    dqs_oen <= 4'b1000;
+                    dq_oen <= 4'b1100;
+                    dq_out_0 <= reqReg_wdata[95 : 80];
+                    dq_out_1 <= reqReg_wdata[111 : 96];
+                    dq_out_2 <= reqReg_wdata[127 : 112];
+                    dq_out_3 <= 16'h0;
+                    dm_out[0] <= (! (|reqReg_wstrb[11 : 10]));
+                    dm_out[1] <= (! (|reqReg_wstrb[13 : 12]));
+                    dm_out[2] <= (! (|reqReg_wstrb[15 : 14]));
+                    dm_out[3] <= 1'b1;
+                  end
+                endcase
+              end
+              if(when_Ddr3ControllerCore_l1731) begin
+                if(trainDone) begin
+                  trainDone <= 1'b0;
+                  if(needPoison) begin
+                    state <= Ddr3State_IDLE;
+                    cycle <= 5'h0;
+                  end else begin
+                    state <= Ddr3State_READ_CALIB;
+                    cycle <= 5'h0;
+                  end
+                end else begin
+                  busy <= 1'b0;
+                  state <= Ddr3State_IDLE;
+                end
+              end
             end
-          end
-        endcase
+            default : begin
+              if(when_Ddr3ControllerCore_l1752) begin
+                busy <= 1'b0;
+                state <= Ddr3State_IDLE;
+              end
+            end
+          endcase
+        end
       end else begin
         busy <= 1'b1;
         data_ready <= 1'b0;
@@ -5420,6 +5763,10 @@ module Ddr3ControllerCore (
         wlMatchNR <= 8'h0;
         wlVoteN <= 3'b000;
         wlVoteCnt <= 3'b000;
+        wlVoteCnt0 <= 3'b000;
+        wlVoteCnt1 <= 3'b000;
+        wlLockedR <= 1'b0;
+        wlLockedStepR <= 8'h0;
         wlevel_done <= 1'b0;
         wstep <= 8'h18;
         rcalib_cnt <= 4'b0000;
@@ -5446,6 +5793,37 @@ module Ddr3ControllerCore (
         rmove <= 1'b0;
         rdir <= 1'b0;
         bestRot <= 3'b000;
+        wrMode <= 2'b00;
+        shiftCalDone <= 1'b0;
+        tryMode <= 2'b00;
+        wCalDone <= 1'b0;
+        wTry <= 2'b00;
+        wBase <= 8'h0;
+        bestWstep <= 8'h0;
+        best0 <= 4'b0000;
+        best0Pos <= 2'b00;
+        best0Sel <= 3'b000;
+        best0Rot <= 3'b000;
+        bestMode <= 2'b00;
+        bestLatch <= 128'h0;
+        bestWCnt <= 4'b0000;
+        bestWPos <= 2'b00;
+        bestWSel <= 3'b000;
+        bestWRot <= 3'b000;
+        bestWMode <= 2'b00;
+        rotScoresReg_0 <= 4'b0000;
+        rotScoresReg_1 <= 4'b0000;
+        rotScoresReg_2 <= 4'b0000;
+        rotScoresReg_3 <= 4'b0000;
+        rotScoresReg_4 <= 4'b0000;
+        rotScoresReg_5 <= 4'b0000;
+        rotScoresReg_6 <= 4'b0000;
+        rotScoresReg_7 <= 4'b0000;
+        sweepScoreReg <= 4'b0000;
+        sweepRotReg <= 3'b000;
+        wScores_0 <= 4'b0000;
+        wScores_1 <= 4'b0000;
+        wScores_2 <= 4'b0000;
         training <= 1'b1;
         trainDone <= 1'b0;
         needPoison <= 1'b0;
@@ -5457,7 +5835,7 @@ module Ddr3ControllerCore (
         resetn_delay <= 1'b0;
         state <= Ddr3State_RST_WAIT;
       end
-      if(when_Ddr3ControllerCore_l1548) begin
+      if(when_Ddr3ControllerCore_l1907) begin
         init_done_latched <= 1'b1;
       end
     end
@@ -5465,96 +5843,120 @@ module Ddr3ControllerCore (
 
   always @(posedge io_pclk) begin
     if(io_phy_rst_lock_n) begin
-      case(state)
-        Ddr3State_RST_WAIT : begin
-        end
-        Ddr3State_CKE_WAIT : begin
-        end
-        Ddr3State_CONFIG_1 : begin
-        end
-        Ddr3State_ZQCL : begin
-        end
-        Ddr3State_WRITE_LEVELING : begin
-        end
-        Ddr3State_READ_CALIB : begin
-          case(cycle)
-            5'h0c : begin
-              if(!when_Ddr3ControllerCore_l788) begin
-                if(dllSweepOn) begin
-                  if(!when_Ddr3ControllerCore_l826) begin
-                    if(when_Ddr3ControllerCore_l910) begin
-                      if(!when_Ddr3ControllerCore_l925) begin
-                        if(!when_Ddr3ControllerCore_l950) begin
-                          if(when_Ddr3ControllerCore_l1038) begin
-                            reqReg_write <= 1'b1;
-                            reqReg_addr <= 27'h0;
-                            reqReg_wdata <= trainPat;
-                            reqReg_wstrb <= 16'hffff;
-                          end
-                        end
-                      end
-                    end
-                  end
-                end else begin
-                  if(when_Ddr3ControllerCore_l1074) begin
-                    if(when_Ddr3ControllerCore_l1081) begin
-                      if(!scanOn) begin
-                        if(!when_Ddr3ControllerCore_l1142) begin
-                          if(when_Ddr3ControllerCore_l1179) begin
-                            reqReg_write <= 1'b1;
-                            reqReg_addr <= 27'h0;
-                            reqReg_wdata <= trainPat;
-                            reqReg_wstrb <= 16'hffff;
+      if(when_Ddr3ControllerCore_l603) begin
+        case(state)
+          Ddr3State_RST_WAIT : begin
+          end
+          Ddr3State_CKE_WAIT : begin
+          end
+          Ddr3State_CONFIG_1 : begin
+          end
+          Ddr3State_ZQCL : begin
+          end
+          Ddr3State_WRITE_LEVELING : begin
+          end
+          Ddr3State_READ_CALIB : begin
+            case(cycle)
+              5'h0e : begin
+                if(!when_Ddr3ControllerCore_l907) begin
+                  if(dllSweepOn) begin
+                    if(!when_Ddr3ControllerCore_l945) begin
+                      if(when_Ddr3ControllerCore_l1029) begin
+                        if(!when_Ddr3ControllerCore_l1045) begin
+                          if(!when_Ddr3ControllerCore_l1070) begin
+                            if(when_Ddr3ControllerCore_l1158) begin
+                              reqReg_write <= 1'b1;
+                              reqReg_addr <= 27'h0;
+                              reqReg_wdata <= trainPat;
+                              reqReg_wstrb <= 16'hffff;
+                            end
                           end
                         end
                       end
                     end
                   end else begin
-                    reqReg_write <= 1'b1;
-                    reqReg_addr <= 27'h0;
-                    reqReg_wdata <= trainPat;
-                    reqReg_wstrb <= 16'hffff;
+                    if(when_Ddr3ControllerCore_l1195) begin
+                      if(when_Ddr3ControllerCore_l1202) begin
+                        if(when_Ddr3ControllerCore_l1210) begin
+                          if(when_Ddr3ControllerCore_l1212) begin
+                            reqReg_write <= 1'b1;
+                            reqReg_addr <= 27'h0;
+                            reqReg_wdata <= trainPat;
+                            reqReg_wstrb <= 16'hffff;
+                          end else begin
+                            if(when_Ddr3ControllerCore_l1225) begin
+                              reqReg_write <= 1'b1;
+                              reqReg_addr <= 27'h0;
+                              reqReg_wdata <= trainPat;
+                              reqReg_wstrb <= 16'hffff;
+                            end else begin
+                              reqReg_write <= 1'b1;
+                              reqReg_addr <= 27'h0;
+                              reqReg_wdata <= trainPat;
+                              reqReg_wstrb <= 16'hffff;
+                            end
+                          end
+                        end
+                        if(!scanOn) begin
+                          if(shiftCalDone) begin
+                            if(!when_Ddr3ControllerCore_l1308) begin
+                              if(when_Ddr3ControllerCore_l1345) begin
+                                reqReg_write <= 1'b1;
+                                reqReg_addr <= 27'h0;
+                                reqReg_wdata <= trainPat;
+                                reqReg_wstrb <= 16'hffff;
+                              end
+                            end
+                          end
+                        end
+                      end
+                    end else begin
+                      reqReg_write <= 1'b1;
+                      reqReg_addr <= 27'h0;
+                      reqReg_wdata <= trainPat;
+                      reqReg_wstrb <= 16'hffff;
+                    end
                   end
                 end
               end
-            end
-            default : begin
-            end
-          endcase
-        end
-        Ddr3State_IDLE : begin
-          if(training) begin
-            reqReg_write <= 1'b1;
-            reqReg_addr <= 27'h0;
-            reqReg_wdata <= trainPat;
-            reqReg_wstrb <= 16'hffff;
-          end else begin
-            if(needPoison) begin
+              default : begin
+              end
+            endcase
+          end
+          Ddr3State_IDLE : begin
+            if(training) begin
               reqReg_write <= 1'b1;
-              reqReg_addr <= 27'h0000001;
-              reqReg_wdata <= poisonPat;
+              reqReg_addr <= 27'h0;
+              reqReg_wdata <= trainPat;
               reqReg_wstrb <= 16'hffff;
             end else begin
-              if(!refresh_due) begin
-                if(!needFinalSurvey) begin
-                  if(io_req_valid) begin
-                    reqReg_write <= io_req_payload_write;
-                    reqReg_addr <= io_req_payload_addr;
-                    reqReg_wdata <= io_req_payload_wdata;
-                    reqReg_wstrb <= io_req_payload_wstrb;
+              if(needPoison) begin
+                reqReg_write <= 1'b1;
+                reqReg_addr <= 27'h0000001;
+                reqReg_wdata <= poisonPat;
+                reqReg_wstrb <= 16'hffff;
+              end else begin
+                if(!refresh_due) begin
+                  if(!needFinalSurvey) begin
+                    if(io_req_valid) begin
+                      reqReg_write <= io_req_payload_write;
+                      reqReg_addr <= io_req_payload_addr;
+                      reqReg_wdata <= io_req_payload_wdata;
+                      reqReg_wstrb <= io_req_payload_wstrb;
+                    end
                   end
                 end
               end
             end
           end
-        end
-        Ddr3State_READ : begin
-        end
-        Ddr3State_WRITE : begin
-        end
-        default : begin
-        end
-      endcase
+          Ddr3State_READ : begin
+          end
+          Ddr3State_WRITE : begin
+          end
+          default : begin
+          end
+        endcase
+      end
     end
   end
 
