@@ -31,6 +31,9 @@ class Ddr3Axi4Bridge(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Con
   val rId        = Reg(UInt(axiConfig.idWidth bits)) init(0)
   val rBuf128    = Reg(Bits(128 bits)) init(0)
   val rRemaining = Reg(UInt((axiConfig.lenWidth + 1) bits)) init(0)
+  val rOutData   = Reg(Bits(axiConfig.dataWidth bits)) init(0)
+  val rValidReg  = RegInit(False)
+  val rLastReg   = RegInit(False)
 
   // Write channel FSM
   object WriteState extends SpinalEnum {
@@ -56,11 +59,11 @@ class Ddr3Axi4Bridge(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Con
   io.axi.aw.ready := (wState === WriteState.IDLE) && io.init_done && (rState === ReadState.IDLE)
   io.axi.w.ready  := False
 
-  io.axi.r.valid        := False
-  io.axi.r.payload.data := 0
+  io.axi.r.valid        := rValidReg
+  io.axi.r.payload.data := rOutData
   io.axi.r.payload.id   := rId
   io.axi.r.payload.resp := B"2'b00" // OKAY
-  io.axi.r.payload.last := False
+  io.axi.r.payload.last := rLastReg
 
   io.axi.b.valid        := False
   io.axi.b.payload.id   := wId
@@ -90,50 +93,49 @@ class Ddr3Axi4Bridge(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Con
 
     is(ReadState.WAIT_DATA) {
       when(io.rsp.valid) {
-        rBuf128 := io.rsp.rdata
-        rState  := ReadState.SEND_BEAT1
+        rBuf128   := io.rsp.rdata
+        rOutData  := io.rsp.rdata(axiConfig.dataWidth - 1 downto 0)
+        rValidReg := True
+        rLastReg  := (rRemaining === 1)
+        rState    := ReadState.SEND_BEAT1
       }
     }
 
     is(ReadState.SEND_BEAT1) {
-      io.axi.r.valid := True
-      if (is128Bit) {
-        io.axi.r.payload.data := rBuf128.resized
-        io.axi.r.payload.last := (rRemaining === 1)
-        when(io.axi.r.ready) {
-          val nextRemaining = rRemaining - 1
-          rRemaining := nextRemaining
-          rAddr := rAddr + 16
+      when(io.axi.r.ready) {
+        val nextRemaining = rRemaining - 1
+        rRemaining := nextRemaining
+        if (is128Bit) {
+          rAddr     := rAddr + 16
+          rValidReg := False
+          rLastReg  := False
           when(nextRemaining === 0) {
             rState := ReadState.IDLE
           } otherwise {
             rState := ReadState.ISSUE_REQ
           }
-        }
-      } else {
-        io.axi.r.payload.data := rBuf128(63 downto 0).resized
-        io.axi.r.payload.last := (rRemaining === 1)
-        when(io.axi.r.ready) {
-          val nextRemaining = rRemaining - 1
-          rRemaining := nextRemaining
+        } else {
           rAddr := rAddr + 8
           when(nextRemaining === 0) {
-            rState := ReadState.IDLE
+            rValidReg := False
+            rLastReg  := False
+            rState    := ReadState.IDLE
           } otherwise {
-            rState := ReadState.SEND_BEAT2
+            rOutData := rBuf128(127 downto 64)
+            rLastReg := (nextRemaining === 1)
+            rState   := ReadState.SEND_BEAT2
           }
         }
       }
     }
 
     is(ReadState.SEND_BEAT2) {
-      io.axi.r.valid := True
-      io.axi.r.payload.data := rBuf128(127 downto 64).resized
-      io.axi.r.payload.last := (rRemaining === 1)
       when(io.axi.r.ready) {
         val nextRemaining = rRemaining - 1
         rRemaining := nextRemaining
-        rAddr := rAddr + 8
+        rAddr     := rAddr + 8
+        rValidReg := False
+        rLastReg  := False
         when(nextRemaining === 0) {
           rState := ReadState.IDLE
         } otherwise {

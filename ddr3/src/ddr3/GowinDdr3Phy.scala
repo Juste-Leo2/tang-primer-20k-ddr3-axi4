@@ -92,35 +92,42 @@ class GowinDdr3Phy(rowWidth: Int = 14, bankWidth: Int = 3) extends Component {
     val holdCnt = Reg(UInt(4 bits)) init(0)
     when(holdCnt =/= 15) { holdCnt := holdCnt + 1 }
     val rst_pclk_n = RegNext(holdCnt === 15) init(False)
+    val rst_cmd_p  = RegNext(holdCnt =/= 15) init(True)
+    val rst_io_p   = RegNext((holdCnt =/= 15) || io.wser_rst) init(True)
   }
   val fclkRiseDomain = ClockDomain(
     clock = io.fclk,
     reset = !raw_rst_n,
     config = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = HIGH)
   )
+  val fclkFallDomain = ClockDomain(
+    clock = io.fclk,
+    reset = !raw_rst_n,
+    config = ClockDomainConfig(clockEdge = FALLING, resetKind = ASYNC, resetActiveLevel = HIGH)
+  )
   val fclkRstArea = new ClockingArea(fclkRiseDomain) {
-    val s0 = RegNext(pclkRstArea.rst_pclk_n) init(False) addTag(crossClockDomain)
-    val s1 = RegNext(s0) init(False)
-    val rst_dqs = RegNext(s1) init(False) addAttribute("syn_keep", 1)
-    val rst_dq0 = RegNext(s1) init(False) addAttribute("syn_keep", 1)
-    val rst_dq1 = RegNext(s1) init(False) addAttribute("syn_keep", 1)
-    val rst_cmd = RegNext(s1) init(False) addAttribute("syn_keep", 1)
-    // Post-WL write-serializer resync (re-aligns OSER8_MEM hcnt dividers at locked WSTEP).
-    val wrst_s0  = RegNext(!io.wser_rst) init(True) addTag(crossClockDomain)
-    val wrst_s1  = RegNext(wrst_s0) init(True)
-    val wrst_dqs = RegNext(wrst_s1) init(True) addAttribute("syn_keep", 1)
-    val wrst_dq0 = RegNext(wrst_s1) init(True) addAttribute("syn_keep", 1)
-    val wrst_dq1 = RegNext(wrst_s1) init(True) addAttribute("syn_keep", 1)
+    val s0_cmd = RegNext(pclkRstArea.rst_cmd_p) init(True) addTag(crossClockDomain)
+    val s0_io  = RegNext(pclkRstArea.rst_io_p)  init(True) addTag(crossClockDomain)
+    // Launch the final LUT-free RESET registers on FCLK falling edge (+1.646 ns)
+    // so every IOLOGIC/DQS .RESET endpoint (fabric->IOLOGIC skew ~2.14 ns) lands
+    // cleanly in ~[4.0, 6.2] ns between Cycle 1 [R] (3.75 ns) and Cycle 2 [R] (6.68 ns).
+    val (s1_cmd, rst_cmd_a, rst_cmd_b, s1_io, rst_dqs0, rst_dqs1, rst_dq0a, rst_dq0b, rst_dq1a, rst_dq1b) = fclkFallDomain {
+      val s1_cmd    = RegNext(s0_cmd) init(True) addTag(crossClockDomain)
+      val rst_cmd_a = RegNext(s1_cmd) init(True) addAttribute("syn_keep", 1)
+      val rst_cmd_b = RegNext(s1_cmd) init(True) addAttribute("syn_keep", 1)
+
+      val s1_io    = RegNext(s0_io) init(True) addTag(crossClockDomain)
+      val rst_dqs0 = RegNext(s1_io) init(True) addAttribute("syn_keep", 1)
+      val rst_dqs1 = RegNext(s1_io) init(True) addAttribute("syn_keep", 1)
+      val rst_dq0a = RegNext(s1_io) init(True) addAttribute("syn_keep", 1)
+      val rst_dq0b = RegNext(s1_io) init(True) addAttribute("syn_keep", 1)
+      val rst_dq1a = RegNext(s1_io) init(True) addAttribute("syn_keep", 1)
+      val rst_dq1b = RegNext(s1_io) init(True) addAttribute("syn_keep", 1)
+      (s1_cmd, rst_cmd_a, rst_cmd_b, s1_io, rst_dqs0, rst_dqs1, rst_dq0a, rst_dq0b, rst_dq1a, rst_dq1b)
+    }
   }
-  val rst_lock_n     = pclkRstArea.rst_pclk_n
-  val serdes_rst_dqs = fclkRstArea.rst_dqs
-  val serdes_rst_dq0 = fclkRstArea.rst_dq0
-  val serdes_rst_dq1 = fclkRstArea.rst_dq1
-  val serdes_rst_cmd = fclkRstArea.rst_cmd
-  val ioRstDqs       = !serdes_rst_dqs || !fclkRstArea.wrst_dqs
-  val ioRstDq0       = !serdes_rst_dq0 || !fclkRstArea.wrst_dq0
-  val ioRstDq1       = !serdes_rst_dq1 || !fclkRstArea.wrst_dq1
-  io.rst_lock_n   := rst_lock_n
+  val rst_lock_n = pclkRstArea.rst_pclk_n
+  io.rst_lock_n := rst_lock_n
 
   // Static / simple pin assignments
   io.pad.DDR3_nRESET := rst_lock_n && io.resetn_delay
@@ -147,7 +154,8 @@ class GowinDdr3Phy(rowWidth: Int = 14, bankWidth: Int = 3) extends Component {
     u_dqs.io.FCLK    := io.fclk
     u_dqs.io.PCLK    := io.pclk
     u_dqs.io.DQSIN   := dqs_pad_in(i)
-    u_dqs.io.RESET   := ioRstDqs
+    val dqsIoRst = if (i == 0) fclkRstArea.rst_dqs0 else fclkRstArea.rst_dqs1
+    u_dqs.io.RESET   := dqsIoRst
     u_dqs.io.HOLD    := io.dqs_hold
     u_dqs.io.RLOADN  := io.rloadn
     u_dqs.io.WLOADN  := False
@@ -184,7 +192,7 @@ class GowinDdr3Phy(rowWidth: Int = 14, bankWidth: Int = 3) extends Component {
     oser_dqs.io.FCLK  := io.fclk
     oser_dqs.io.PCLK  := io.pclk
     oser_dqs.io.TCLK  := clk_dqsw(i)
-    oser_dqs.io.RESET := ioRstDqs
+    oser_dqs.io.RESET := dqsIoRst
     dqs_buf(i)        := oser_dqs.io.Q0
     dqs_buf_oen(i)    := oser_dqs.io.Q1
 
@@ -212,7 +220,7 @@ class GowinDdr3Phy(rowWidth: Int = 14, bankWidth: Int = 3) extends Component {
     oser_dm.io.FCLK  := io.fclk
     oser_dm.io.PCLK  := io.pclk
     oser_dm.io.TCLK  := clk_dqsw270(i)
-    oser_dm.io.RESET := ioRstDqs
+    oser_dm.io.RESET := dqsIoRst
     io.pad.DDR3_DM(i) := oser_dm.io.Q0
   }
   io.rburst := rburst
@@ -245,7 +253,7 @@ class GowinDdr3Phy(rowWidth: Int = 14, bankWidth: Int = 3) extends Component {
     oser_dq.io.FCLK  := io.fclk
     oser_dq.io.PCLK  := io.pclk
     oser_dq.io.TCLK  := clk_dqsw270(byteIdx)
-    val dqIoRst = if (i < 8) ioRstDq0 else ioRstDq1
+    val dqIoRst = if (i < 4) fclkRstArea.rst_dq0a else if (i < 8) fclkRstArea.rst_dq0b else if (i < 12) fclkRstArea.rst_dq1a else fclkRstArea.rst_dq1b
     oser_dq.io.RESET := dqIoRst
     dq_buf(i)        := oser_dq.io.Q0
     dq_buf_oen(i)    := oser_dq.io.Q1
@@ -292,7 +300,7 @@ class GowinDdr3Phy(rowWidth: Int = 14, bankWidth: Int = 3) extends Component {
     oser.io.D7    := cmdBits(3)
     oser.io.FCLK  := io.fclk
     oser.io.PCLK  := io.pclk
-    oser.io.RESET := !serdes_rst_cmd
+    oser.io.RESET := fclkRstArea.rst_cmd_a
     padOut        := oser.io.Q0
   }
 
@@ -313,7 +321,7 @@ class GowinDdr3Phy(rowWidth: Int = 14, bankWidth: Int = 3) extends Component {
     oser_a.io.D7    := io.A(3)(i)
     oser_a.io.FCLK  := io.fclk
     oser_a.io.PCLK  := io.pclk
-    oser_a.io.RESET := !serdes_rst_cmd
+    oser_a.io.RESET := (if (i < 7) fclkRstArea.rst_cmd_a else fclkRstArea.rst_cmd_b)
     io.pad.DDR3_A(i) := oser_a.io.Q0
   }
 
@@ -330,7 +338,7 @@ class GowinDdr3Phy(rowWidth: Int = 14, bankWidth: Int = 3) extends Component {
     oser_ba.io.D7    := io.BA(3)(i)
     oser_ba.io.FCLK  := io.fclk
     oser_ba.io.PCLK  := io.pclk
-    oser_ba.io.RESET := !serdes_rst_cmd
+    oser_ba.io.RESET := fclkRstArea.rst_cmd_b
     io.pad.DDR3_BA(i) := oser_ba.io.Q0
   }
 }

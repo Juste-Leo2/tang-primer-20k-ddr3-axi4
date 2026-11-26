@@ -298,43 +298,8 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   }
   val sweepScoreReg = Reg(UInt(4 bits)) init(0)
   val sweepRotReg   = Reg(UInt(3 bits)) init(0)
-  val b0Scores = Vec(UInt(4 bits), 8)
-  val b1Scores = Vec(UInt(4 bits), 8)
-  for (r <- 0 until 8) {
-    var acc0: UInt = U(0, 4 bits)
-    var acc1: UInt = U(0, 4 bits)
-    for (i <- 0 until 8) {
-      acc0 = acc0 + (latchBeats(i)(7 downto 0) === patBeats((i + r) % 8)(7 downto 0)).asUInt.resize(4)
-      acc1 = acc1 + (latchBeats(i)(15 downto 8) === patBeats((i + r) % 8)(15 downto 8)).asUInt.resize(4)
-    }
-    b0Scores(r) := acc0
-    b1Scores(r) := acc1
-  }
-  val b0ScoresReg = if (!config.isSimulation) Vec(Reg(UInt(4 bits)) init(0), 8) else null
-  val b1ScoresReg = if (!config.isSimulation) Vec(Reg(UInt(4 bits)) init(0), 8) else null
-  def maxScoreRot8(v: Vec[UInt]): (UInt, UInt) = {
-    val s1 = Vec((0 until 4).map(k => (v(2 * k + 1) > v(2 * k)) ? v(2 * k + 1) | v(2 * k)))
-    val i1 = Vec((0 until 4).map(k => (v(2 * k + 1) > v(2 * k)) ? U(2 * k + 1, 3 bits) | U(2 * k, 3 bits)))
-    val s2 = Vec((0 until 2).map(k => (s1(2 * k + 1) > s1(2 * k)) ? s1(2 * k + 1) | s1(2 * k)))
-    val i2 = Vec((0 until 2).map(k => (s1(2 * k + 1) > s1(2 * k)) ? i1(2 * k + 1) | i1(2 * k)))
-    val bs = (s2(1) > s2(0)) ? s2(1) | s2(0)
-    val bi = (s2(1) > s2(0)) ? i2(1) | i2(0)
-    (bs, bi)
-  }
-  val b0ScoreReg  = if (!config.isSimulation) Reg(UInt(4 bits)) init(0) else null
-  val b1ScoreReg  = if (!config.isSimulation) Reg(UInt(4 bits)) init(0) else null
-  val b0RotReg    = if (!config.isSimulation) Reg(UInt(3 bits)) init(0) else null
-  val b1RotReg    = if (!config.isSimulation) Reg(UInt(3 bits)) init(0) else null
-  val bestB0      = if (!config.isSimulation) Reg(UInt(4 bits)) init(0) else null
-  val bestB1      = if (!config.isSimulation) Reg(UInt(4 bits)) init(0) else null
-  val bestB0Rot   = if (!config.isSimulation) Reg(UInt(3 bits)) init(0) else null
-  val bestB1Rot   = if (!config.isSimulation) Reg(UInt(3 bits)) init(0) else null
-  val b0MaxMap    = if (!config.isSimulation) Vec(Reg(Bits(4 bits)) init(0), 16) else null
-  val b1MaxMap    = if (!config.isSimulation) Vec(Reg(Bits(4 bits)) init(0), 16) else null
-  val b0RotMap    = if (!config.isSimulation) Vec(Reg(Bits(4 bits)) init(0), 16) else null
-  val b1RotMap    = if (!config.isSimulation) Vec(Reg(Bits(4 bits)) init(0), 16) else null
-  val wserRstCnt  = if (!config.isSimulation) Reg(UInt(3 bits)) init(0) else null
-  val wser_rst    = if (!config.isSimulation) RegInit(False) else null
+  val wserRstCnt    = if (!config.isSimulation) Reg(UInt(3 bits)) init(0) else null
+  val wser_rst      = if (!config.isSimulation) RegInit(False) else null
   val sweepScore = sweepScoreReg
   val sweepRot = sweepRotReg
   val bestCnt = Reg(UInt(4 bits)) init(0)
@@ -362,18 +327,12 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   val best0Rot      = Reg(UInt(3 bits)) init(0)
   val bestMode      = Reg(UInt(2 bits)) init(0)
   val bestLatch     = Reg(Bits(128 bits)) init(0)
-  val dqCyc10       = if (!config.isSimulation) Reg(Bits(32 bits)) init(0) else null
-  val dqCyc11       = if (!config.isSimulation) Reg(Bits(32 bits)) init(0) else null
   val bestWCnt      = Reg(UInt(4 bits)) init(0)
   val bestWPos      = Reg(Bits(2 bits)) init(B"2'd0")
   val bestWSel      = Reg(Bits(3 bits)) init(B"3'd0")
   val bestWRot      = Reg(UInt(3 bits)) init(0)
   val bestWMode     = Reg(UInt(2 bits)) init(0)
   val wScores       = Vec(Reg(UInt(4 bits)) init(0), 3)
-  val grid0         = Vec(Reg(Bits(4 bits)) init(0), 32)
-  val gridF         = Vec(Reg(Bits(4 bits)) init(0), 32)
-  val dqsTrace      = Vec(Reg(Bits(16 bits)) init(0), 8)
-  val wrModeMap     = Vec(Reg(Bits(4 bits)) init(0), 16)
 
   // DLL read-delay sweep, RELATIVE to the DLL lock, via the DQS dynamic
   // steppers (RLOADN/RMOVE/RDIR). Measured facts
@@ -573,22 +532,6 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   // Monitor rburst strobe
   when(io.phy.rburst(0)) { rburst_seen(0) := True }
   when(io.phy.rburst(1)) { rburst_seen(1) := True }
-  if (!config.isSimulation) {
-    when(state === Ddr3State.READ_CALIB && !training && !scanOn && !shiftCalDone &&
-         tryMode === 0 && wTry === 0 && rcalib_tries === 8 && cycle >= 5 && cycle <= 12) {
-      val trIdx = (cycle - 5).resize(3)
-      dqsTrace(trIdx) := io.phy.rvalid(1).asBits ## io.phy.wpoint(1) ##
-                         io.phy.rburst(1).asBits ## io.phy.rpoint(1) ##
-                         io.phy.rvalid(0).asBits ## io.phy.wpoint(0) ##
-                         io.phy.rburst(0).asBits ## io.phy.rpoint(0)
-      val lowNibbles = (io.phy.dq_in(7)(3 downto 0) ## io.phy.dq_in(6)(3 downto 0) ##
-                        io.phy.dq_in(5)(3 downto 0) ## io.phy.dq_in(4)(3 downto 0) ##
-                        io.phy.dq_in(3)(3 downto 0) ## io.phy.dq_in(2)(3 downto 0) ##
-                        io.phy.dq_in(1)(3 downto 0) ## io.phy.dq_in(0)(3 downto 0))
-      when(cycle === 10) { dqCyc10 := lowNibbles }
-      when(cycle === 11) { dqCyc11 := lowNibbles }
-    }
-  }
 
   // Generate dqs_read pulse, 4 pclk wide: the rd pipeline (divide-by-4
   // serializers) turns N pclk of dqs_read into ~N*10 ns of rd_en. A
@@ -921,23 +864,11 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
           is(config.RCD / 4 + 11) {
             // Pipeline stage 1: register 8x128b rotation popcounts.
             rotScoresReg := rotScores
-            if (!config.isSimulation) {
-              b0ScoresReg := b0Scores
-              b1ScoresReg := b1Scores
-            }
           }
           is(config.RCD / 4 + 12) {
             // Pipeline stage 2: register 8-way max rotation score/index.
             sweepScoreReg := rotScoreW(7)
             sweepRotReg   := rotIdxW(7)
-            if (!config.isSimulation) {
-              val (s0, r0) = maxScoreRot8(b0ScoresReg)
-              val (s1, r1) = maxScoreRot8(b1ScoresReg)
-              b0ScoreReg := s0
-              b0RotReg   := r0
-              b1ScoreReg := s1
-              b1RotReg   := r1
-            }
           }
           is(config.RCD / 4 + 13) {
             // $display is simulation-only: the formal backend lowers
@@ -1249,32 +1180,6 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
               // Best-of-sweep eye search: strictly better rotation-corrected
               // beat score (0..8). No early stop: one full survey, then lock
               // the best setting AND its rotation.
-              when(rcalib_tries < 32) {
-                val gIdx = (rclkpos ## rclksel).asUInt
-                if (!config.isSimulation) {
-                  when(!training && !scanOn && !shiftCalDone && tryMode === 0 && wTry === 2) {
-                    grid0(gIdx) := b0ScoreReg.asBits
-                    gridF(gIdx) := b1ScoreReg.asBits
-                  }
-                  when(!training && !scanOn && !shiftCalDone) {
-                    when(b0ScoreReg > bestB0) {
-                      bestB0    := b0ScoreReg
-                      bestB0Rot := b0RotReg
-                    }
-                    when(b1ScoreReg > bestB1) {
-                      bestB1    := b1ScoreReg
-                      bestB1Rot := b1RotReg
-                    }
-                  }
-                } else {
-                  when(!training && !dllSweepDone && !scanOn && !shiftCalDone && tryMode === 0 && wTry === 0) {
-                    grid0(gIdx) := sweepScore.asBits
-                  }
-                  when(!training && !scanOn && !shiftCalDone && tryMode === 0 && wTry === 0) {
-                    gridF(gIdx) := sweepScore.asBits
-                  }
-                }
-              }
               when(sweepScore > bestCnt) {
                 bestCnt := sweepScore
                 bestLatch := trainLatch
@@ -1304,14 +1209,6 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                   // iteration is harmless.
                   when(!scanOn && !shiftCalDone) {
                     val maxTryMode = if (config.isSimulation) 1 else 3
-                    wrModeMap((wTry ## tryMode).asUInt) := bestCnt.asBits
-                    if (!config.isSimulation) {
-                      val mIdx = (wTry ## tryMode).asUInt
-                      b0MaxMap(mIdx) := bestB0.asBits
-                      b1MaxMap(mIdx) := bestB1.asBits
-                      b0RotMap(mIdx) := bestB0Rot.resize(4).asBits
-                      b1RotMap(mIdx) := bestB1Rot.resize(4).asBits
-                    }
                     when(bestCnt === 8 && (tryMode === 0 || !Bool(config.isSimulation))) {
                       shiftCalDone := True
                       if (!config.isSimulation) dllSweepDone := True
@@ -1332,12 +1229,6 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                         rcalib_tries := 0
                         bestCnt := 0
                         bestLatch := 0
-                        if (!config.isSimulation) {
-                          bestB0 := 0
-                          bestB1 := 0
-                          bestB0Rot := 0
-                          bestB1Rot := 0
-                        }
                         bistRewrite()
                       } otherwise {
                         when(bestCnt <= best0) {
@@ -1525,12 +1416,6 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                         bestCnt := 0
                         bestLatch := 0
                         rcalib_tries := 0
-                        if (!config.isSimulation) {
-                          bestB0 := 0
-                          bestB1 := 0
-                          bestB0Rot := 0
-                          bestB1Rot := 0
-                        }
                         rclkpos := 0
                         rclksel := 0
                         bestRot := 0
@@ -2031,11 +1916,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   io.best_rot         := bestRot
   io.best_score       := bestCnt
   io.dbg_state        := state.asBits
-  if (!config.isSimulation) {
-    io.wlMap := b1MaxMap.asBits ## b0MaxMap.asBits ## b1RotMap.asBits ## b0RotMap.asBits
-  } else {
-    io.wlMap := wlMapR
-  }
+  io.wlMap            := wlMapR
   io.wlFirst          := wlFirstR
   io.wlLast           := wlLastR
   io.wlMatchN         := wlMatchNR.asBits
