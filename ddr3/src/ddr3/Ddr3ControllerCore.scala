@@ -108,16 +108,6 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     val best_rot    = out UInt(3 bits)
     val best_score  = out UInt(4 bits)
     val dbg_state   = out Bits(4 bits)
-    // WL instrumentation (passive capture for HW debug via UART):
-    // match map (1 bit per wstep), first/last matching wstep, saturating
-    // match count. No effect on lock logic or cycle timing.
-    val wlMap       = out Bits(256 bits)
-    val wlFirst     = out Bits(8 bits)
-    val wlLast      = out Bits(8 bits)
-    val wlMatchN    = out Bits(8 bits)
-    val wr_adv      = out Bits(2 bits)
-    val w_scores    = out Bits(12 bits)
-    val train_latch = out Bits(128 bits)
 
     // Direct interface to GowinDdr3Phy
     val phy = new Bundle {
@@ -224,12 +214,6 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   val wlevel_done  = RegInit(False)
   val wlevel_cnt   = Reg(UInt(4 bits)) init(0)
   val wlevel_tries = Reg(UInt(9 bits)) init(0)
-  // WL instrumentation capture (passive, see io above).
-  val wlMapR   = Reg(Bits(256 bits)) init(0)
-  val wlFirstR = Reg(Bits(8 bits)) init(0)
-  val wlLastR  = Reg(Bits(8 bits)) init(0)
-  val wlSeenR  = RegInit(False)
-  val wlMatchNR = Reg(UInt(8 bits)) init(0)
   val wlVoteN  = Reg(UInt(3 bits)) init(0)
   val wlVoteCnt = Reg(UInt(3 bits)) init(0)
   val wlVoteCnt0 = Reg(UInt(3 bits)) init(0)
@@ -348,13 +332,11 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   val best0Sel      = Reg(Bits(3 bits)) init(B"3'd0")
   val best0Rot      = Reg(UInt(3 bits)) init(0)
   val bestMode      = Reg(UInt(2 bits)) init(0)
-  val bestLatch     = Reg(Bits(128 bits)) init(0)
   val bestWCnt      = Reg(UInt(4 bits)) init(0)
   val bestWPos      = Reg(Bits(2 bits)) init(B"2'd0")
   val bestWSel      = Reg(Bits(3 bits)) init(B"3'd0")
   val bestWRot      = Reg(UInt(3 bits)) init(0)
   val bestWMode     = Reg(UInt(2 bits)) init(0)
-  val wScores       = Vec(Reg(UInt(4 bits)) init(0), 3)
 
   // DLL read-delay sweep, RELATIVE to the DLL lock, via the DQS dynamic
   // steppers (RLOADN/RMOVE/RDIR). Measured facts
@@ -705,11 +687,6 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
             val mr1_wlevel = MR1 | B"16'h0084"
             setCmd(0, CMD_SetModeReg, mr1_wlevel(15 downto 13), mr1_wlevel(12 downto 0))
             wlevel_cnt := 0
-            wlMapR := 0
-            wlFirstR := 0
-            wlLastR := 0
-            wlSeenR := False
-            wlMatchNR := 0
             wlVoteN := 0
             wlVoteCnt := 0
           }
@@ -738,19 +715,6 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
               wlVoteN := 0
               wlVoteCnt := 0
               wlevel_tries := wlevel_tries + 1
-              // Passive WL match-map capture for HW debug (UART [WLMAP]).
-              // Records the verdict per visited wstep; never touches lock/flow.
-              wlMapR(wstep.asUInt) := wlVerdict
-              when(wlVerdict) {
-                when(!wlSeenR) {
-                  wlSeenR := True
-                  wlFirstR := wstep
-                }
-                wlLastR := wstep
-                when(wlMatchNR =/= 255) {
-                  wlMatchNR := wlMatchNR + 1
-                }
-              }
             // Watchdog: after 2 full wstep turns with no lock, stop looping
             // and continue with a sentinel (W=FF on UART). A silent infinite
             // loop here bricks the board with zero diagnostics; the data-eye
@@ -842,12 +806,10 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
               bestWSel := 0
               bestWRot := 0
               bestWMode := 0
-              for (k <- 0 until 3) wScores(k) := 0
             }
             rcalib_cnt := 0
             rcalib_tries := 0
             bestCnt := 0
-            bestLatch := 0
             bestPos := rclkpos
             bestSel := rclksel
             bestRot := 0
@@ -1075,7 +1037,6 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                   // applies next-iter, exactly-once -- same as the survey).
                   when(sweepScore > bestCntDll) {
                     bestCntDll := sweepScore
-                    bestLatch := trainLatch
                     bestMag := s2Mag
                     bestSide := s2Side
                     bestPos := rclkpos
@@ -1224,7 +1185,6 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
               // the best setting AND its rotation.
               when(sweepScore > bestCnt) {
                 bestCnt := sweepScore
-                bestLatch := trainLatch
                 bestPos := rclkpos
                 bestSel := rclksel
                 bestRot := sweepRot
@@ -1270,7 +1230,6 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                         wrMode := nextM
                         rcalib_tries := 0
                         bestCnt := 0
-                        bestLatch := 0
                         bistRewrite()
                       } otherwise {
                         when(bestCnt <= best0) {
@@ -1430,7 +1389,6 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                   // would stall on !ready at best). Sweep-2 (training done)
                   // locks real.
                   when(!training) {
-                    wScores(wTry) := bestCnt
                     if (!config.isSimulation) {
                       when(bestCnt < 8 && wTry < 2) {
                         when(wTry === 0 || bestCnt > bestWCnt) {
@@ -1456,7 +1414,6 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                         tryMode := 0
                         wrMode := 0
                         bestCnt := 0
-                        bestLatch := 0
                         rcalib_tries := 0
                         rclkpos := 0
                         rclksel := 0
@@ -2081,11 +2038,6 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     cycle := 0
     wlevel_cnt := 0
     wlevel_tries := 0
-    wlMapR := 0
-    wlFirstR := 0
-    wlLastR := 0
-    wlSeenR := False
-    wlMatchNR := 0
     wlVoteN := 0
     wlVoteCnt := 0
     wlVoteCnt0 := 0
@@ -2130,7 +2082,6 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     best0Sel := B"3'd0"
     best0Rot := 0
     bestMode := 0
-    bestLatch := 0
     bestWCnt := 0
     bestWPos := 0
     bestWSel := 0
@@ -2141,7 +2092,6 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     }
     sweepScoreReg := 0
     sweepRotReg := 0
-    for (k <- 0 until 3) wScores(k) := 0
     training := True
     trainDone := False
     needPoison := False
@@ -2235,13 +2185,6 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   io.best_rot         := bestRot
   io.best_score       := bestCnt
   io.dbg_state        := state.asBits
-  io.wlMap            := wlMapR
-  io.wlFirst          := wlFirstR
-  io.wlLast           := wlLastR
-  io.wlMatchN         := wlMatchNR.asBits
-  io.wr_adv           := wrMode.asBits
-  io.w_scores         := wScores(2).asBits ## wScores(1).asBits ## wScores(0).asBits
-  io.train_latch      := bestLatch
 
   // Formal properties (SymbiYosys). Only elaborated under the formal
   // backend: zero impact on Ddr3Gen Verilog output.

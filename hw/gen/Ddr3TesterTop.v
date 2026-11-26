@@ -1,7 +1,7 @@
 // Generator : SpinalHDL v1.15.0    git head : 05a01af3d3345aa0afcaad8e0186dde13a359db2
 // Component : Ddr3TesterTop
-// Git hash  : 10480b8a50d23853b47407a454b79bac2afa8b53
-// Date      : 26/11/2026, 22:11:41
+// Git hash  : 0dd8d13f52178a6a79757a3ecab9f01ebd3ff458
+// Date      : 26/11/2026, 22:22:57
 
 `timescale 1ns/1ps
 
@@ -50,13 +50,6 @@ module Ddr3TesterTop (
   wire       [2:0]    coreArea_ddr3_io_best_rot;
   wire       [3:0]    coreArea_ddr3_io_best_score;
   wire       [3:0]    coreArea_ddr3_io_dbg_state;
-  wire       [255:0]  coreArea_ddr3_io_wlMap;
-  wire       [7:0]    coreArea_ddr3_io_wlFirst;
-  wire       [7:0]    coreArea_ddr3_io_wlLast;
-  wire       [7:0]    coreArea_ddr3_io_wlMatchN;
-  wire       [1:0]    coreArea_ddr3_io_wr_adv;
-  wire       [11:0]   coreArea_ddr3_io_w_scores;
-  wire       [127:0]  coreArea_ddr3_io_train_latch;
   wire       [1:0]    coreArea_ddr3_io_pad_DDR3_DM;
   wire       [13:0]   coreArea_ddr3_io_pad_DDR3_A;
   wire       [2:0]    coreArea_ddr3_io_pad_DDR3_BA;
@@ -168,13 +161,6 @@ module Ddr3TesterTop (
     .io_best_rot              (coreArea_ddr3_io_best_rot[2:0]               ), //o
     .io_best_score            (coreArea_ddr3_io_best_score[3:0]             ), //o
     .io_dbg_state             (coreArea_ddr3_io_dbg_state[3:0]              ), //o
-    .io_wlMap                 (coreArea_ddr3_io_wlMap[255:0]                ), //o
-    .io_wlFirst               (coreArea_ddr3_io_wlFirst[7:0]                ), //o
-    .io_wlLast                (coreArea_ddr3_io_wlLast[7:0]                 ), //o
-    .io_wlMatchN              (coreArea_ddr3_io_wlMatchN[7:0]               ), //o
-    .io_wr_adv                (coreArea_ddr3_io_wr_adv[1:0]                 ), //o
-    .io_w_scores              (coreArea_ddr3_io_w_scores[11:0]              ), //o
-    .io_train_latch           (coreArea_ddr3_io_train_latch[127:0]          ), //o
     .io_pad_DDR3_DQ           (DDR3_DQ                                      ), //~
     .io_pad_DDR3_DQS          (DDR3_DQS                                     ), //~
     .io_pad_DDR3_DM           (coreArea_ddr3_io_pad_DDR3_DM[1:0]            ), //o
@@ -239,13 +225,6 @@ module Ddr3TesterTop (
     .io_best_rot              (coreArea_ddr3_io_best_rot[2:0]               ), //i
     .io_best_score            (coreArea_ddr3_io_best_score[3:0]             ), //i
     .io_dbg_state             (coreArea_ddr3_io_dbg_state[3:0]              ), //i
-    .io_wlMap                 (coreArea_ddr3_io_wlMap[255:0]                ), //i
-    .io_wlFirst               (coreArea_ddr3_io_wlFirst[7:0]                ), //i
-    .io_wlLast                (coreArea_ddr3_io_wlLast[7:0]                 ), //i
-    .io_wlMatchN              (coreArea_ddr3_io_wlMatchN[7:0]               ), //i
-    .io_wr_adv                (coreArea_ddr3_io_wr_adv[1:0]                 ), //i
-    .io_w_scores              (coreArea_ddr3_io_w_scores[11:0]              ), //i
-    .io_train_latch           (coreArea_ddr3_io_train_latch[127:0]          ), //i
     .io_uart_tx               (coreArea_engine_io_uart_tx                   ), //o
     .io_test_busy             (coreArea_engine_io_test_busy                 ), //o
     .io_test_pass             (coreArea_engine_io_test_pass                 ), //o
@@ -350,13 +329,6 @@ module Ddr3MemtestEngine (
   input  wire [2:0]    io_best_rot,
   input  wire [3:0]    io_best_score,
   input  wire [3:0]    io_dbg_state,
-  input  wire [255:0]  io_wlMap,
-  input  wire [7:0]    io_wlFirst,
-  input  wire [7:0]    io_wlLast,
-  input  wire [7:0]    io_wlMatchN,
-  input  wire [1:0]    io_wr_adv,
-  input  wire [11:0]   io_w_scores,
-  input  wire [127:0]  io_train_latch,
   output wire          io_uart_tx,
   output wire          io_test_busy,
   output wire          io_test_pass,
@@ -370,33 +342,31 @@ module Ddr3MemtestEngine (
   localparam fsm_sWaitCalib = 5'd2;
   localparam fsm_sPrintCalib = 5'd3;
   localparam fsm_sPrintBanner = 5'd4;
-  localparam fsm_sPrintWlmap = 5'd5;
-  localparam fsm_sPrintLatch = 5'd6;
-  localparam fsm_sSingleWriteAW = 5'd7;
-  localparam fsm_sSingleWriteW0 = 5'd8;
-  localparam fsm_sSingleWriteW1 = 5'd9;
-  localparam fsm_sSingleWriteB = 5'd10;
-  localparam fsm_sSingleReadAR = 5'd11;
-  localparam fsm_sSingleReadR0 = 5'd12;
-  localparam fsm_sSingleReadR1 = 5'd13;
-  localparam fsm_sBulkWriteAW = 5'd14;
-  localparam fsm_sBulkWriteW = 5'd15;
-  localparam fsm_sBulkWriteB = 5'd16;
-  localparam fsm_sBulkReadAR = 5'd17;
-  localparam fsm_sBulkReadR = 5'd18;
-  localparam fsm_sReportPass = 5'd19;
-  localparam fsm_sReportFail = 5'd20;
-  localparam fsm_sLoopDelay = 5'd21;
+  localparam fsm_sSingleWriteAW = 5'd5;
+  localparam fsm_sSingleWriteW0 = 5'd6;
+  localparam fsm_sSingleWriteW1 = 5'd7;
+  localparam fsm_sSingleWriteB = 5'd8;
+  localparam fsm_sSingleReadAR = 5'd9;
+  localparam fsm_sSingleReadR0 = 5'd10;
+  localparam fsm_sSingleReadR1 = 5'd11;
+  localparam fsm_sBulkWriteAW = 5'd12;
+  localparam fsm_sBulkWriteW = 5'd13;
+  localparam fsm_sBulkWriteB = 5'd14;
+  localparam fsm_sBulkReadAR = 5'd15;
+  localparam fsm_sBulkReadR = 5'd16;
+  localparam fsm_sReportPass = 5'd17;
+  localparam fsm_sReportFail = 5'd18;
+  localparam fsm_sLoopDelay = 5'd19;
 
   wire                uart_io_write_ready;
   wire                uart_io_txd;
   wire                uart_io_busy;
+  reg        [7:0]    _zz_printChar;
+  wire       [3:0]    _zz_printChar_1;
   wire       [14:0]   _zz_currentByteAddr;
   wire       [31:0]   _zz_beatBlockAddr;
   wire       [10:0]   _zz_beatBlockAddr_1;
   wire       [6:0]    _zz_beatBlockAddr_2;
-  reg        [7:0]    _zz_nextPrintChar;
-  wire       [3:0]    _zz_nextPrintChar_1;
   reg        [7:0]    _zz_nextPrintChar_2;
   wire       [3:0]    _zz_nextPrintChar_3;
   reg        [7:0]    _zz_nextPrintChar_4;
@@ -407,210 +377,30 @@ module Ddr3MemtestEngine (
   wire       [3:0]    _zz_nextPrintChar_9;
   reg        [7:0]    _zz_nextPrintChar_10;
   wire       [3:0]    _zz_nextPrintChar_11;
-  wire       [3:0]    _zz_nextPrintChar_12;
-  reg        [7:0]    _zz_nextPrintChar_13;
+  reg        [7:0]    _zz_nextPrintChar_12;
+  wire       [3:0]    _zz_nextPrintChar_13;
   wire       [3:0]    _zz_nextPrintChar_14;
-  wire       [3:0]    _zz_nextPrintChar_15;
-  reg        [7:0]    _zz_nextPrintChar_16;
+  reg        [7:0]    _zz_nextPrintChar_15;
+  wire       [3:0]    _zz_nextPrintChar_16;
   wire       [3:0]    _zz_nextPrintChar_17;
-  wire       [3:0]    _zz_nextPrintChar_18;
-  wire       [2:0]    _zz_nextPrintChar_19;
-  reg        [7:0]    _zz_nextPrintChar_20;
-  wire       [3:0]    _zz_nextPrintChar_21;
+  reg        [7:0]    _zz_nextPrintChar_18;
+  wire       [3:0]    _zz_nextPrintChar_19;
+  wire       [3:0]    _zz_nextPrintChar_20;
+  wire       [2:0]    _zz_nextPrintChar_21;
   reg        [7:0]    _zz_nextPrintChar_22;
   wire       [3:0]    _zz_nextPrintChar_23;
-  reg        [7:0]    _zz_nextPrintChar_24;
-  wire       [3:0]    _zz_nextPrintChar_25;
-  reg        [7:0]    _zz_nextPrintChar_26;
-  wire       [3:0]    _zz_nextPrintChar_27;
-  reg        [7:0]    _zz_nextPrintChar_28;
-  wire       [3:0]    _zz_nextPrintChar_29;
-  reg        [7:0]    _zz_nextPrintChar_30;
-  wire       [3:0]    _zz_nextPrintChar_31;
-  reg        [7:0]    _zz_nextPrintChar_32;
-  wire       [3:0]    _zz_nextPrintChar_33;
-  reg        [7:0]    _zz_nextPrintChar_34;
-  wire       [3:0]    _zz_nextPrintChar_35;
-  reg        [3:0]    _zz_nextPrintChar_36;
-  wire       [5:0]    _zz_nextPrintChar_37;
-  wire       [5:0]    _zz_nextPrintChar_38;
-  wire       [6:0]    _zz_nextPrintChar_39;
-  reg        [7:0]    _zz_nextPrintChar_40;
-  wire       [3:0]    _zz_nextPrintChar_41;
-  wire       [3:0]    _zz_nextPrintChar_42;
-  reg        [7:0]    _zz_nextPrintChar_43;
-  wire       [3:0]    _zz_nextPrintChar_44;
-  reg        [7:0]    _zz_nextPrintChar_45;
-  wire       [3:0]    _zz_nextPrintChar_46;
-  reg        [7:0]    _zz_nextPrintChar_47;
-  wire       [3:0]    _zz_nextPrintChar_48;
-  reg        [7:0]    _zz_nextPrintChar_49;
-  wire       [3:0]    _zz_nextPrintChar_50;
-  reg        [3:0]    _zz_nextPrintChar_51;
-  wire       [4:0]    _zz_nextPrintChar_52;
-  wire       [4:0]    _zz_nextPrintChar_53;
-  wire       [6:0]    _zz_nextPrintChar_54;
   wire       [31:0]   _zz_io_axi_w_payload_data;
   wire       [31:0]   _zz_io_axi_w_payload_data_1;
-  wire       [10:0]   _zz_when_Ddr3MemtestEngine_l519;
+  wire       [10:0]   _zz_when_Ddr3MemtestEngine_l436;
   wire       [31:0]   _zz__zz_errExpected;
   wire       [31:0]   _zz__zz_errExpected_1;
-  wire       [10:0]   _zz_when_Ddr3MemtestEngine_l558;
-  reg        [7:0]    _zz_nextPrintChar_55;
-  wire       [5:0]    _zz_nextPrintChar_56;
-  reg        [7:0]    _zz_nextPrintChar_57;
-  wire       [3:0]    _zz_nextPrintChar_58;
-  reg        [7:0]    _zz_nextPrintChar_59;
-  wire       [3:0]    _zz_nextPrintChar_60;
-  reg        [7:0]    _zz_nextPrintChar_61;
-  wire       [3:0]    _zz_nextPrintChar_62;
-  reg        [7:0]    _zz_nextPrintChar_63;
-  wire       [3:0]    _zz_nextPrintChar_64;
-  reg        [7:0]    _zz_nextPrintChar_65;
-  wire       [3:0]    _zz_nextPrintChar_66;
-  reg        [7:0]    _zz_nextPrintChar_67;
-  wire       [3:0]    _zz_nextPrintChar_68;
-  reg        [7:0]    _zz_nextPrintChar_69;
-  wire       [3:0]    _zz_nextPrintChar_70;
-  reg        [7:0]    _zz_nextPrintChar_71;
-  wire       [3:0]    _zz_nextPrintChar_72;
-  reg        [7:0]    _zz_nextPrintChar_73;
-  wire       [3:0]    _zz_nextPrintChar_74;
-  reg        [7:0]    _zz_nextPrintChar_75;
-  wire       [3:0]    _zz_nextPrintChar_76;
-  reg        [7:0]    _zz_nextPrintChar_77;
-  wire       [3:0]    _zz_nextPrintChar_78;
-  reg        [7:0]    _zz_nextPrintChar_79;
-  wire       [3:0]    _zz_nextPrintChar_80;
-  reg        [7:0]    _zz_nextPrintChar_81;
-  wire       [3:0]    _zz_nextPrintChar_82;
-  reg        [7:0]    _zz_nextPrintChar_83;
-  wire       [3:0]    _zz_nextPrintChar_84;
-  reg        [7:0]    _zz_nextPrintChar_85;
-  wire       [3:0]    _zz_nextPrintChar_86;
-  reg        [7:0]    _zz_nextPrintChar_87;
-  wire       [3:0]    _zz_nextPrintChar_88;
-  reg        [7:0]    _zz_nextPrintChar_89;
-  wire       [3:0]    _zz_nextPrintChar_90;
-  reg        [7:0]    _zz_nextPrintChar_91;
-  wire       [3:0]    _zz_nextPrintChar_92;
-  reg        [7:0]    _zz_nextPrintChar_93;
-  wire       [3:0]    _zz_nextPrintChar_94;
-  reg        [7:0]    _zz_nextPrintChar_95;
-  wire       [3:0]    _zz_nextPrintChar_96;
-  reg        [7:0]    _zz_nextPrintChar_97;
-  reg        [7:0]    _zz_nextPrintChar_98;
-  wire       [3:0]    _zz_nextPrintChar_99;
-  reg        [7:0]    _zz_nextPrintChar_100;
-  wire       [3:0]    _zz_nextPrintChar_101;
-  reg        [7:0]    _zz_nextPrintChar_102;
-  wire       [3:0]    _zz_nextPrintChar_103;
-  reg        [7:0]    _zz_nextPrintChar_104;
-  wire       [3:0]    _zz_nextPrintChar_105;
-  reg        [7:0]    _zz_nextPrintChar_106;
-  wire       [3:0]    _zz_nextPrintChar_107;
-  reg        [7:0]    _zz_nextPrintChar_108;
-  wire       [3:0]    _zz_nextPrintChar_109;
-  reg        [7:0]    _zz_nextPrintChar_110;
-  wire       [3:0]    _zz_nextPrintChar_111;
-  reg        [7:0]    _zz_nextPrintChar_112;
-  wire       [3:0]    _zz_nextPrintChar_113;
-  reg        [7:0]    _zz_nextPrintChar_114;
-  wire       [3:0]    _zz_nextPrintChar_115;
-  reg        [7:0]    _zz_nextPrintChar_116;
-  wire       [3:0]    _zz_nextPrintChar_117;
-  reg        [7:0]    _zz_nextPrintChar_118;
-  wire       [3:0]    _zz_nextPrintChar_119;
-  reg        [7:0]    _zz_nextPrintChar_120;
-  wire       [3:0]    _zz_nextPrintChar_121;
-  reg        [7:0]    _zz_nextPrintChar_122;
-  wire       [3:0]    _zz_nextPrintChar_123;
-  reg        [7:0]    _zz_nextPrintChar_124;
-  wire       [3:0]    _zz_nextPrintChar_125;
-  reg        [7:0]    _zz_nextPrintChar_126;
-  wire       [3:0]    _zz_nextPrintChar_127;
-  reg        [7:0]    _zz_nextPrintChar_128;
-  wire       [3:0]    _zz_nextPrintChar_129;
-  reg        [7:0]    _zz_nextPrintChar_130;
-  wire       [3:0]    _zz_nextPrintChar_131;
-  reg        [7:0]    _zz_nextPrintChar_132;
-  wire       [3:0]    _zz_nextPrintChar_133;
-  reg        [7:0]    _zz_nextPrintChar_134;
-  wire       [3:0]    _zz_nextPrintChar_135;
-  reg        [7:0]    _zz_nextPrintChar_136;
-  wire       [3:0]    _zz_nextPrintChar_137;
-  reg        [7:0]    _zz_nextPrintChar_138;
-  wire       [3:0]    _zz_nextPrintChar_139;
-  reg        [7:0]    _zz_nextPrintChar_140;
-  wire       [3:0]    _zz_nextPrintChar_141;
-  reg        [7:0]    _zz_nextPrintChar_142;
-  wire       [3:0]    _zz_nextPrintChar_143;
-  reg        [7:0]    _zz_nextPrintChar_144;
-  wire       [3:0]    _zz_nextPrintChar_145;
-  reg        [7:0]    _zz_nextPrintChar_146;
-  wire       [3:0]    _zz_nextPrintChar_147;
-  reg        [7:0]    _zz_nextPrintChar_148;
-  wire       [3:0]    _zz_nextPrintChar_149;
-  reg        [7:0]    _zz_nextPrintChar_150;
-  wire       [3:0]    _zz_nextPrintChar_151;
-  reg        [7:0]    _zz_nextPrintChar_152;
-  wire       [3:0]    _zz_nextPrintChar_153;
-  reg        [7:0]    _zz_nextPrintChar_154;
-  wire       [3:0]    _zz_nextPrintChar_155;
-  reg        [7:0]    _zz_nextPrintChar_156;
-  wire       [3:0]    _zz_nextPrintChar_157;
-  reg        [7:0]    _zz_nextPrintChar_158;
-  wire       [3:0]    _zz_nextPrintChar_159;
-  reg        [7:0]    _zz_nextPrintChar_160;
-  wire       [3:0]    _zz_nextPrintChar_161;
-  reg        [7:0]    _zz_nextPrintChar_162;
-  wire       [3:0]    _zz_nextPrintChar_163;
-  reg        [7:0]    _zz_nextPrintChar_164;
-  wire       [3:0]    _zz_nextPrintChar_165;
-  reg        [7:0]    _zz_nextPrintChar_166;
-  wire       [3:0]    _zz_nextPrintChar_167;
-  reg        [7:0]    _zz_nextPrintChar_168;
-  wire       [3:0]    _zz_nextPrintChar_169;
-  reg        [7:0]    _zz_nextPrintChar_170;
-  wire       [3:0]    _zz_nextPrintChar_171;
-  reg        [7:0]    _zz_nextPrintChar_172;
-  wire       [3:0]    _zz_nextPrintChar_173;
-  reg        [7:0]    _zz_nextPrintChar_174;
-  wire       [3:0]    _zz_nextPrintChar_175;
-  reg        [7:0]    _zz_nextPrintChar_176;
-  wire       [3:0]    _zz_nextPrintChar_177;
-  reg        [7:0]    _zz_nextPrintChar_178;
-  wire       [3:0]    _zz_nextPrintChar_179;
-  reg        [7:0]    _zz_nextPrintChar_180;
-  wire       [3:0]    _zz_nextPrintChar_181;
-  reg        [7:0]    _zz_nextPrintChar_182;
-  wire       [3:0]    _zz_nextPrintChar_183;
-  reg        [7:0]    _zz_nextPrintChar_184;
-  wire       [3:0]    _zz_nextPrintChar_185;
-  reg        [7:0]    _zz_nextPrintChar_186;
-  wire       [3:0]    _zz_nextPrintChar_187;
-  reg        [7:0]    _zz_nextPrintChar_188;
-  wire       [3:0]    _zz_nextPrintChar_189;
-  reg        [7:0]    _zz_nextPrintChar_190;
-  wire       [3:0]    _zz_nextPrintChar_191;
-  reg        [7:0]    _zz_nextPrintChar_192;
-  wire       [3:0]    _zz_nextPrintChar_193;
-  reg        [7:0]    _zz_nextPrintChar_194;
-  wire       [3:0]    _zz_nextPrintChar_195;
-  reg        [7:0]    _zz_nextPrintChar_196;
-  wire       [3:0]    _zz_nextPrintChar_197;
-  reg        [7:0]    _zz_nextPrintChar_198;
-  wire       [3:0]    _zz_nextPrintChar_199;
-  reg        [7:0]    _zz_nextPrintChar_200;
-  wire       [3:0]    _zz_nextPrintChar_201;
-  reg        [7:0]    _zz_nextPrintChar_202;
-  wire       [3:0]    _zz_nextPrintChar_203;
-  reg        [7:0]    _zz_nextPrintChar_204;
-  wire       [3:0]    _zz_nextPrintChar_205;
-  reg        [7:0]    _zz_nextPrintChar_206;
-  wire       [3:0]    _zz_nextPrintChar_207;
-  reg        [7:0]    _zz_nextPrintChar_208;
-  wire       [3:0]    _zz_nextPrintChar_209;
+  wire       [10:0]   _zz_when_Ddr3MemtestEngine_l475;
+  reg        [7:0]    _zz_nextPrintChar_24;
+  reg        [3:0]    _zz_nextPrintNib;
+  reg                 _zz_nextUseNib;
+  reg        [7:0]    _zz_nextPrintChar_25;
+  reg        [3:0]    _zz_nextPrintNib_1;
+  reg                 _zz_nextUseNib_1;
   wire                txStream_valid;
   wire                txStream_ready;
   wire       [7:0]    txStream_payload;
@@ -632,8 +422,12 @@ module Ddr3MemtestEngine (
   wire       [7:0]    hexAsciiRom_15;
   reg                 nextPrintValid;
   reg        [7:0]    nextPrintChar;
+  reg                 nextUseNib;
+  reg        [3:0]    nextPrintNib;
   reg                 stageValid;
   reg        [7:0]    stageChar;
+  reg                 stageUseNib;
+  reg        [3:0]    stageNib;
   reg                 printValid;
   reg        [7:0]    printChar;
   wire                txStream_fire;
@@ -647,109 +441,13 @@ module Ddr3MemtestEngine (
   reg        [63:0]   errActual1;
   reg        [24:0]   hbCounter;
   reg                 hbReg;
-  wire                when_Ddr3MemtestEngine_l105;
+  wire                when_Ddr3MemtestEngine_l104;
   reg        [10:0]   burstIndex;
   reg        [7:0]    beatIdx;
   reg        [31:0]   wrCycleCnt;
   reg        [31:0]   rdCycleCnt;
   wire       [31:0]   currentByteAddr;
   wire       [31:0]   beatBlockAddr;
-  wire       [3:0]    wlMapNib_0;
-  wire       [3:0]    wlMapNib_1;
-  wire       [3:0]    wlMapNib_2;
-  wire       [3:0]    wlMapNib_3;
-  wire       [3:0]    wlMapNib_4;
-  wire       [3:0]    wlMapNib_5;
-  wire       [3:0]    wlMapNib_6;
-  wire       [3:0]    wlMapNib_7;
-  wire       [3:0]    wlMapNib_8;
-  wire       [3:0]    wlMapNib_9;
-  wire       [3:0]    wlMapNib_10;
-  wire       [3:0]    wlMapNib_11;
-  wire       [3:0]    wlMapNib_12;
-  wire       [3:0]    wlMapNib_13;
-  wire       [3:0]    wlMapNib_14;
-  wire       [3:0]    wlMapNib_15;
-  wire       [3:0]    wlMapNib_16;
-  wire       [3:0]    wlMapNib_17;
-  wire       [3:0]    wlMapNib_18;
-  wire       [3:0]    wlMapNib_19;
-  wire       [3:0]    wlMapNib_20;
-  wire       [3:0]    wlMapNib_21;
-  wire       [3:0]    wlMapNib_22;
-  wire       [3:0]    wlMapNib_23;
-  wire       [3:0]    wlMapNib_24;
-  wire       [3:0]    wlMapNib_25;
-  wire       [3:0]    wlMapNib_26;
-  wire       [3:0]    wlMapNib_27;
-  wire       [3:0]    wlMapNib_28;
-  wire       [3:0]    wlMapNib_29;
-  wire       [3:0]    wlMapNib_30;
-  wire       [3:0]    wlMapNib_31;
-  wire       [3:0]    wlMapNib_32;
-  wire       [3:0]    wlMapNib_33;
-  wire       [3:0]    wlMapNib_34;
-  wire       [3:0]    wlMapNib_35;
-  wire       [3:0]    wlMapNib_36;
-  wire       [3:0]    wlMapNib_37;
-  wire       [3:0]    wlMapNib_38;
-  wire       [3:0]    wlMapNib_39;
-  wire       [3:0]    wlMapNib_40;
-  wire       [3:0]    wlMapNib_41;
-  wire       [3:0]    wlMapNib_42;
-  wire       [3:0]    wlMapNib_43;
-  wire       [3:0]    wlMapNib_44;
-  wire       [3:0]    wlMapNib_45;
-  wire       [3:0]    wlMapNib_46;
-  wire       [3:0]    wlMapNib_47;
-  wire       [3:0]    wlMapNib_48;
-  wire       [3:0]    wlMapNib_49;
-  wire       [3:0]    wlMapNib_50;
-  wire       [3:0]    wlMapNib_51;
-  wire       [3:0]    wlMapNib_52;
-  wire       [3:0]    wlMapNib_53;
-  wire       [3:0]    wlMapNib_54;
-  wire       [3:0]    wlMapNib_55;
-  wire       [3:0]    wlMapNib_56;
-  wire       [3:0]    wlMapNib_57;
-  wire       [3:0]    wlMapNib_58;
-  wire       [3:0]    wlMapNib_59;
-  wire       [3:0]    wlMapNib_60;
-  wire       [3:0]    wlMapNib_61;
-  wire       [3:0]    wlMapNib_62;
-  wire       [3:0]    wlMapNib_63;
-  wire       [3:0]    latchNib_0;
-  wire       [3:0]    latchNib_1;
-  wire       [3:0]    latchNib_2;
-  wire       [3:0]    latchNib_3;
-  wire       [3:0]    latchNib_4;
-  wire       [3:0]    latchNib_5;
-  wire       [3:0]    latchNib_6;
-  wire       [3:0]    latchNib_7;
-  wire       [3:0]    latchNib_8;
-  wire       [3:0]    latchNib_9;
-  wire       [3:0]    latchNib_10;
-  wire       [3:0]    latchNib_11;
-  wire       [3:0]    latchNib_12;
-  wire       [3:0]    latchNib_13;
-  wire       [3:0]    latchNib_14;
-  wire       [3:0]    latchNib_15;
-  wire       [3:0]    latchNib_16;
-  wire       [3:0]    latchNib_17;
-  wire       [3:0]    latchNib_18;
-  wire       [3:0]    latchNib_19;
-  wire       [3:0]    latchNib_20;
-  wire       [3:0]    latchNib_21;
-  wire       [3:0]    latchNib_22;
-  wire       [3:0]    latchNib_23;
-  wire       [3:0]    latchNib_24;
-  wire       [3:0]    latchNib_25;
-  wire       [3:0]    latchNib_26;
-  wire       [3:0]    latchNib_27;
-  wire       [3:0]    latchNib_28;
-  wire       [3:0]    latchNib_29;
-  wire       [3:0]    latchNib_30;
-  wire       [3:0]    latchNib_31;
   wire       [7:0]    passPrefix_0;
   wire       [7:0]    passPrefix_1;
   wire       [7:0]    passPrefix_2;
@@ -773,22 +471,24 @@ module Ddr3MemtestEngine (
   reg        [27:0]   fsm_delayCounter;
   reg        [4:0]    fsm_stateReg;
   reg        [4:0]    fsm_stateNext;
+  wire                when_Ddr3MemtestEngine_l236;
   wire                when_Ddr3MemtestEngine_l244;
-  wire                when_Ddr3MemtestEngine_l252;
-  wire                when_Ddr3MemtestEngine_l455;
-  wire                when_Ddr3MemtestEngine_l471;
-  wire                when_Ddr3MemtestEngine_l477;
-  wire                when_Ddr3MemtestEngine_l508;
-  wire                when_Ddr3MemtestEngine_l519;
+  wire                when_Ddr3MemtestEngine_l372;
+  wire                when_Ddr3MemtestEngine_l388;
+  wire                when_Ddr3MemtestEngine_l394;
+  wire                when_Ddr3MemtestEngine_l425;
+  wire                when_Ddr3MemtestEngine_l436;
   wire       [63:0]   _zz_errExpected;
-  wire                _zz_when_Ddr3MemtestEngine_l547;
-  wire                when_Ddr3MemtestEngine_l547;
-  wire                when_Ddr3MemtestEngine_l553;
-  wire                when_Ddr3MemtestEngine_l557;
-  wire                when_Ddr3MemtestEngine_l558;
-  wire                when_Ddr3MemtestEngine_l585;
-  wire                when_Ddr3MemtestEngine_l611;
-  wire                when_Ddr3MemtestEngine_l622;
+  wire                _zz_when_Ddr3MemtestEngine_l464;
+  wire                when_Ddr3MemtestEngine_l464;
+  wire                when_Ddr3MemtestEngine_l470;
+  wire                when_Ddr3MemtestEngine_l474;
+  wire                when_Ddr3MemtestEngine_l475;
+  wire       [5:0]    _zz_nextPrintChar;
+  wire                when_Ddr3MemtestEngine_l515;
+  wire       [6:0]    _zz_nextPrintChar_1;
+  wire                when_Ddr3MemtestEngine_l560;
+  wire                when_Ddr3MemtestEngine_l573;
   `ifndef SYNTHESIS
   reg [111:0] fsm_stateReg_string;
   reg [111:0] fsm_stateNext_string;
@@ -799,121 +499,26 @@ module Ddr3MemtestEngine (
   assign _zz_beatBlockAddr_1 = ({4'd0,_zz_beatBlockAddr_2} <<< 3'd4);
   assign _zz_beatBlockAddr = {21'd0, _zz_beatBlockAddr_1};
   assign _zz_beatBlockAddr_2 = (beatIdx >>> 1'd1);
-  assign _zz_nextPrintChar_12 = {2'd0, io_rclkpos};
-  assign _zz_nextPrintChar_15 = {1'd0, io_rclksel};
-  assign _zz_nextPrintChar_19 = io_best_rot;
-  assign _zz_nextPrintChar_18 = {1'd0, _zz_nextPrintChar_19};
-  assign _zz_nextPrintChar_37 = (6'h3f - _zz_nextPrintChar_38);
-  assign _zz_nextPrintChar_39 = (fsm_msgIndex - 7'h1a);
-  assign _zz_nextPrintChar_38 = _zz_nextPrintChar_39[5:0];
-  assign _zz_nextPrintChar_42 = {2'd0, io_wr_adv};
-  assign _zz_nextPrintChar_52 = (5'h1f - _zz_nextPrintChar_53);
-  assign _zz_nextPrintChar_54 = (fsm_msgIndex - 7'h14);
-  assign _zz_nextPrintChar_53 = _zz_nextPrintChar_54[4:0];
+  assign _zz_nextPrintChar_14 = {2'd0, io_rclkpos};
+  assign _zz_nextPrintChar_17 = {1'd0, io_rclksel};
+  assign _zz_nextPrintChar_21 = io_best_rot;
+  assign _zz_nextPrintChar_20 = {1'd0, _zz_nextPrintChar_21};
   assign _zz_io_axi_w_payload_data = (beatBlockAddr + 32'h00000002);
   assign _zz_io_axi_w_payload_data_1 = (beatBlockAddr + 32'h00000001);
-  assign _zz_when_Ddr3MemtestEngine_l519 = (burstIndex + 11'h040);
+  assign _zz_when_Ddr3MemtestEngine_l436 = (burstIndex + 11'h040);
   assign _zz__zz_errExpected = (beatBlockAddr + 32'h00000002);
   assign _zz__zz_errExpected_1 = (beatBlockAddr + 32'h00000001);
-  assign _zz_when_Ddr3MemtestEngine_l558 = (burstIndex + 11'h040);
-  assign _zz_nextPrintChar_56 = fsm_msgIndex[5:0];
-  assign _zz_nextPrintChar_1 = io_dbg_state;
-  assign _zz_nextPrintChar_3 = io_wstep[7 : 4];
-  assign _zz_nextPrintChar_5 = io_wstep[3 : 0];
-  assign _zz_nextPrintChar_7 = io_wstep[7 : 4];
-  assign _zz_nextPrintChar_9 = io_wstep[3 : 0];
-  assign _zz_nextPrintChar_11 = _zz_nextPrintChar_12;
-  assign _zz_nextPrintChar_14 = _zz_nextPrintChar_15;
-  assign _zz_nextPrintChar_17 = _zz_nextPrintChar_18;
-  assign _zz_nextPrintChar_21 = io_best_score;
-  assign _zz_nextPrintChar_23 = io_wlFirst[7 : 4];
-  assign _zz_nextPrintChar_25 = io_wlFirst[3 : 0];
-  assign _zz_nextPrintChar_27 = io_wlLast[7 : 4];
-  assign _zz_nextPrintChar_29 = io_wlLast[3 : 0];
-  assign _zz_nextPrintChar_31 = io_wlMatchN[7 : 4];
-  assign _zz_nextPrintChar_33 = io_wlMatchN[3 : 0];
-  assign _zz_nextPrintChar_35 = _zz_nextPrintChar_36;
-  assign _zz_nextPrintChar_41 = _zz_nextPrintChar_42;
-  assign _zz_nextPrintChar_44 = io_w_scores[3 : 0];
-  assign _zz_nextPrintChar_46 = io_w_scores[7 : 4];
-  assign _zz_nextPrintChar_48 = io_w_scores[11 : 8];
-  assign _zz_nextPrintChar_50 = _zz_nextPrintChar_51;
-  assign _zz_nextPrintChar_58 = passCount[15 : 12];
-  assign _zz_nextPrintChar_60 = passCount[11 : 8];
-  assign _zz_nextPrintChar_62 = passCount[7 : 4];
-  assign _zz_nextPrintChar_64 = passCount[3 : 0];
-  assign _zz_nextPrintChar_66 = wrCycleCnt[31 : 28];
-  assign _zz_nextPrintChar_68 = wrCycleCnt[27 : 24];
-  assign _zz_nextPrintChar_70 = wrCycleCnt[23 : 20];
-  assign _zz_nextPrintChar_72 = wrCycleCnt[19 : 16];
-  assign _zz_nextPrintChar_74 = wrCycleCnt[15 : 12];
-  assign _zz_nextPrintChar_76 = wrCycleCnt[11 : 8];
-  assign _zz_nextPrintChar_78 = wrCycleCnt[7 : 4];
-  assign _zz_nextPrintChar_80 = wrCycleCnt[3 : 0];
-  assign _zz_nextPrintChar_82 = rdCycleCnt[31 : 28];
-  assign _zz_nextPrintChar_84 = rdCycleCnt[27 : 24];
-  assign _zz_nextPrintChar_86 = rdCycleCnt[23 : 20];
-  assign _zz_nextPrintChar_88 = rdCycleCnt[19 : 16];
-  assign _zz_nextPrintChar_90 = rdCycleCnt[15 : 12];
-  assign _zz_nextPrintChar_92 = rdCycleCnt[11 : 8];
-  assign _zz_nextPrintChar_94 = rdCycleCnt[7 : 4];
-  assign _zz_nextPrintChar_96 = rdCycleCnt[3 : 0];
-  assign _zz_nextPrintChar_99 = errAddr[31 : 28];
-  assign _zz_nextPrintChar_101 = errAddr[27 : 24];
-  assign _zz_nextPrintChar_103 = errAddr[23 : 20];
-  assign _zz_nextPrintChar_105 = errAddr[19 : 16];
-  assign _zz_nextPrintChar_107 = errAddr[15 : 12];
-  assign _zz_nextPrintChar_109 = errAddr[11 : 8];
-  assign _zz_nextPrintChar_111 = errAddr[7 : 4];
-  assign _zz_nextPrintChar_113 = errAddr[3 : 0];
-  assign _zz_nextPrintChar_115 = errExpected[63 : 60];
-  assign _zz_nextPrintChar_117 = errExpected[59 : 56];
-  assign _zz_nextPrintChar_119 = errExpected[55 : 52];
-  assign _zz_nextPrintChar_121 = errExpected[51 : 48];
-  assign _zz_nextPrintChar_123 = errExpected[47 : 44];
-  assign _zz_nextPrintChar_125 = errExpected[43 : 40];
-  assign _zz_nextPrintChar_127 = errExpected[39 : 36];
-  assign _zz_nextPrintChar_129 = errExpected[35 : 32];
-  assign _zz_nextPrintChar_131 = errExpected[31 : 28];
-  assign _zz_nextPrintChar_133 = errExpected[27 : 24];
-  assign _zz_nextPrintChar_135 = errExpected[23 : 20];
-  assign _zz_nextPrintChar_137 = errExpected[19 : 16];
-  assign _zz_nextPrintChar_139 = errExpected[15 : 12];
-  assign _zz_nextPrintChar_141 = errExpected[11 : 8];
-  assign _zz_nextPrintChar_143 = errExpected[7 : 4];
-  assign _zz_nextPrintChar_145 = errExpected[3 : 0];
-  assign _zz_nextPrintChar_147 = errActual[63 : 60];
-  assign _zz_nextPrintChar_149 = errActual[59 : 56];
-  assign _zz_nextPrintChar_151 = errActual[55 : 52];
-  assign _zz_nextPrintChar_153 = errActual[51 : 48];
-  assign _zz_nextPrintChar_155 = errActual[47 : 44];
-  assign _zz_nextPrintChar_157 = errActual[43 : 40];
-  assign _zz_nextPrintChar_159 = errActual[39 : 36];
-  assign _zz_nextPrintChar_161 = errActual[35 : 32];
-  assign _zz_nextPrintChar_163 = errActual[31 : 28];
-  assign _zz_nextPrintChar_165 = errActual[27 : 24];
-  assign _zz_nextPrintChar_167 = errActual[23 : 20];
-  assign _zz_nextPrintChar_169 = errActual[19 : 16];
-  assign _zz_nextPrintChar_171 = errActual[15 : 12];
-  assign _zz_nextPrintChar_173 = errActual[11 : 8];
-  assign _zz_nextPrintChar_175 = errActual[7 : 4];
-  assign _zz_nextPrintChar_177 = errActual[3 : 0];
-  assign _zz_nextPrintChar_179 = errActual1[63 : 60];
-  assign _zz_nextPrintChar_181 = errActual1[59 : 56];
-  assign _zz_nextPrintChar_183 = errActual1[55 : 52];
-  assign _zz_nextPrintChar_185 = errActual1[51 : 48];
-  assign _zz_nextPrintChar_187 = errActual1[47 : 44];
-  assign _zz_nextPrintChar_189 = errActual1[43 : 40];
-  assign _zz_nextPrintChar_191 = errActual1[39 : 36];
-  assign _zz_nextPrintChar_193 = errActual1[35 : 32];
-  assign _zz_nextPrintChar_195 = errActual1[31 : 28];
-  assign _zz_nextPrintChar_197 = errActual1[27 : 24];
-  assign _zz_nextPrintChar_199 = errActual1[23 : 20];
-  assign _zz_nextPrintChar_201 = errActual1[19 : 16];
-  assign _zz_nextPrintChar_203 = errActual1[15 : 12];
-  assign _zz_nextPrintChar_205 = errActual1[11 : 8];
-  assign _zz_nextPrintChar_207 = errActual1[7 : 4];
-  assign _zz_nextPrintChar_209 = errActual1[3 : 0];
+  assign _zz_when_Ddr3MemtestEngine_l475 = (burstIndex + 11'h040);
+  assign _zz_printChar_1 = stageNib;
+  assign _zz_nextPrintChar_3 = io_dbg_state;
+  assign _zz_nextPrintChar_5 = io_wstep[7 : 4];
+  assign _zz_nextPrintChar_7 = io_wstep[3 : 0];
+  assign _zz_nextPrintChar_9 = io_wstep[7 : 4];
+  assign _zz_nextPrintChar_11 = io_wstep[3 : 0];
+  assign _zz_nextPrintChar_13 = _zz_nextPrintChar_14;
+  assign _zz_nextPrintChar_16 = _zz_nextPrintChar_17;
+  assign _zz_nextPrintChar_19 = _zz_nextPrintChar_20;
+  assign _zz_nextPrintChar_23 = io_best_score;
   UartTx uart (
     .io_write_valid   (txStream_valid       ), //i
     .io_write_ready   (uart_io_write_ready  ), //o
@@ -924,23 +529,23 @@ module Ddr3MemtestEngine (
     ._zz_1            (_zz_1                )  //i
   );
   always @(*) begin
-    case(_zz_nextPrintChar_1)
-      4'b0000 : _zz_nextPrintChar = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar = hexAsciiRom_14;
-      default : _zz_nextPrintChar = hexAsciiRom_15;
+    case(_zz_printChar_1)
+      4'b0000 : _zz_printChar = hexAsciiRom_0;
+      4'b0001 : _zz_printChar = hexAsciiRom_1;
+      4'b0010 : _zz_printChar = hexAsciiRom_2;
+      4'b0011 : _zz_printChar = hexAsciiRom_3;
+      4'b0100 : _zz_printChar = hexAsciiRom_4;
+      4'b0101 : _zz_printChar = hexAsciiRom_5;
+      4'b0110 : _zz_printChar = hexAsciiRom_6;
+      4'b0111 : _zz_printChar = hexAsciiRom_7;
+      4'b1000 : _zz_printChar = hexAsciiRom_8;
+      4'b1001 : _zz_printChar = hexAsciiRom_9;
+      4'b1010 : _zz_printChar = hexAsciiRom_10;
+      4'b1011 : _zz_printChar = hexAsciiRom_11;
+      4'b1100 : _zz_printChar = hexAsciiRom_12;
+      4'b1101 : _zz_printChar = hexAsciiRom_13;
+      4'b1110 : _zz_printChar = hexAsciiRom_14;
+      default : _zz_printChar = hexAsciiRom_15;
     endcase
   end
 
@@ -1050,65 +655,65 @@ module Ddr3MemtestEngine (
   end
 
   always @(*) begin
-    case(_zz_nextPrintChar_14)
-      4'b0000 : _zz_nextPrintChar_13 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_13 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_13 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_13 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_13 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_13 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_13 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_13 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_13 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_13 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_13 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_13 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_13 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_13 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_13 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_13 = hexAsciiRom_15;
+    case(_zz_nextPrintChar_13)
+      4'b0000 : _zz_nextPrintChar_12 = hexAsciiRom_0;
+      4'b0001 : _zz_nextPrintChar_12 = hexAsciiRom_1;
+      4'b0010 : _zz_nextPrintChar_12 = hexAsciiRom_2;
+      4'b0011 : _zz_nextPrintChar_12 = hexAsciiRom_3;
+      4'b0100 : _zz_nextPrintChar_12 = hexAsciiRom_4;
+      4'b0101 : _zz_nextPrintChar_12 = hexAsciiRom_5;
+      4'b0110 : _zz_nextPrintChar_12 = hexAsciiRom_6;
+      4'b0111 : _zz_nextPrintChar_12 = hexAsciiRom_7;
+      4'b1000 : _zz_nextPrintChar_12 = hexAsciiRom_8;
+      4'b1001 : _zz_nextPrintChar_12 = hexAsciiRom_9;
+      4'b1010 : _zz_nextPrintChar_12 = hexAsciiRom_10;
+      4'b1011 : _zz_nextPrintChar_12 = hexAsciiRom_11;
+      4'b1100 : _zz_nextPrintChar_12 = hexAsciiRom_12;
+      4'b1101 : _zz_nextPrintChar_12 = hexAsciiRom_13;
+      4'b1110 : _zz_nextPrintChar_12 = hexAsciiRom_14;
+      default : _zz_nextPrintChar_12 = hexAsciiRom_15;
     endcase
   end
 
   always @(*) begin
-    case(_zz_nextPrintChar_17)
-      4'b0000 : _zz_nextPrintChar_16 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_16 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_16 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_16 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_16 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_16 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_16 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_16 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_16 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_16 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_16 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_16 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_16 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_16 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_16 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_16 = hexAsciiRom_15;
+    case(_zz_nextPrintChar_16)
+      4'b0000 : _zz_nextPrintChar_15 = hexAsciiRom_0;
+      4'b0001 : _zz_nextPrintChar_15 = hexAsciiRom_1;
+      4'b0010 : _zz_nextPrintChar_15 = hexAsciiRom_2;
+      4'b0011 : _zz_nextPrintChar_15 = hexAsciiRom_3;
+      4'b0100 : _zz_nextPrintChar_15 = hexAsciiRom_4;
+      4'b0101 : _zz_nextPrintChar_15 = hexAsciiRom_5;
+      4'b0110 : _zz_nextPrintChar_15 = hexAsciiRom_6;
+      4'b0111 : _zz_nextPrintChar_15 = hexAsciiRom_7;
+      4'b1000 : _zz_nextPrintChar_15 = hexAsciiRom_8;
+      4'b1001 : _zz_nextPrintChar_15 = hexAsciiRom_9;
+      4'b1010 : _zz_nextPrintChar_15 = hexAsciiRom_10;
+      4'b1011 : _zz_nextPrintChar_15 = hexAsciiRom_11;
+      4'b1100 : _zz_nextPrintChar_15 = hexAsciiRom_12;
+      4'b1101 : _zz_nextPrintChar_15 = hexAsciiRom_13;
+      4'b1110 : _zz_nextPrintChar_15 = hexAsciiRom_14;
+      default : _zz_nextPrintChar_15 = hexAsciiRom_15;
     endcase
   end
 
   always @(*) begin
-    case(_zz_nextPrintChar_21)
-      4'b0000 : _zz_nextPrintChar_20 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_20 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_20 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_20 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_20 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_20 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_20 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_20 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_20 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_20 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_20 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_20 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_20 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_20 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_20 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_20 = hexAsciiRom_15;
+    case(_zz_nextPrintChar_19)
+      4'b0000 : _zz_nextPrintChar_18 = hexAsciiRom_0;
+      4'b0001 : _zz_nextPrintChar_18 = hexAsciiRom_1;
+      4'b0010 : _zz_nextPrintChar_18 = hexAsciiRom_2;
+      4'b0011 : _zz_nextPrintChar_18 = hexAsciiRom_3;
+      4'b0100 : _zz_nextPrintChar_18 = hexAsciiRom_4;
+      4'b0101 : _zz_nextPrintChar_18 = hexAsciiRom_5;
+      4'b0110 : _zz_nextPrintChar_18 = hexAsciiRom_6;
+      4'b0111 : _zz_nextPrintChar_18 = hexAsciiRom_7;
+      4'b1000 : _zz_nextPrintChar_18 = hexAsciiRom_8;
+      4'b1001 : _zz_nextPrintChar_18 = hexAsciiRom_9;
+      4'b1010 : _zz_nextPrintChar_18 = hexAsciiRom_10;
+      4'b1011 : _zz_nextPrintChar_18 = hexAsciiRom_11;
+      4'b1100 : _zz_nextPrintChar_18 = hexAsciiRom_12;
+      4'b1101 : _zz_nextPrintChar_18 = hexAsciiRom_13;
+      4'b1110 : _zz_nextPrintChar_18 = hexAsciiRom_14;
+      default : _zz_nextPrintChar_18 = hexAsciiRom_15;
     endcase
   end
 
@@ -1134,2056 +739,567 @@ module Ddr3MemtestEngine (
   end
 
   always @(*) begin
-    case(_zz_nextPrintChar_25)
-      4'b0000 : _zz_nextPrintChar_24 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_24 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_24 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_24 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_24 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_24 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_24 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_24 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_24 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_24 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_24 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_24 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_24 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_24 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_24 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_24 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_27)
-      4'b0000 : _zz_nextPrintChar_26 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_26 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_26 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_26 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_26 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_26 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_26 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_26 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_26 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_26 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_26 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_26 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_26 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_26 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_26 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_26 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_29)
-      4'b0000 : _zz_nextPrintChar_28 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_28 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_28 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_28 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_28 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_28 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_28 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_28 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_28 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_28 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_28 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_28 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_28 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_28 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_28 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_28 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_31)
-      4'b0000 : _zz_nextPrintChar_30 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_30 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_30 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_30 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_30 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_30 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_30 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_30 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_30 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_30 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_30 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_30 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_30 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_30 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_30 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_30 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_33)
-      4'b0000 : _zz_nextPrintChar_32 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_32 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_32 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_32 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_32 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_32 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_32 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_32 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_32 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_32 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_32 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_32 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_32 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_32 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_32 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_32 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_35)
-      4'b0000 : _zz_nextPrintChar_34 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_34 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_34 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_34 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_34 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_34 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_34 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_34 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_34 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_34 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_34 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_34 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_34 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_34 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_34 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_34 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_37)
-      6'b000000 : _zz_nextPrintChar_36 = wlMapNib_0;
-      6'b000001 : _zz_nextPrintChar_36 = wlMapNib_1;
-      6'b000010 : _zz_nextPrintChar_36 = wlMapNib_2;
-      6'b000011 : _zz_nextPrintChar_36 = wlMapNib_3;
-      6'b000100 : _zz_nextPrintChar_36 = wlMapNib_4;
-      6'b000101 : _zz_nextPrintChar_36 = wlMapNib_5;
-      6'b000110 : _zz_nextPrintChar_36 = wlMapNib_6;
-      6'b000111 : _zz_nextPrintChar_36 = wlMapNib_7;
-      6'b001000 : _zz_nextPrintChar_36 = wlMapNib_8;
-      6'b001001 : _zz_nextPrintChar_36 = wlMapNib_9;
-      6'b001010 : _zz_nextPrintChar_36 = wlMapNib_10;
-      6'b001011 : _zz_nextPrintChar_36 = wlMapNib_11;
-      6'b001100 : _zz_nextPrintChar_36 = wlMapNib_12;
-      6'b001101 : _zz_nextPrintChar_36 = wlMapNib_13;
-      6'b001110 : _zz_nextPrintChar_36 = wlMapNib_14;
-      6'b001111 : _zz_nextPrintChar_36 = wlMapNib_15;
-      6'b010000 : _zz_nextPrintChar_36 = wlMapNib_16;
-      6'b010001 : _zz_nextPrintChar_36 = wlMapNib_17;
-      6'b010010 : _zz_nextPrintChar_36 = wlMapNib_18;
-      6'b010011 : _zz_nextPrintChar_36 = wlMapNib_19;
-      6'b010100 : _zz_nextPrintChar_36 = wlMapNib_20;
-      6'b010101 : _zz_nextPrintChar_36 = wlMapNib_21;
-      6'b010110 : _zz_nextPrintChar_36 = wlMapNib_22;
-      6'b010111 : _zz_nextPrintChar_36 = wlMapNib_23;
-      6'b011000 : _zz_nextPrintChar_36 = wlMapNib_24;
-      6'b011001 : _zz_nextPrintChar_36 = wlMapNib_25;
-      6'b011010 : _zz_nextPrintChar_36 = wlMapNib_26;
-      6'b011011 : _zz_nextPrintChar_36 = wlMapNib_27;
-      6'b011100 : _zz_nextPrintChar_36 = wlMapNib_28;
-      6'b011101 : _zz_nextPrintChar_36 = wlMapNib_29;
-      6'b011110 : _zz_nextPrintChar_36 = wlMapNib_30;
-      6'b011111 : _zz_nextPrintChar_36 = wlMapNib_31;
-      6'b100000 : _zz_nextPrintChar_36 = wlMapNib_32;
-      6'b100001 : _zz_nextPrintChar_36 = wlMapNib_33;
-      6'b100010 : _zz_nextPrintChar_36 = wlMapNib_34;
-      6'b100011 : _zz_nextPrintChar_36 = wlMapNib_35;
-      6'b100100 : _zz_nextPrintChar_36 = wlMapNib_36;
-      6'b100101 : _zz_nextPrintChar_36 = wlMapNib_37;
-      6'b100110 : _zz_nextPrintChar_36 = wlMapNib_38;
-      6'b100111 : _zz_nextPrintChar_36 = wlMapNib_39;
-      6'b101000 : _zz_nextPrintChar_36 = wlMapNib_40;
-      6'b101001 : _zz_nextPrintChar_36 = wlMapNib_41;
-      6'b101010 : _zz_nextPrintChar_36 = wlMapNib_42;
-      6'b101011 : _zz_nextPrintChar_36 = wlMapNib_43;
-      6'b101100 : _zz_nextPrintChar_36 = wlMapNib_44;
-      6'b101101 : _zz_nextPrintChar_36 = wlMapNib_45;
-      6'b101110 : _zz_nextPrintChar_36 = wlMapNib_46;
-      6'b101111 : _zz_nextPrintChar_36 = wlMapNib_47;
-      6'b110000 : _zz_nextPrintChar_36 = wlMapNib_48;
-      6'b110001 : _zz_nextPrintChar_36 = wlMapNib_49;
-      6'b110010 : _zz_nextPrintChar_36 = wlMapNib_50;
-      6'b110011 : _zz_nextPrintChar_36 = wlMapNib_51;
-      6'b110100 : _zz_nextPrintChar_36 = wlMapNib_52;
-      6'b110101 : _zz_nextPrintChar_36 = wlMapNib_53;
-      6'b110110 : _zz_nextPrintChar_36 = wlMapNib_54;
-      6'b110111 : _zz_nextPrintChar_36 = wlMapNib_55;
-      6'b111000 : _zz_nextPrintChar_36 = wlMapNib_56;
-      6'b111001 : _zz_nextPrintChar_36 = wlMapNib_57;
-      6'b111010 : _zz_nextPrintChar_36 = wlMapNib_58;
-      6'b111011 : _zz_nextPrintChar_36 = wlMapNib_59;
-      6'b111100 : _zz_nextPrintChar_36 = wlMapNib_60;
-      6'b111101 : _zz_nextPrintChar_36 = wlMapNib_61;
-      6'b111110 : _zz_nextPrintChar_36 = wlMapNib_62;
-      default : _zz_nextPrintChar_36 = wlMapNib_63;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_41)
-      4'b0000 : _zz_nextPrintChar_40 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_40 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_40 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_40 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_40 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_40 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_40 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_40 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_40 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_40 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_40 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_40 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_40 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_40 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_40 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_40 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_44)
-      4'b0000 : _zz_nextPrintChar_43 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_43 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_43 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_43 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_43 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_43 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_43 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_43 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_43 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_43 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_43 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_43 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_43 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_43 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_43 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_43 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_46)
-      4'b0000 : _zz_nextPrintChar_45 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_45 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_45 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_45 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_45 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_45 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_45 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_45 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_45 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_45 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_45 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_45 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_45 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_45 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_45 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_45 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_48)
-      4'b0000 : _zz_nextPrintChar_47 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_47 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_47 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_47 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_47 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_47 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_47 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_47 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_47 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_47 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_47 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_47 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_47 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_47 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_47 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_47 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_50)
-      4'b0000 : _zz_nextPrintChar_49 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_49 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_49 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_49 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_49 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_49 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_49 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_49 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_49 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_49 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_49 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_49 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_49 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_49 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_49 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_49 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_52)
-      5'b00000 : _zz_nextPrintChar_51 = latchNib_0;
-      5'b00001 : _zz_nextPrintChar_51 = latchNib_1;
-      5'b00010 : _zz_nextPrintChar_51 = latchNib_2;
-      5'b00011 : _zz_nextPrintChar_51 = latchNib_3;
-      5'b00100 : _zz_nextPrintChar_51 = latchNib_4;
-      5'b00101 : _zz_nextPrintChar_51 = latchNib_5;
-      5'b00110 : _zz_nextPrintChar_51 = latchNib_6;
-      5'b00111 : _zz_nextPrintChar_51 = latchNib_7;
-      5'b01000 : _zz_nextPrintChar_51 = latchNib_8;
-      5'b01001 : _zz_nextPrintChar_51 = latchNib_9;
-      5'b01010 : _zz_nextPrintChar_51 = latchNib_10;
-      5'b01011 : _zz_nextPrintChar_51 = latchNib_11;
-      5'b01100 : _zz_nextPrintChar_51 = latchNib_12;
-      5'b01101 : _zz_nextPrintChar_51 = latchNib_13;
-      5'b01110 : _zz_nextPrintChar_51 = latchNib_14;
-      5'b01111 : _zz_nextPrintChar_51 = latchNib_15;
-      5'b10000 : _zz_nextPrintChar_51 = latchNib_16;
-      5'b10001 : _zz_nextPrintChar_51 = latchNib_17;
-      5'b10010 : _zz_nextPrintChar_51 = latchNib_18;
-      5'b10011 : _zz_nextPrintChar_51 = latchNib_19;
-      5'b10100 : _zz_nextPrintChar_51 = latchNib_20;
-      5'b10101 : _zz_nextPrintChar_51 = latchNib_21;
-      5'b10110 : _zz_nextPrintChar_51 = latchNib_22;
-      5'b10111 : _zz_nextPrintChar_51 = latchNib_23;
-      5'b11000 : _zz_nextPrintChar_51 = latchNib_24;
-      5'b11001 : _zz_nextPrintChar_51 = latchNib_25;
-      5'b11010 : _zz_nextPrintChar_51 = latchNib_26;
-      5'b11011 : _zz_nextPrintChar_51 = latchNib_27;
-      5'b11100 : _zz_nextPrintChar_51 = latchNib_28;
-      5'b11101 : _zz_nextPrintChar_51 = latchNib_29;
-      5'b11110 : _zz_nextPrintChar_51 = latchNib_30;
-      default : _zz_nextPrintChar_51 = latchNib_31;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_56)
-      6'b000000 : _zz_nextPrintChar_55 = passPrefix_0;
-      6'b000001 : _zz_nextPrintChar_55 = passPrefix_1;
-      6'b000010 : _zz_nextPrintChar_55 = passPrefix_2;
-      6'b000011 : _zz_nextPrintChar_55 = passPrefix_3;
-      6'b000100 : _zz_nextPrintChar_55 = passPrefix_4;
-      6'b000101 : _zz_nextPrintChar_55 = passPrefix_5;
-      6'b000110 : _zz_nextPrintChar_55 = passPrefix_6;
-      6'b000111 : _zz_nextPrintChar_55 = _zz_nextPrintChar_57;
-      6'b001000 : _zz_nextPrintChar_55 = _zz_nextPrintChar_59;
-      6'b001001 : _zz_nextPrintChar_55 = _zz_nextPrintChar_61;
-      6'b001010 : _zz_nextPrintChar_55 = _zz_nextPrintChar_63;
-      6'b001011 : _zz_nextPrintChar_55 = 8'h20;
-      6'b001100 : _zz_nextPrintChar_55 = 8'h57;
-      6'b001101 : _zz_nextPrintChar_55 = 8'h3d;
-      6'b001110 : _zz_nextPrintChar_55 = _zz_nextPrintChar_65;
-      6'b001111 : _zz_nextPrintChar_55 = _zz_nextPrintChar_67;
-      6'b010000 : _zz_nextPrintChar_55 = _zz_nextPrintChar_69;
-      6'b010001 : _zz_nextPrintChar_55 = _zz_nextPrintChar_71;
-      6'b010010 : _zz_nextPrintChar_55 = _zz_nextPrintChar_73;
-      6'b010011 : _zz_nextPrintChar_55 = _zz_nextPrintChar_75;
-      6'b010100 : _zz_nextPrintChar_55 = _zz_nextPrintChar_77;
-      6'b010101 : _zz_nextPrintChar_55 = _zz_nextPrintChar_79;
-      6'b010110 : _zz_nextPrintChar_55 = 8'h20;
-      6'b010111 : _zz_nextPrintChar_55 = 8'h52;
-      6'b011000 : _zz_nextPrintChar_55 = 8'h3d;
-      6'b011001 : _zz_nextPrintChar_55 = _zz_nextPrintChar_81;
-      6'b011010 : _zz_nextPrintChar_55 = _zz_nextPrintChar_83;
-      6'b011011 : _zz_nextPrintChar_55 = _zz_nextPrintChar_85;
-      6'b011100 : _zz_nextPrintChar_55 = _zz_nextPrintChar_87;
-      6'b011101 : _zz_nextPrintChar_55 = _zz_nextPrintChar_89;
-      6'b011110 : _zz_nextPrintChar_55 = _zz_nextPrintChar_91;
-      6'b011111 : _zz_nextPrintChar_55 = _zz_nextPrintChar_93;
-      6'b100000 : _zz_nextPrintChar_55 = _zz_nextPrintChar_95;
-      6'b100001 : _zz_nextPrintChar_55 = 8'h0d;
-      default : _zz_nextPrintChar_55 = 8'h0a;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_58)
-      4'b0000 : _zz_nextPrintChar_57 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_57 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_57 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_57 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_57 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_57 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_57 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_57 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_57 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_57 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_57 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_57 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_57 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_57 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_57 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_57 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_60)
-      4'b0000 : _zz_nextPrintChar_59 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_59 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_59 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_59 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_59 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_59 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_59 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_59 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_59 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_59 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_59 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_59 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_59 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_59 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_59 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_59 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_62)
-      4'b0000 : _zz_nextPrintChar_61 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_61 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_61 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_61 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_61 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_61 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_61 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_61 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_61 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_61 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_61 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_61 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_61 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_61 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_61 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_61 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_64)
-      4'b0000 : _zz_nextPrintChar_63 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_63 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_63 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_63 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_63 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_63 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_63 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_63 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_63 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_63 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_63 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_63 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_63 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_63 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_63 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_63 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_66)
-      4'b0000 : _zz_nextPrintChar_65 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_65 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_65 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_65 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_65 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_65 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_65 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_65 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_65 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_65 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_65 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_65 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_65 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_65 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_65 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_65 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_68)
-      4'b0000 : _zz_nextPrintChar_67 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_67 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_67 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_67 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_67 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_67 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_67 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_67 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_67 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_67 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_67 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_67 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_67 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_67 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_67 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_67 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_70)
-      4'b0000 : _zz_nextPrintChar_69 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_69 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_69 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_69 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_69 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_69 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_69 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_69 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_69 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_69 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_69 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_69 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_69 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_69 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_69 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_69 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_72)
-      4'b0000 : _zz_nextPrintChar_71 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_71 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_71 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_71 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_71 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_71 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_71 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_71 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_71 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_71 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_71 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_71 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_71 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_71 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_71 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_71 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_74)
-      4'b0000 : _zz_nextPrintChar_73 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_73 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_73 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_73 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_73 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_73 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_73 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_73 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_73 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_73 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_73 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_73 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_73 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_73 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_73 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_73 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_76)
-      4'b0000 : _zz_nextPrintChar_75 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_75 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_75 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_75 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_75 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_75 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_75 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_75 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_75 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_75 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_75 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_75 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_75 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_75 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_75 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_75 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_78)
-      4'b0000 : _zz_nextPrintChar_77 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_77 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_77 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_77 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_77 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_77 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_77 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_77 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_77 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_77 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_77 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_77 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_77 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_77 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_77 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_77 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_80)
-      4'b0000 : _zz_nextPrintChar_79 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_79 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_79 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_79 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_79 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_79 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_79 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_79 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_79 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_79 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_79 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_79 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_79 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_79 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_79 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_79 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_82)
-      4'b0000 : _zz_nextPrintChar_81 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_81 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_81 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_81 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_81 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_81 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_81 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_81 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_81 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_81 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_81 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_81 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_81 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_81 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_81 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_81 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_84)
-      4'b0000 : _zz_nextPrintChar_83 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_83 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_83 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_83 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_83 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_83 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_83 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_83 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_83 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_83 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_83 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_83 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_83 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_83 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_83 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_83 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_86)
-      4'b0000 : _zz_nextPrintChar_85 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_85 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_85 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_85 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_85 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_85 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_85 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_85 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_85 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_85 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_85 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_85 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_85 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_85 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_85 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_85 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_88)
-      4'b0000 : _zz_nextPrintChar_87 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_87 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_87 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_87 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_87 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_87 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_87 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_87 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_87 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_87 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_87 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_87 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_87 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_87 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_87 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_87 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_90)
-      4'b0000 : _zz_nextPrintChar_89 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_89 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_89 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_89 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_89 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_89 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_89 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_89 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_89 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_89 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_89 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_89 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_89 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_89 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_89 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_89 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_92)
-      4'b0000 : _zz_nextPrintChar_91 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_91 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_91 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_91 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_91 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_91 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_91 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_91 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_91 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_91 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_91 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_91 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_91 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_91 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_91 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_91 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_94)
-      4'b0000 : _zz_nextPrintChar_93 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_93 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_93 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_93 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_93 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_93 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_93 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_93 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_93 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_93 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_93 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_93 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_93 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_93 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_93 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_93 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_96)
-      4'b0000 : _zz_nextPrintChar_95 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_95 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_95 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_95 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_95 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_95 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_95 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_95 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_95 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_95 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_95 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_95 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_95 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_95 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_95 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_95 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(fsm_msgIndex)
-      7'b0000000 : _zz_nextPrintChar_97 = failPrefix_0;
-      7'b0000001 : _zz_nextPrintChar_97 = failPrefix_1;
-      7'b0000010 : _zz_nextPrintChar_97 = failPrefix_2;
-      7'b0000011 : _zz_nextPrintChar_97 = failPrefix_3;
-      7'b0000100 : _zz_nextPrintChar_97 = failPrefix_4;
-      7'b0000101 : _zz_nextPrintChar_97 = failPrefix_5;
-      7'b0000110 : _zz_nextPrintChar_97 = failPrefix_6;
-      7'b0000111 : _zz_nextPrintChar_97 = failPrefix_7;
-      7'b0001000 : _zz_nextPrintChar_97 = failPrefix_8;
-      7'b0001001 : _zz_nextPrintChar_97 = _zz_nextPrintChar_98;
-      7'b0001010 : _zz_nextPrintChar_97 = _zz_nextPrintChar_100;
-      7'b0001011 : _zz_nextPrintChar_97 = _zz_nextPrintChar_102;
-      7'b0001100 : _zz_nextPrintChar_97 = _zz_nextPrintChar_104;
-      7'b0001101 : _zz_nextPrintChar_97 = _zz_nextPrintChar_106;
-      7'b0001110 : _zz_nextPrintChar_97 = _zz_nextPrintChar_108;
-      7'b0001111 : _zz_nextPrintChar_97 = _zz_nextPrintChar_110;
-      7'b0010000 : _zz_nextPrintChar_97 = _zz_nextPrintChar_112;
-      7'b0010001 : _zz_nextPrintChar_97 = 8'h20;
-      7'b0010010 : _zz_nextPrintChar_97 = 8'h45;
-      7'b0010011 : _zz_nextPrintChar_97 = 8'h3d;
-      7'b0010100 : _zz_nextPrintChar_97 = _zz_nextPrintChar_114;
-      7'b0010101 : _zz_nextPrintChar_97 = _zz_nextPrintChar_116;
-      7'b0010110 : _zz_nextPrintChar_97 = _zz_nextPrintChar_118;
-      7'b0010111 : _zz_nextPrintChar_97 = _zz_nextPrintChar_120;
-      7'b0011000 : _zz_nextPrintChar_97 = _zz_nextPrintChar_122;
-      7'b0011001 : _zz_nextPrintChar_97 = _zz_nextPrintChar_124;
-      7'b0011010 : _zz_nextPrintChar_97 = _zz_nextPrintChar_126;
-      7'b0011011 : _zz_nextPrintChar_97 = _zz_nextPrintChar_128;
-      7'b0011100 : _zz_nextPrintChar_97 = _zz_nextPrintChar_130;
-      7'b0011101 : _zz_nextPrintChar_97 = _zz_nextPrintChar_132;
-      7'b0011110 : _zz_nextPrintChar_97 = _zz_nextPrintChar_134;
-      7'b0011111 : _zz_nextPrintChar_97 = _zz_nextPrintChar_136;
-      7'b0100000 : _zz_nextPrintChar_97 = _zz_nextPrintChar_138;
-      7'b0100001 : _zz_nextPrintChar_97 = _zz_nextPrintChar_140;
-      7'b0100010 : _zz_nextPrintChar_97 = _zz_nextPrintChar_142;
-      7'b0100011 : _zz_nextPrintChar_97 = _zz_nextPrintChar_144;
-      7'b0100100 : _zz_nextPrintChar_97 = 8'h20;
-      7'b0100101 : _zz_nextPrintChar_97 = 8'h47;
-      7'b0100110 : _zz_nextPrintChar_97 = 8'h3d;
-      7'b0100111 : _zz_nextPrintChar_97 = _zz_nextPrintChar_146;
-      7'b0101000 : _zz_nextPrintChar_97 = _zz_nextPrintChar_148;
-      7'b0101001 : _zz_nextPrintChar_97 = _zz_nextPrintChar_150;
-      7'b0101010 : _zz_nextPrintChar_97 = _zz_nextPrintChar_152;
-      7'b0101011 : _zz_nextPrintChar_97 = _zz_nextPrintChar_154;
-      7'b0101100 : _zz_nextPrintChar_97 = _zz_nextPrintChar_156;
-      7'b0101101 : _zz_nextPrintChar_97 = _zz_nextPrintChar_158;
-      7'b0101110 : _zz_nextPrintChar_97 = _zz_nextPrintChar_160;
-      7'b0101111 : _zz_nextPrintChar_97 = _zz_nextPrintChar_162;
-      7'b0110000 : _zz_nextPrintChar_97 = _zz_nextPrintChar_164;
-      7'b0110001 : _zz_nextPrintChar_97 = _zz_nextPrintChar_166;
-      7'b0110010 : _zz_nextPrintChar_97 = _zz_nextPrintChar_168;
-      7'b0110011 : _zz_nextPrintChar_97 = _zz_nextPrintChar_170;
-      7'b0110100 : _zz_nextPrintChar_97 = _zz_nextPrintChar_172;
-      7'b0110101 : _zz_nextPrintChar_97 = _zz_nextPrintChar_174;
-      7'b0110110 : _zz_nextPrintChar_97 = _zz_nextPrintChar_176;
-      7'b0110111 : _zz_nextPrintChar_97 = 8'h20;
-      7'b0111000 : _zz_nextPrintChar_97 = 8'h48;
-      7'b0111001 : _zz_nextPrintChar_97 = 8'h3d;
-      7'b0111010 : _zz_nextPrintChar_97 = _zz_nextPrintChar_178;
-      7'b0111011 : _zz_nextPrintChar_97 = _zz_nextPrintChar_180;
-      7'b0111100 : _zz_nextPrintChar_97 = _zz_nextPrintChar_182;
-      7'b0111101 : _zz_nextPrintChar_97 = _zz_nextPrintChar_184;
-      7'b0111110 : _zz_nextPrintChar_97 = _zz_nextPrintChar_186;
-      7'b0111111 : _zz_nextPrintChar_97 = _zz_nextPrintChar_188;
-      7'b1000000 : _zz_nextPrintChar_97 = _zz_nextPrintChar_190;
-      7'b1000001 : _zz_nextPrintChar_97 = _zz_nextPrintChar_192;
-      7'b1000010 : _zz_nextPrintChar_97 = _zz_nextPrintChar_194;
-      7'b1000011 : _zz_nextPrintChar_97 = _zz_nextPrintChar_196;
-      7'b1000100 : _zz_nextPrintChar_97 = _zz_nextPrintChar_198;
-      7'b1000101 : _zz_nextPrintChar_97 = _zz_nextPrintChar_200;
-      7'b1000110 : _zz_nextPrintChar_97 = _zz_nextPrintChar_202;
-      7'b1000111 : _zz_nextPrintChar_97 = _zz_nextPrintChar_204;
-      7'b1001000 : _zz_nextPrintChar_97 = _zz_nextPrintChar_206;
-      7'b1001001 : _zz_nextPrintChar_97 = _zz_nextPrintChar_208;
-      7'b1001010 : _zz_nextPrintChar_97 = 8'h0d;
-      default : _zz_nextPrintChar_97 = 8'h0a;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_99)
-      4'b0000 : _zz_nextPrintChar_98 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_98 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_98 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_98 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_98 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_98 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_98 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_98 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_98 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_98 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_98 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_98 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_98 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_98 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_98 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_98 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_101)
-      4'b0000 : _zz_nextPrintChar_100 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_100 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_100 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_100 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_100 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_100 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_100 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_100 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_100 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_100 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_100 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_100 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_100 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_100 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_100 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_100 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_103)
-      4'b0000 : _zz_nextPrintChar_102 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_102 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_102 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_102 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_102 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_102 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_102 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_102 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_102 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_102 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_102 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_102 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_102 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_102 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_102 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_102 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_105)
-      4'b0000 : _zz_nextPrintChar_104 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_104 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_104 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_104 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_104 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_104 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_104 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_104 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_104 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_104 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_104 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_104 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_104 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_104 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_104 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_104 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_107)
-      4'b0000 : _zz_nextPrintChar_106 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_106 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_106 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_106 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_106 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_106 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_106 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_106 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_106 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_106 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_106 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_106 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_106 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_106 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_106 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_106 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_109)
-      4'b0000 : _zz_nextPrintChar_108 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_108 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_108 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_108 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_108 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_108 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_108 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_108 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_108 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_108 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_108 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_108 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_108 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_108 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_108 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_108 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_111)
-      4'b0000 : _zz_nextPrintChar_110 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_110 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_110 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_110 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_110 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_110 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_110 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_110 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_110 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_110 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_110 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_110 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_110 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_110 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_110 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_110 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_113)
-      4'b0000 : _zz_nextPrintChar_112 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_112 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_112 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_112 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_112 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_112 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_112 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_112 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_112 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_112 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_112 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_112 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_112 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_112 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_112 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_112 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_115)
-      4'b0000 : _zz_nextPrintChar_114 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_114 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_114 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_114 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_114 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_114 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_114 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_114 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_114 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_114 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_114 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_114 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_114 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_114 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_114 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_114 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_117)
-      4'b0000 : _zz_nextPrintChar_116 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_116 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_116 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_116 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_116 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_116 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_116 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_116 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_116 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_116 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_116 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_116 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_116 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_116 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_116 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_116 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_119)
-      4'b0000 : _zz_nextPrintChar_118 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_118 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_118 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_118 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_118 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_118 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_118 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_118 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_118 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_118 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_118 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_118 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_118 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_118 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_118 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_118 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_121)
-      4'b0000 : _zz_nextPrintChar_120 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_120 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_120 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_120 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_120 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_120 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_120 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_120 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_120 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_120 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_120 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_120 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_120 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_120 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_120 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_120 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_123)
-      4'b0000 : _zz_nextPrintChar_122 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_122 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_122 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_122 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_122 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_122 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_122 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_122 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_122 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_122 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_122 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_122 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_122 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_122 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_122 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_122 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_125)
-      4'b0000 : _zz_nextPrintChar_124 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_124 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_124 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_124 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_124 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_124 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_124 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_124 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_124 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_124 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_124 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_124 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_124 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_124 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_124 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_124 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_127)
-      4'b0000 : _zz_nextPrintChar_126 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_126 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_126 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_126 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_126 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_126 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_126 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_126 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_126 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_126 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_126 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_126 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_126 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_126 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_126 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_126 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_129)
-      4'b0000 : _zz_nextPrintChar_128 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_128 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_128 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_128 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_128 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_128 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_128 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_128 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_128 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_128 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_128 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_128 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_128 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_128 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_128 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_128 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_131)
-      4'b0000 : _zz_nextPrintChar_130 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_130 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_130 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_130 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_130 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_130 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_130 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_130 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_130 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_130 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_130 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_130 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_130 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_130 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_130 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_130 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_133)
-      4'b0000 : _zz_nextPrintChar_132 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_132 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_132 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_132 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_132 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_132 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_132 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_132 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_132 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_132 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_132 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_132 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_132 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_132 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_132 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_132 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_135)
-      4'b0000 : _zz_nextPrintChar_134 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_134 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_134 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_134 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_134 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_134 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_134 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_134 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_134 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_134 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_134 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_134 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_134 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_134 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_134 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_134 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_137)
-      4'b0000 : _zz_nextPrintChar_136 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_136 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_136 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_136 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_136 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_136 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_136 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_136 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_136 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_136 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_136 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_136 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_136 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_136 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_136 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_136 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_139)
-      4'b0000 : _zz_nextPrintChar_138 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_138 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_138 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_138 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_138 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_138 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_138 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_138 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_138 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_138 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_138 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_138 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_138 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_138 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_138 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_138 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_141)
-      4'b0000 : _zz_nextPrintChar_140 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_140 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_140 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_140 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_140 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_140 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_140 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_140 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_140 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_140 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_140 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_140 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_140 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_140 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_140 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_140 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_143)
-      4'b0000 : _zz_nextPrintChar_142 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_142 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_142 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_142 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_142 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_142 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_142 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_142 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_142 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_142 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_142 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_142 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_142 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_142 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_142 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_142 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_145)
-      4'b0000 : _zz_nextPrintChar_144 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_144 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_144 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_144 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_144 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_144 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_144 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_144 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_144 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_144 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_144 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_144 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_144 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_144 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_144 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_144 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_147)
-      4'b0000 : _zz_nextPrintChar_146 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_146 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_146 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_146 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_146 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_146 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_146 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_146 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_146 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_146 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_146 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_146 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_146 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_146 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_146 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_146 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_149)
-      4'b0000 : _zz_nextPrintChar_148 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_148 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_148 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_148 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_148 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_148 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_148 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_148 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_148 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_148 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_148 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_148 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_148 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_148 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_148 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_148 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_151)
-      4'b0000 : _zz_nextPrintChar_150 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_150 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_150 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_150 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_150 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_150 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_150 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_150 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_150 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_150 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_150 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_150 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_150 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_150 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_150 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_150 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_153)
-      4'b0000 : _zz_nextPrintChar_152 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_152 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_152 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_152 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_152 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_152 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_152 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_152 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_152 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_152 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_152 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_152 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_152 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_152 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_152 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_152 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_155)
-      4'b0000 : _zz_nextPrintChar_154 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_154 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_154 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_154 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_154 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_154 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_154 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_154 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_154 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_154 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_154 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_154 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_154 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_154 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_154 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_154 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_157)
-      4'b0000 : _zz_nextPrintChar_156 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_156 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_156 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_156 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_156 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_156 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_156 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_156 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_156 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_156 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_156 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_156 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_156 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_156 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_156 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_156 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_159)
-      4'b0000 : _zz_nextPrintChar_158 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_158 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_158 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_158 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_158 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_158 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_158 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_158 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_158 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_158 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_158 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_158 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_158 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_158 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_158 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_158 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_161)
-      4'b0000 : _zz_nextPrintChar_160 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_160 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_160 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_160 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_160 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_160 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_160 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_160 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_160 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_160 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_160 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_160 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_160 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_160 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_160 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_160 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_163)
-      4'b0000 : _zz_nextPrintChar_162 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_162 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_162 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_162 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_162 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_162 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_162 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_162 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_162 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_162 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_162 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_162 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_162 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_162 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_162 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_162 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_165)
-      4'b0000 : _zz_nextPrintChar_164 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_164 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_164 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_164 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_164 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_164 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_164 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_164 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_164 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_164 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_164 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_164 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_164 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_164 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_164 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_164 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_167)
-      4'b0000 : _zz_nextPrintChar_166 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_166 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_166 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_166 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_166 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_166 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_166 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_166 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_166 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_166 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_166 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_166 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_166 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_166 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_166 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_166 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_169)
-      4'b0000 : _zz_nextPrintChar_168 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_168 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_168 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_168 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_168 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_168 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_168 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_168 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_168 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_168 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_168 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_168 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_168 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_168 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_168 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_168 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_171)
-      4'b0000 : _zz_nextPrintChar_170 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_170 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_170 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_170 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_170 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_170 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_170 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_170 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_170 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_170 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_170 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_170 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_170 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_170 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_170 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_170 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_173)
-      4'b0000 : _zz_nextPrintChar_172 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_172 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_172 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_172 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_172 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_172 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_172 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_172 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_172 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_172 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_172 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_172 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_172 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_172 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_172 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_172 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_175)
-      4'b0000 : _zz_nextPrintChar_174 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_174 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_174 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_174 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_174 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_174 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_174 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_174 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_174 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_174 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_174 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_174 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_174 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_174 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_174 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_174 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_177)
-      4'b0000 : _zz_nextPrintChar_176 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_176 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_176 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_176 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_176 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_176 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_176 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_176 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_176 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_176 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_176 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_176 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_176 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_176 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_176 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_176 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_179)
-      4'b0000 : _zz_nextPrintChar_178 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_178 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_178 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_178 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_178 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_178 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_178 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_178 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_178 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_178 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_178 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_178 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_178 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_178 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_178 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_178 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_181)
-      4'b0000 : _zz_nextPrintChar_180 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_180 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_180 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_180 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_180 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_180 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_180 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_180 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_180 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_180 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_180 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_180 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_180 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_180 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_180 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_180 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_183)
-      4'b0000 : _zz_nextPrintChar_182 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_182 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_182 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_182 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_182 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_182 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_182 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_182 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_182 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_182 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_182 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_182 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_182 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_182 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_182 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_182 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_185)
-      4'b0000 : _zz_nextPrintChar_184 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_184 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_184 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_184 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_184 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_184 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_184 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_184 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_184 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_184 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_184 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_184 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_184 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_184 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_184 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_184 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_187)
-      4'b0000 : _zz_nextPrintChar_186 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_186 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_186 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_186 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_186 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_186 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_186 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_186 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_186 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_186 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_186 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_186 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_186 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_186 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_186 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_186 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_189)
-      4'b0000 : _zz_nextPrintChar_188 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_188 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_188 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_188 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_188 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_188 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_188 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_188 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_188 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_188 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_188 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_188 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_188 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_188 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_188 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_188 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_191)
-      4'b0000 : _zz_nextPrintChar_190 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_190 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_190 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_190 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_190 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_190 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_190 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_190 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_190 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_190 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_190 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_190 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_190 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_190 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_190 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_190 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_193)
-      4'b0000 : _zz_nextPrintChar_192 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_192 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_192 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_192 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_192 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_192 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_192 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_192 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_192 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_192 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_192 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_192 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_192 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_192 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_192 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_192 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_195)
-      4'b0000 : _zz_nextPrintChar_194 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_194 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_194 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_194 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_194 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_194 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_194 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_194 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_194 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_194 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_194 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_194 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_194 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_194 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_194 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_194 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_197)
-      4'b0000 : _zz_nextPrintChar_196 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_196 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_196 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_196 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_196 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_196 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_196 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_196 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_196 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_196 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_196 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_196 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_196 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_196 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_196 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_196 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_199)
-      4'b0000 : _zz_nextPrintChar_198 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_198 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_198 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_198 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_198 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_198 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_198 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_198 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_198 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_198 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_198 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_198 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_198 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_198 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_198 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_198 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_201)
-      4'b0000 : _zz_nextPrintChar_200 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_200 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_200 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_200 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_200 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_200 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_200 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_200 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_200 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_200 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_200 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_200 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_200 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_200 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_200 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_200 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_203)
-      4'b0000 : _zz_nextPrintChar_202 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_202 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_202 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_202 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_202 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_202 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_202 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_202 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_202 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_202 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_202 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_202 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_202 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_202 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_202 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_202 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_205)
-      4'b0000 : _zz_nextPrintChar_204 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_204 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_204 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_204 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_204 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_204 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_204 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_204 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_204 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_204 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_204 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_204 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_204 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_204 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_204 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_204 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_207)
-      4'b0000 : _zz_nextPrintChar_206 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_206 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_206 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_206 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_206 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_206 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_206 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_206 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_206 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_206 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_206 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_206 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_206 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_206 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_206 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_206 = hexAsciiRom_15;
-    endcase
-  end
-
-  always @(*) begin
-    case(_zz_nextPrintChar_209)
-      4'b0000 : _zz_nextPrintChar_208 = hexAsciiRom_0;
-      4'b0001 : _zz_nextPrintChar_208 = hexAsciiRom_1;
-      4'b0010 : _zz_nextPrintChar_208 = hexAsciiRom_2;
-      4'b0011 : _zz_nextPrintChar_208 = hexAsciiRom_3;
-      4'b0100 : _zz_nextPrintChar_208 = hexAsciiRom_4;
-      4'b0101 : _zz_nextPrintChar_208 = hexAsciiRom_5;
-      4'b0110 : _zz_nextPrintChar_208 = hexAsciiRom_6;
-      4'b0111 : _zz_nextPrintChar_208 = hexAsciiRom_7;
-      4'b1000 : _zz_nextPrintChar_208 = hexAsciiRom_8;
-      4'b1001 : _zz_nextPrintChar_208 = hexAsciiRom_9;
-      4'b1010 : _zz_nextPrintChar_208 = hexAsciiRom_10;
-      4'b1011 : _zz_nextPrintChar_208 = hexAsciiRom_11;
-      4'b1100 : _zz_nextPrintChar_208 = hexAsciiRom_12;
-      4'b1101 : _zz_nextPrintChar_208 = hexAsciiRom_13;
-      4'b1110 : _zz_nextPrintChar_208 = hexAsciiRom_14;
-      default : _zz_nextPrintChar_208 = hexAsciiRom_15;
+    case(_zz_nextPrintChar)
+      6'b000000 : begin
+        _zz_nextPrintChar_24 = passPrefix_0;
+        _zz_nextPrintNib = 4'b0000;
+        _zz_nextUseNib = 1'b0;
+      end
+      6'b000001 : begin
+        _zz_nextPrintChar_24 = passPrefix_1;
+        _zz_nextPrintNib = 4'b0000;
+        _zz_nextUseNib = 1'b0;
+      end
+      6'b000010 : begin
+        _zz_nextPrintChar_24 = passPrefix_2;
+        _zz_nextPrintNib = 4'b0000;
+        _zz_nextUseNib = 1'b0;
+      end
+      6'b000011 : begin
+        _zz_nextPrintChar_24 = passPrefix_3;
+        _zz_nextPrintNib = 4'b0000;
+        _zz_nextUseNib = 1'b0;
+      end
+      6'b000100 : begin
+        _zz_nextPrintChar_24 = passPrefix_4;
+        _zz_nextPrintNib = 4'b0000;
+        _zz_nextUseNib = 1'b0;
+      end
+      6'b000101 : begin
+        _zz_nextPrintChar_24 = passPrefix_5;
+        _zz_nextPrintNib = 4'b0000;
+        _zz_nextUseNib = 1'b0;
+      end
+      6'b000110 : begin
+        _zz_nextPrintChar_24 = passPrefix_6;
+        _zz_nextPrintNib = 4'b0000;
+        _zz_nextUseNib = 1'b0;
+      end
+      6'b000111 : begin
+        _zz_nextPrintChar_24 = 8'h0;
+        _zz_nextPrintNib = passCount[15 : 12];
+        _zz_nextUseNib = 1'b1;
+      end
+      6'b001000 : begin
+        _zz_nextPrintChar_24 = 8'h0;
+        _zz_nextPrintNib = passCount[11 : 8];
+        _zz_nextUseNib = 1'b1;
+      end
+      6'b001001 : begin
+        _zz_nextPrintChar_24 = 8'h0;
+        _zz_nextPrintNib = passCount[7 : 4];
+        _zz_nextUseNib = 1'b1;
+      end
+      6'b001010 : begin
+        _zz_nextPrintChar_24 = 8'h0;
+        _zz_nextPrintNib = passCount[3 : 0];
+        _zz_nextUseNib = 1'b1;
+      end
+      6'b001011 : begin
+        _zz_nextPrintChar_24 = 8'h20;
+        _zz_nextPrintNib = 4'b0000;
+        _zz_nextUseNib = 1'b0;
+      end
+      6'b001100 : begin
+        _zz_nextPrintChar_24 = 8'h57;
+        _zz_nextPrintNib = 4'b0000;
+        _zz_nextUseNib = 1'b0;
+      end
+      6'b001101 : begin
+        _zz_nextPrintChar_24 = 8'h3d;
+        _zz_nextPrintNib = 4'b0000;
+        _zz_nextUseNib = 1'b0;
+      end
+      6'b001110 : begin
+        _zz_nextPrintChar_24 = 8'h0;
+        _zz_nextPrintNib = wrCycleCnt[31 : 28];
+        _zz_nextUseNib = 1'b1;
+      end
+      6'b001111 : begin
+        _zz_nextPrintChar_24 = 8'h0;
+        _zz_nextPrintNib = wrCycleCnt[27 : 24];
+        _zz_nextUseNib = 1'b1;
+      end
+      6'b010000 : begin
+        _zz_nextPrintChar_24 = 8'h0;
+        _zz_nextPrintNib = wrCycleCnt[23 : 20];
+        _zz_nextUseNib = 1'b1;
+      end
+      6'b010001 : begin
+        _zz_nextPrintChar_24 = 8'h0;
+        _zz_nextPrintNib = wrCycleCnt[19 : 16];
+        _zz_nextUseNib = 1'b1;
+      end
+      6'b010010 : begin
+        _zz_nextPrintChar_24 = 8'h0;
+        _zz_nextPrintNib = wrCycleCnt[15 : 12];
+        _zz_nextUseNib = 1'b1;
+      end
+      6'b010011 : begin
+        _zz_nextPrintChar_24 = 8'h0;
+        _zz_nextPrintNib = wrCycleCnt[11 : 8];
+        _zz_nextUseNib = 1'b1;
+      end
+      6'b010100 : begin
+        _zz_nextPrintChar_24 = 8'h0;
+        _zz_nextPrintNib = wrCycleCnt[7 : 4];
+        _zz_nextUseNib = 1'b1;
+      end
+      6'b010101 : begin
+        _zz_nextPrintChar_24 = 8'h0;
+        _zz_nextPrintNib = wrCycleCnt[3 : 0];
+        _zz_nextUseNib = 1'b1;
+      end
+      6'b010110 : begin
+        _zz_nextPrintChar_24 = 8'h20;
+        _zz_nextPrintNib = 4'b0000;
+        _zz_nextUseNib = 1'b0;
+      end
+      6'b010111 : begin
+        _zz_nextPrintChar_24 = 8'h52;
+        _zz_nextPrintNib = 4'b0000;
+        _zz_nextUseNib = 1'b0;
+      end
+      6'b011000 : begin
+        _zz_nextPrintChar_24 = 8'h3d;
+        _zz_nextPrintNib = 4'b0000;
+        _zz_nextUseNib = 1'b0;
+      end
+      6'b011001 : begin
+        _zz_nextPrintChar_24 = 8'h0;
+        _zz_nextPrintNib = rdCycleCnt[31 : 28];
+        _zz_nextUseNib = 1'b1;
+      end
+      6'b011010 : begin
+        _zz_nextPrintChar_24 = 8'h0;
+        _zz_nextPrintNib = rdCycleCnt[27 : 24];
+        _zz_nextUseNib = 1'b1;
+      end
+      6'b011011 : begin
+        _zz_nextPrintChar_24 = 8'h0;
+        _zz_nextPrintNib = rdCycleCnt[23 : 20];
+        _zz_nextUseNib = 1'b1;
+      end
+      6'b011100 : begin
+        _zz_nextPrintChar_24 = 8'h0;
+        _zz_nextPrintNib = rdCycleCnt[19 : 16];
+        _zz_nextUseNib = 1'b1;
+      end
+      6'b011101 : begin
+        _zz_nextPrintChar_24 = 8'h0;
+        _zz_nextPrintNib = rdCycleCnt[15 : 12];
+        _zz_nextUseNib = 1'b1;
+      end
+      6'b011110 : begin
+        _zz_nextPrintChar_24 = 8'h0;
+        _zz_nextPrintNib = rdCycleCnt[11 : 8];
+        _zz_nextUseNib = 1'b1;
+      end
+      6'b011111 : begin
+        _zz_nextPrintChar_24 = 8'h0;
+        _zz_nextPrintNib = rdCycleCnt[7 : 4];
+        _zz_nextUseNib = 1'b1;
+      end
+      6'b100000 : begin
+        _zz_nextPrintChar_24 = 8'h0;
+        _zz_nextPrintNib = rdCycleCnt[3 : 0];
+        _zz_nextUseNib = 1'b1;
+      end
+      6'b100001 : begin
+        _zz_nextPrintChar_24 = 8'h0d;
+        _zz_nextPrintNib = 4'b0000;
+        _zz_nextUseNib = 1'b0;
+      end
+      default : begin
+        _zz_nextPrintChar_24 = 8'h0a;
+        _zz_nextPrintNib = 4'b0000;
+        _zz_nextUseNib = 1'b0;
+      end
+    endcase
+  end
+
+  always @(*) begin
+    case(_zz_nextPrintChar_1)
+      7'b0000000 : begin
+        _zz_nextPrintChar_25 = failPrefix_0;
+        _zz_nextPrintNib_1 = 4'b0000;
+        _zz_nextUseNib_1 = 1'b0;
+      end
+      7'b0000001 : begin
+        _zz_nextPrintChar_25 = failPrefix_1;
+        _zz_nextPrintNib_1 = 4'b0000;
+        _zz_nextUseNib_1 = 1'b0;
+      end
+      7'b0000010 : begin
+        _zz_nextPrintChar_25 = failPrefix_2;
+        _zz_nextPrintNib_1 = 4'b0000;
+        _zz_nextUseNib_1 = 1'b0;
+      end
+      7'b0000011 : begin
+        _zz_nextPrintChar_25 = failPrefix_3;
+        _zz_nextPrintNib_1 = 4'b0000;
+        _zz_nextUseNib_1 = 1'b0;
+      end
+      7'b0000100 : begin
+        _zz_nextPrintChar_25 = failPrefix_4;
+        _zz_nextPrintNib_1 = 4'b0000;
+        _zz_nextUseNib_1 = 1'b0;
+      end
+      7'b0000101 : begin
+        _zz_nextPrintChar_25 = failPrefix_5;
+        _zz_nextPrintNib_1 = 4'b0000;
+        _zz_nextUseNib_1 = 1'b0;
+      end
+      7'b0000110 : begin
+        _zz_nextPrintChar_25 = failPrefix_6;
+        _zz_nextPrintNib_1 = 4'b0000;
+        _zz_nextUseNib_1 = 1'b0;
+      end
+      7'b0000111 : begin
+        _zz_nextPrintChar_25 = failPrefix_7;
+        _zz_nextPrintNib_1 = 4'b0000;
+        _zz_nextUseNib_1 = 1'b0;
+      end
+      7'b0001000 : begin
+        _zz_nextPrintChar_25 = failPrefix_8;
+        _zz_nextPrintNib_1 = 4'b0000;
+        _zz_nextUseNib_1 = 1'b0;
+      end
+      7'b0001001 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errAddr[31 : 28];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0001010 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errAddr[27 : 24];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0001011 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errAddr[23 : 20];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0001100 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errAddr[19 : 16];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0001101 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errAddr[15 : 12];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0001110 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errAddr[11 : 8];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0001111 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errAddr[7 : 4];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0010000 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errAddr[3 : 0];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0010001 : begin
+        _zz_nextPrintChar_25 = 8'h20;
+        _zz_nextPrintNib_1 = 4'b0000;
+        _zz_nextUseNib_1 = 1'b0;
+      end
+      7'b0010010 : begin
+        _zz_nextPrintChar_25 = 8'h45;
+        _zz_nextPrintNib_1 = 4'b0000;
+        _zz_nextUseNib_1 = 1'b0;
+      end
+      7'b0010011 : begin
+        _zz_nextPrintChar_25 = 8'h3d;
+        _zz_nextPrintNib_1 = 4'b0000;
+        _zz_nextUseNib_1 = 1'b0;
+      end
+      7'b0010100 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errExpected[63 : 60];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0010101 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errExpected[59 : 56];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0010110 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errExpected[55 : 52];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0010111 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errExpected[51 : 48];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0011000 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errExpected[47 : 44];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0011001 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errExpected[43 : 40];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0011010 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errExpected[39 : 36];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0011011 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errExpected[35 : 32];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0011100 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errExpected[31 : 28];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0011101 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errExpected[27 : 24];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0011110 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errExpected[23 : 20];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0011111 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errExpected[19 : 16];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0100000 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errExpected[15 : 12];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0100001 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errExpected[11 : 8];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0100010 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errExpected[7 : 4];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0100011 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errExpected[3 : 0];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0100100 : begin
+        _zz_nextPrintChar_25 = 8'h20;
+        _zz_nextPrintNib_1 = 4'b0000;
+        _zz_nextUseNib_1 = 1'b0;
+      end
+      7'b0100101 : begin
+        _zz_nextPrintChar_25 = 8'h47;
+        _zz_nextPrintNib_1 = 4'b0000;
+        _zz_nextUseNib_1 = 1'b0;
+      end
+      7'b0100110 : begin
+        _zz_nextPrintChar_25 = 8'h3d;
+        _zz_nextPrintNib_1 = 4'b0000;
+        _zz_nextUseNib_1 = 1'b0;
+      end
+      7'b0100111 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual[63 : 60];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0101000 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual[59 : 56];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0101001 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual[55 : 52];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0101010 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual[51 : 48];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0101011 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual[47 : 44];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0101100 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual[43 : 40];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0101101 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual[39 : 36];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0101110 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual[35 : 32];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0101111 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual[31 : 28];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0110000 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual[27 : 24];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0110001 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual[23 : 20];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0110010 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual[19 : 16];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0110011 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual[15 : 12];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0110100 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual[11 : 8];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0110101 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual[7 : 4];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0110110 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual[3 : 0];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0110111 : begin
+        _zz_nextPrintChar_25 = 8'h20;
+        _zz_nextPrintNib_1 = 4'b0000;
+        _zz_nextUseNib_1 = 1'b0;
+      end
+      7'b0111000 : begin
+        _zz_nextPrintChar_25 = 8'h48;
+        _zz_nextPrintNib_1 = 4'b0000;
+        _zz_nextUseNib_1 = 1'b0;
+      end
+      7'b0111001 : begin
+        _zz_nextPrintChar_25 = 8'h3d;
+        _zz_nextPrintNib_1 = 4'b0000;
+        _zz_nextUseNib_1 = 1'b0;
+      end
+      7'b0111010 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual1[63 : 60];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0111011 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual1[59 : 56];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0111100 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual1[55 : 52];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0111101 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual1[51 : 48];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0111110 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual1[47 : 44];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b0111111 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual1[43 : 40];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b1000000 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual1[39 : 36];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b1000001 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual1[35 : 32];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b1000010 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual1[31 : 28];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b1000011 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual1[27 : 24];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b1000100 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual1[23 : 20];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b1000101 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual1[19 : 16];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b1000110 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual1[15 : 12];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b1000111 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual1[11 : 8];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b1001000 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual1[7 : 4];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b1001001 : begin
+        _zz_nextPrintChar_25 = 8'h0;
+        _zz_nextPrintNib_1 = errActual1[3 : 0];
+        _zz_nextUseNib_1 = 1'b1;
+      end
+      7'b1001010 : begin
+        _zz_nextPrintChar_25 = 8'h0d;
+        _zz_nextPrintNib_1 = 4'b0000;
+        _zz_nextUseNib_1 = 1'b0;
+      end
+      default : begin
+        _zz_nextPrintChar_25 = 8'h0a;
+        _zz_nextPrintNib_1 = 4'b0000;
+        _zz_nextUseNib_1 = 1'b0;
+      end
     endcase
   end
 
@@ -3195,8 +1311,6 @@ module Ddr3MemtestEngine (
       fsm_sWaitCalib : fsm_stateReg_string = "sWaitCalib    ";
       fsm_sPrintCalib : fsm_stateReg_string = "sPrintCalib   ";
       fsm_sPrintBanner : fsm_stateReg_string = "sPrintBanner  ";
-      fsm_sPrintWlmap : fsm_stateReg_string = "sPrintWlmap   ";
-      fsm_sPrintLatch : fsm_stateReg_string = "sPrintLatch   ";
       fsm_sSingleWriteAW : fsm_stateReg_string = "sSingleWriteAW";
       fsm_sSingleWriteW0 : fsm_stateReg_string = "sSingleWriteW0";
       fsm_sSingleWriteW1 : fsm_stateReg_string = "sSingleWriteW1";
@@ -3222,8 +1336,6 @@ module Ddr3MemtestEngine (
       fsm_sWaitCalib : fsm_stateNext_string = "sWaitCalib    ";
       fsm_sPrintCalib : fsm_stateNext_string = "sPrintCalib   ";
       fsm_sPrintBanner : fsm_stateNext_string = "sPrintBanner  ";
-      fsm_sPrintWlmap : fsm_stateNext_string = "sPrintWlmap   ";
-      fsm_sPrintLatch : fsm_stateNext_string = "sPrintLatch   ";
       fsm_sSingleWriteAW : fsm_stateNext_string = "sSingleWriteAW";
       fsm_sSingleWriteW0 : fsm_stateNext_string = "sSingleWriteW0";
       fsm_sSingleWriteW1 : fsm_stateNext_string = "sSingleWriteW1";
@@ -3498,174 +1610,6 @@ module Ddr3MemtestEngine (
           endcase
         end
       end
-      fsm_sPrintWlmap : begin
-        if(canPrint) begin
-          case(fsm_msgIndex)
-            7'h0 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h01 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h02 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h03 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h04 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h05 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h06 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h07 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h08 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h09 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h0a : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h0b : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h0c : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h0d : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h0e : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h0f : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h10 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h11 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h12 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h13 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h14 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h15 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h16 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h17 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h18 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h19 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h5a : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h5b : begin
-              nextPrintValid = 1'b1;
-            end
-            default : begin
-              nextPrintValid = 1'b1;
-            end
-          endcase
-        end
-      end
-      fsm_sPrintLatch : begin
-        if(canPrint) begin
-          case(fsm_msgIndex)
-            7'h0 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h01 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h02 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h03 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h04 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h05 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h06 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h07 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h08 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h09 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h0a : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h0b : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h0c : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h0d : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h0e : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h0f : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h10 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h11 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h12 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h13 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h34 : begin
-              nextPrintValid = 1'b1;
-            end
-            7'h35 : begin
-              nextPrintValid = 1'b1;
-            end
-            default : begin
-              nextPrintValid = 1'b1;
-            end
-          endcase
-        end
-      end
       fsm_sSingleWriteAW : begin
       end
       fsm_sSingleWriteW0 : begin
@@ -3692,14 +1636,14 @@ module Ddr3MemtestEngine (
       end
       fsm_sReportPass : begin
         if(canPrint) begin
-          if(when_Ddr3MemtestEngine_l585) begin
+          if(when_Ddr3MemtestEngine_l515) begin
             nextPrintValid = 1'b1;
           end
         end
       end
       fsm_sReportFail : begin
         if(canPrint) begin
-          if(when_Ddr3MemtestEngine_l611) begin
+          if(when_Ddr3MemtestEngine_l560) begin
             nextPrintValid = 1'b1;
           end
         end
@@ -3809,7 +1753,7 @@ module Ddr3MemtestEngine (
               nextPrintChar = 8'h3d;
             end
             7'h07 : begin
-              nextPrintChar = _zz_nextPrintChar;
+              nextPrintChar = _zz_nextPrintChar_2;
             end
             7'h08 : begin
               nextPrintChar = 8'h20;
@@ -3821,10 +1765,10 @@ module Ddr3MemtestEngine (
               nextPrintChar = 8'h3d;
             end
             7'h0b : begin
-              nextPrintChar = _zz_nextPrintChar_2;
+              nextPrintChar = _zz_nextPrintChar_4;
             end
             7'h0c : begin
-              nextPrintChar = _zz_nextPrintChar_4;
+              nextPrintChar = _zz_nextPrintChar_6;
             end
             7'h0d : begin
               nextPrintChar = 8'h0d;
@@ -3883,10 +1827,10 @@ module Ddr3MemtestEngine (
               nextPrintChar = 8'h3d;
             end
             7'h0e : begin
-              nextPrintChar = _zz_nextPrintChar_6;
+              nextPrintChar = _zz_nextPrintChar_8;
             end
             7'h0f : begin
-              nextPrintChar = _zz_nextPrintChar_8;
+              nextPrintChar = _zz_nextPrintChar_10;
             end
             7'h10 : begin
               nextPrintChar = 8'h20;
@@ -3898,7 +1842,7 @@ module Ddr3MemtestEngine (
               nextPrintChar = 8'h3d;
             end
             7'h13 : begin
-              nextPrintChar = _zz_nextPrintChar_10;
+              nextPrintChar = _zz_nextPrintChar_12;
             end
             7'h14 : begin
               nextPrintChar = 8'h20;
@@ -3910,7 +1854,7 @@ module Ddr3MemtestEngine (
               nextPrintChar = 8'h3d;
             end
             7'h17 : begin
-              nextPrintChar = _zz_nextPrintChar_13;
+              nextPrintChar = _zz_nextPrintChar_15;
             end
             7'h18 : begin
               nextPrintChar = 8'h20;
@@ -3922,7 +1866,7 @@ module Ddr3MemtestEngine (
               nextPrintChar = 8'h3d;
             end
             7'h1b : begin
-              nextPrintChar = _zz_nextPrintChar_16;
+              nextPrintChar = _zz_nextPrintChar_18;
             end
             7'h1c : begin
               nextPrintChar = 8'h20;
@@ -3934,7 +1878,7 @@ module Ddr3MemtestEngine (
               nextPrintChar = 8'h3d;
             end
             7'h1f : begin
-              nextPrintChar = _zz_nextPrintChar_20;
+              nextPrintChar = _zz_nextPrintChar_22;
             end
             7'h20 : begin
               nextPrintChar = 8'h0d;
@@ -3943,174 +1887,6 @@ module Ddr3MemtestEngine (
               nextPrintChar = 8'h0a;
             end
             default : begin
-            end
-          endcase
-        end
-      end
-      fsm_sPrintWlmap : begin
-        if(canPrint) begin
-          case(fsm_msgIndex)
-            7'h0 : begin
-              nextPrintChar = 8'h0d;
-            end
-            7'h01 : begin
-              nextPrintChar = 8'h0a;
-            end
-            7'h02 : begin
-              nextPrintChar = 8'h5b;
-            end
-            7'h03 : begin
-              nextPrintChar = 8'h57;
-            end
-            7'h04 : begin
-              nextPrintChar = 8'h4c;
-            end
-            7'h05 : begin
-              nextPrintChar = 8'h4d;
-            end
-            7'h06 : begin
-              nextPrintChar = 8'h41;
-            end
-            7'h07 : begin
-              nextPrintChar = 8'h50;
-            end
-            7'h08 : begin
-              nextPrintChar = 8'h20;
-            end
-            7'h09 : begin
-              nextPrintChar = 8'h66;
-            end
-            7'h0a : begin
-              nextPrintChar = 8'h3d;
-            end
-            7'h0b : begin
-              nextPrintChar = _zz_nextPrintChar_22;
-            end
-            7'h0c : begin
-              nextPrintChar = _zz_nextPrintChar_24;
-            end
-            7'h0d : begin
-              nextPrintChar = 8'h20;
-            end
-            7'h0e : begin
-              nextPrintChar = 8'h6c;
-            end
-            7'h0f : begin
-              nextPrintChar = 8'h3d;
-            end
-            7'h10 : begin
-              nextPrintChar = _zz_nextPrintChar_26;
-            end
-            7'h11 : begin
-              nextPrintChar = _zz_nextPrintChar_28;
-            end
-            7'h12 : begin
-              nextPrintChar = 8'h20;
-            end
-            7'h13 : begin
-              nextPrintChar = 8'h6e;
-            end
-            7'h14 : begin
-              nextPrintChar = 8'h3d;
-            end
-            7'h15 : begin
-              nextPrintChar = _zz_nextPrintChar_30;
-            end
-            7'h16 : begin
-              nextPrintChar = _zz_nextPrintChar_32;
-            end
-            7'h17 : begin
-              nextPrintChar = 8'h20;
-            end
-            7'h18 : begin
-              nextPrintChar = 8'h6d;
-            end
-            7'h19 : begin
-              nextPrintChar = 8'h3d;
-            end
-            7'h5a : begin
-              nextPrintChar = 8'h0d;
-            end
-            7'h5b : begin
-              nextPrintChar = 8'h0a;
-            end
-            default : begin
-              nextPrintChar = _zz_nextPrintChar_34;
-            end
-          endcase
-        end
-      end
-      fsm_sPrintLatch : begin
-        if(canPrint) begin
-          case(fsm_msgIndex)
-            7'h0 : begin
-              nextPrintChar = 8'h5b;
-            end
-            7'h01 : begin
-              nextPrintChar = 8'h4c;
-            end
-            7'h02 : begin
-              nextPrintChar = 8'h41;
-            end
-            7'h03 : begin
-              nextPrintChar = 8'h54;
-            end
-            7'h04 : begin
-              nextPrintChar = 8'h43;
-            end
-            7'h05 : begin
-              nextPrintChar = 8'h48;
-            end
-            7'h06 : begin
-              nextPrintChar = 8'h5d;
-            end
-            7'h07 : begin
-              nextPrintChar = 8'h20;
-            end
-            7'h08 : begin
-              nextPrintChar = 8'h41;
-            end
-            7'h09 : begin
-              nextPrintChar = 8'h3d;
-            end
-            7'h0a : begin
-              nextPrintChar = _zz_nextPrintChar_40;
-            end
-            7'h0b : begin
-              nextPrintChar = 8'h20;
-            end
-            7'h0c : begin
-              nextPrintChar = 8'h53;
-            end
-            7'h0d : begin
-              nextPrintChar = 8'h3d;
-            end
-            7'h0e : begin
-              nextPrintChar = _zz_nextPrintChar_43;
-            end
-            7'h0f : begin
-              nextPrintChar = _zz_nextPrintChar_45;
-            end
-            7'h10 : begin
-              nextPrintChar = _zz_nextPrintChar_47;
-            end
-            7'h11 : begin
-              nextPrintChar = 8'h20;
-            end
-            7'h12 : begin
-              nextPrintChar = 8'h4c;
-            end
-            7'h13 : begin
-              nextPrintChar = 8'h3d;
-            end
-            7'h34 : begin
-              nextPrintChar = 8'h0d;
-            end
-            7'h35 : begin
-              nextPrintChar = 8'h0a;
-            end
-            default : begin
-              nextPrintChar = _zz_nextPrintChar_49;
             end
           endcase
         end
@@ -4141,15 +1917,127 @@ module Ddr3MemtestEngine (
       end
       fsm_sReportPass : begin
         if(canPrint) begin
-          if(when_Ddr3MemtestEngine_l585) begin
-            nextPrintChar = _zz_nextPrintChar_55;
+          if(when_Ddr3MemtestEngine_l515) begin
+            nextPrintChar = _zz_nextPrintChar_24;
           end
         end
       end
       fsm_sReportFail : begin
         if(canPrint) begin
-          if(when_Ddr3MemtestEngine_l611) begin
-            nextPrintChar = _zz_nextPrintChar_97;
+          if(when_Ddr3MemtestEngine_l560) begin
+            nextPrintChar = _zz_nextPrintChar_25;
+          end
+        end
+      end
+      fsm_sLoopDelay : begin
+      end
+      default : begin
+      end
+    endcase
+  end
+
+  always @(*) begin
+    nextUseNib = 1'b0;
+    case(fsm_stateReg)
+      fsm_sBootBanner : begin
+      end
+      fsm_sWaitCalib : begin
+      end
+      fsm_sPrintCalib : begin
+      end
+      fsm_sPrintBanner : begin
+      end
+      fsm_sSingleWriteAW : begin
+      end
+      fsm_sSingleWriteW0 : begin
+      end
+      fsm_sSingleWriteW1 : begin
+      end
+      fsm_sSingleWriteB : begin
+      end
+      fsm_sSingleReadAR : begin
+      end
+      fsm_sSingleReadR0 : begin
+      end
+      fsm_sSingleReadR1 : begin
+      end
+      fsm_sBulkWriteAW : begin
+      end
+      fsm_sBulkWriteW : begin
+      end
+      fsm_sBulkWriteB : begin
+      end
+      fsm_sBulkReadAR : begin
+      end
+      fsm_sBulkReadR : begin
+      end
+      fsm_sReportPass : begin
+        if(canPrint) begin
+          if(when_Ddr3MemtestEngine_l515) begin
+            nextUseNib = _zz_nextUseNib;
+          end
+        end
+      end
+      fsm_sReportFail : begin
+        if(canPrint) begin
+          if(when_Ddr3MemtestEngine_l560) begin
+            nextUseNib = _zz_nextUseNib_1;
+          end
+        end
+      end
+      fsm_sLoopDelay : begin
+      end
+      default : begin
+      end
+    endcase
+  end
+
+  always @(*) begin
+    nextPrintNib = 4'b0000;
+    case(fsm_stateReg)
+      fsm_sBootBanner : begin
+      end
+      fsm_sWaitCalib : begin
+      end
+      fsm_sPrintCalib : begin
+      end
+      fsm_sPrintBanner : begin
+      end
+      fsm_sSingleWriteAW : begin
+      end
+      fsm_sSingleWriteW0 : begin
+      end
+      fsm_sSingleWriteW1 : begin
+      end
+      fsm_sSingleWriteB : begin
+      end
+      fsm_sSingleReadAR : begin
+      end
+      fsm_sSingleReadR0 : begin
+      end
+      fsm_sSingleReadR1 : begin
+      end
+      fsm_sBulkWriteAW : begin
+      end
+      fsm_sBulkWriteW : begin
+      end
+      fsm_sBulkWriteB : begin
+      end
+      fsm_sBulkReadAR : begin
+      end
+      fsm_sBulkReadR : begin
+      end
+      fsm_sReportPass : begin
+        if(canPrint) begin
+          if(when_Ddr3MemtestEngine_l515) begin
+            nextPrintNib = _zz_nextPrintNib;
+          end
+        end
+      end
+      fsm_sReportFail : begin
+        if(canPrint) begin
+          if(when_Ddr3MemtestEngine_l560) begin
+            nextPrintNib = _zz_nextPrintNib_1;
           end
         end
       end
@@ -4166,7 +2054,7 @@ module Ddr3MemtestEngine (
   assign canPrint = ((! printValid) && (! stageValid));
   assign io_test_error = errorReg;
   assign io_test_pass = passReg;
-  assign when_Ddr3MemtestEngine_l105 = (hbCounter == 25'h0);
+  assign when_Ddr3MemtestEngine_l104 = (hbCounter == 25'h0);
   assign io_heartbeat = hbReg;
   always @(*) begin
     io_axi_aw_valid = 1'b0;
@@ -4178,10 +2066,6 @@ module Ddr3MemtestEngine (
       fsm_sPrintCalib : begin
       end
       fsm_sPrintBanner : begin
-      end
-      fsm_sPrintWlmap : begin
-      end
-      fsm_sPrintLatch : begin
       end
       fsm_sSingleWriteAW : begin
         io_axi_aw_valid = 1'b1;
@@ -4231,10 +2115,6 @@ module Ddr3MemtestEngine (
       end
       fsm_sPrintBanner : begin
       end
-      fsm_sPrintWlmap : begin
-      end
-      fsm_sPrintLatch : begin
-      end
       fsm_sSingleWriteAW : begin
         io_axi_aw_payload_addr = 32'h0;
       end
@@ -4282,10 +2162,6 @@ module Ddr3MemtestEngine (
       fsm_sPrintCalib : begin
       end
       fsm_sPrintBanner : begin
-      end
-      fsm_sPrintWlmap : begin
-      end
-      fsm_sPrintLatch : begin
       end
       fsm_sSingleWriteAW : begin
       end
@@ -4342,10 +2218,6 @@ module Ddr3MemtestEngine (
       end
       fsm_sPrintBanner : begin
       end
-      fsm_sPrintWlmap : begin
-      end
-      fsm_sPrintLatch : begin
-      end
       fsm_sSingleWriteAW : begin
       end
       fsm_sSingleWriteW0 : begin
@@ -4394,10 +2266,6 @@ module Ddr3MemtestEngine (
       fsm_sPrintCalib : begin
       end
       fsm_sPrintBanner : begin
-      end
-      fsm_sPrintWlmap : begin
-      end
-      fsm_sPrintLatch : begin
       end
       fsm_sSingleWriteAW : begin
       end
@@ -4448,10 +2316,6 @@ module Ddr3MemtestEngine (
       end
       fsm_sPrintBanner : begin
       end
-      fsm_sPrintWlmap : begin
-      end
-      fsm_sPrintLatch : begin
-      end
       fsm_sSingleWriteAW : begin
       end
       fsm_sSingleWriteW0 : begin
@@ -4500,10 +2364,6 @@ module Ddr3MemtestEngine (
       fsm_sPrintCalib : begin
       end
       fsm_sPrintBanner : begin
-      end
-      fsm_sPrintWlmap : begin
-      end
-      fsm_sPrintLatch : begin
       end
       fsm_sSingleWriteAW : begin
       end
@@ -4555,10 +2415,6 @@ module Ddr3MemtestEngine (
       end
       fsm_sPrintBanner : begin
       end
-      fsm_sPrintWlmap : begin
-      end
-      fsm_sPrintLatch : begin
-      end
       fsm_sSingleWriteAW : begin
       end
       fsm_sSingleWriteW0 : begin
@@ -4607,10 +2463,6 @@ module Ddr3MemtestEngine (
       end
       fsm_sPrintBanner : begin
       end
-      fsm_sPrintWlmap : begin
-      end
-      fsm_sPrintLatch : begin
-      end
       fsm_sSingleWriteAW : begin
       end
       fsm_sSingleWriteW0 : begin
@@ -4658,10 +2510,6 @@ module Ddr3MemtestEngine (
       fsm_sPrintCalib : begin
       end
       fsm_sPrintBanner : begin
-      end
-      fsm_sPrintWlmap : begin
-      end
-      fsm_sPrintLatch : begin
       end
       fsm_sSingleWriteAW : begin
       end
@@ -4718,10 +2566,6 @@ module Ddr3MemtestEngine (
       end
       fsm_sPrintBanner : begin
       end
-      fsm_sPrintWlmap : begin
-      end
-      fsm_sPrintLatch : begin
-      end
       fsm_sSingleWriteAW : begin
       end
       fsm_sSingleWriteW0 : begin
@@ -4762,102 +2606,6 @@ module Ddr3MemtestEngine (
 
   assign currentByteAddr = {17'd0, _zz_currentByteAddr};
   assign beatBlockAddr = (currentByteAddr + _zz_beatBlockAddr);
-  assign wlMapNib_0 = io_wlMap[3 : 0];
-  assign wlMapNib_1 = io_wlMap[7 : 4];
-  assign wlMapNib_2 = io_wlMap[11 : 8];
-  assign wlMapNib_3 = io_wlMap[15 : 12];
-  assign wlMapNib_4 = io_wlMap[19 : 16];
-  assign wlMapNib_5 = io_wlMap[23 : 20];
-  assign wlMapNib_6 = io_wlMap[27 : 24];
-  assign wlMapNib_7 = io_wlMap[31 : 28];
-  assign wlMapNib_8 = io_wlMap[35 : 32];
-  assign wlMapNib_9 = io_wlMap[39 : 36];
-  assign wlMapNib_10 = io_wlMap[43 : 40];
-  assign wlMapNib_11 = io_wlMap[47 : 44];
-  assign wlMapNib_12 = io_wlMap[51 : 48];
-  assign wlMapNib_13 = io_wlMap[55 : 52];
-  assign wlMapNib_14 = io_wlMap[59 : 56];
-  assign wlMapNib_15 = io_wlMap[63 : 60];
-  assign wlMapNib_16 = io_wlMap[67 : 64];
-  assign wlMapNib_17 = io_wlMap[71 : 68];
-  assign wlMapNib_18 = io_wlMap[75 : 72];
-  assign wlMapNib_19 = io_wlMap[79 : 76];
-  assign wlMapNib_20 = io_wlMap[83 : 80];
-  assign wlMapNib_21 = io_wlMap[87 : 84];
-  assign wlMapNib_22 = io_wlMap[91 : 88];
-  assign wlMapNib_23 = io_wlMap[95 : 92];
-  assign wlMapNib_24 = io_wlMap[99 : 96];
-  assign wlMapNib_25 = io_wlMap[103 : 100];
-  assign wlMapNib_26 = io_wlMap[107 : 104];
-  assign wlMapNib_27 = io_wlMap[111 : 108];
-  assign wlMapNib_28 = io_wlMap[115 : 112];
-  assign wlMapNib_29 = io_wlMap[119 : 116];
-  assign wlMapNib_30 = io_wlMap[123 : 120];
-  assign wlMapNib_31 = io_wlMap[127 : 124];
-  assign wlMapNib_32 = io_wlMap[131 : 128];
-  assign wlMapNib_33 = io_wlMap[135 : 132];
-  assign wlMapNib_34 = io_wlMap[139 : 136];
-  assign wlMapNib_35 = io_wlMap[143 : 140];
-  assign wlMapNib_36 = io_wlMap[147 : 144];
-  assign wlMapNib_37 = io_wlMap[151 : 148];
-  assign wlMapNib_38 = io_wlMap[155 : 152];
-  assign wlMapNib_39 = io_wlMap[159 : 156];
-  assign wlMapNib_40 = io_wlMap[163 : 160];
-  assign wlMapNib_41 = io_wlMap[167 : 164];
-  assign wlMapNib_42 = io_wlMap[171 : 168];
-  assign wlMapNib_43 = io_wlMap[175 : 172];
-  assign wlMapNib_44 = io_wlMap[179 : 176];
-  assign wlMapNib_45 = io_wlMap[183 : 180];
-  assign wlMapNib_46 = io_wlMap[187 : 184];
-  assign wlMapNib_47 = io_wlMap[191 : 188];
-  assign wlMapNib_48 = io_wlMap[195 : 192];
-  assign wlMapNib_49 = io_wlMap[199 : 196];
-  assign wlMapNib_50 = io_wlMap[203 : 200];
-  assign wlMapNib_51 = io_wlMap[207 : 204];
-  assign wlMapNib_52 = io_wlMap[211 : 208];
-  assign wlMapNib_53 = io_wlMap[215 : 212];
-  assign wlMapNib_54 = io_wlMap[219 : 216];
-  assign wlMapNib_55 = io_wlMap[223 : 220];
-  assign wlMapNib_56 = io_wlMap[227 : 224];
-  assign wlMapNib_57 = io_wlMap[231 : 228];
-  assign wlMapNib_58 = io_wlMap[235 : 232];
-  assign wlMapNib_59 = io_wlMap[239 : 236];
-  assign wlMapNib_60 = io_wlMap[243 : 240];
-  assign wlMapNib_61 = io_wlMap[247 : 244];
-  assign wlMapNib_62 = io_wlMap[251 : 248];
-  assign wlMapNib_63 = io_wlMap[255 : 252];
-  assign latchNib_0 = io_train_latch[3 : 0];
-  assign latchNib_1 = io_train_latch[7 : 4];
-  assign latchNib_2 = io_train_latch[11 : 8];
-  assign latchNib_3 = io_train_latch[15 : 12];
-  assign latchNib_4 = io_train_latch[19 : 16];
-  assign latchNib_5 = io_train_latch[23 : 20];
-  assign latchNib_6 = io_train_latch[27 : 24];
-  assign latchNib_7 = io_train_latch[31 : 28];
-  assign latchNib_8 = io_train_latch[35 : 32];
-  assign latchNib_9 = io_train_latch[39 : 36];
-  assign latchNib_10 = io_train_latch[43 : 40];
-  assign latchNib_11 = io_train_latch[47 : 44];
-  assign latchNib_12 = io_train_latch[51 : 48];
-  assign latchNib_13 = io_train_latch[55 : 52];
-  assign latchNib_14 = io_train_latch[59 : 56];
-  assign latchNib_15 = io_train_latch[63 : 60];
-  assign latchNib_16 = io_train_latch[67 : 64];
-  assign latchNib_17 = io_train_latch[71 : 68];
-  assign latchNib_18 = io_train_latch[75 : 72];
-  assign latchNib_19 = io_train_latch[79 : 76];
-  assign latchNib_20 = io_train_latch[83 : 80];
-  assign latchNib_21 = io_train_latch[87 : 84];
-  assign latchNib_22 = io_train_latch[91 : 88];
-  assign latchNib_23 = io_train_latch[95 : 92];
-  assign latchNib_24 = io_train_latch[99 : 96];
-  assign latchNib_25 = io_train_latch[103 : 100];
-  assign latchNib_26 = io_train_latch[107 : 104];
-  assign latchNib_27 = io_train_latch[111 : 108];
-  assign latchNib_28 = io_train_latch[115 : 112];
-  assign latchNib_29 = io_train_latch[119 : 116];
-  assign latchNib_30 = io_train_latch[123 : 120];
-  assign latchNib_31 = io_train_latch[127 : 124];
   assign passPrefix_0 = 8'h5b;
   assign passPrefix_1 = 8'h50;
   assign passPrefix_2 = 8'h41;
@@ -4885,10 +2633,6 @@ module Ddr3MemtestEngine (
       fsm_sPrintCalib : begin
       end
       fsm_sPrintBanner : begin
-      end
-      fsm_sPrintWlmap : begin
-      end
-      fsm_sPrintLatch : begin
       end
       fsm_sSingleWriteAW : begin
       end
@@ -4981,10 +2725,10 @@ module Ddr3MemtestEngine (
         end
       end
       fsm_sWaitCalib : begin
-        if(when_Ddr3MemtestEngine_l244) begin
+        if(when_Ddr3MemtestEngine_l236) begin
           fsm_stateNext = fsm_sPrintBanner;
         end else begin
-          if(when_Ddr3MemtestEngine_l252) begin
+          if(when_Ddr3MemtestEngine_l244) begin
             fsm_stateNext = fsm_sPrintCalib;
           end
         end
@@ -5100,125 +2844,7 @@ module Ddr3MemtestEngine (
             7'h21 : begin
             end
             default : begin
-              fsm_stateNext = fsm_sPrintWlmap;
-            end
-          endcase
-        end
-      end
-      fsm_sPrintWlmap : begin
-        if(canPrint) begin
-          case(fsm_msgIndex)
-            7'h0 : begin
-            end
-            7'h01 : begin
-            end
-            7'h02 : begin
-            end
-            7'h03 : begin
-            end
-            7'h04 : begin
-            end
-            7'h05 : begin
-            end
-            7'h06 : begin
-            end
-            7'h07 : begin
-            end
-            7'h08 : begin
-            end
-            7'h09 : begin
-            end
-            7'h0a : begin
-            end
-            7'h0b : begin
-            end
-            7'h0c : begin
-            end
-            7'h0d : begin
-            end
-            7'h0e : begin
-            end
-            7'h0f : begin
-            end
-            7'h10 : begin
-            end
-            7'h11 : begin
-            end
-            7'h12 : begin
-            end
-            7'h13 : begin
-            end
-            7'h14 : begin
-            end
-            7'h15 : begin
-            end
-            7'h16 : begin
-            end
-            7'h17 : begin
-            end
-            7'h18 : begin
-            end
-            7'h19 : begin
-            end
-            7'h5a : begin
-            end
-            7'h5b : begin
-              fsm_stateNext = fsm_sPrintLatch;
-            end
-            default : begin
-            end
-          endcase
-        end
-      end
-      fsm_sPrintLatch : begin
-        if(canPrint) begin
-          case(fsm_msgIndex)
-            7'h0 : begin
-            end
-            7'h01 : begin
-            end
-            7'h02 : begin
-            end
-            7'h03 : begin
-            end
-            7'h04 : begin
-            end
-            7'h05 : begin
-            end
-            7'h06 : begin
-            end
-            7'h07 : begin
-            end
-            7'h08 : begin
-            end
-            7'h09 : begin
-            end
-            7'h0a : begin
-            end
-            7'h0b : begin
-            end
-            7'h0c : begin
-            end
-            7'h0d : begin
-            end
-            7'h0e : begin
-            end
-            7'h0f : begin
-            end
-            7'h10 : begin
-            end
-            7'h11 : begin
-            end
-            7'h12 : begin
-            end
-            7'h13 : begin
-            end
-            7'h34 : begin
-            end
-            7'h35 : begin
               fsm_stateNext = fsm_sSingleWriteAW;
-            end
-            default : begin
             end
           endcase
         end
@@ -5255,7 +2881,7 @@ module Ddr3MemtestEngine (
       end
       fsm_sSingleReadR1 : begin
         if(io_axi_r_valid) begin
-          if(when_Ddr3MemtestEngine_l477) begin
+          if(when_Ddr3MemtestEngine_l394) begin
             fsm_stateNext = fsm_sReportFail;
           end else begin
             fsm_stateNext = fsm_sBulkWriteAW;
@@ -5269,14 +2895,14 @@ module Ddr3MemtestEngine (
       end
       fsm_sBulkWriteW : begin
         if(io_axi_w_ready) begin
-          if(when_Ddr3MemtestEngine_l508) begin
+          if(when_Ddr3MemtestEngine_l425) begin
             fsm_stateNext = fsm_sBulkWriteB;
           end
         end
       end
       fsm_sBulkWriteB : begin
         if(io_axi_b_valid) begin
-          if(when_Ddr3MemtestEngine_l519) begin
+          if(when_Ddr3MemtestEngine_l436) begin
             fsm_stateNext = fsm_sBulkReadAR;
           end else begin
             fsm_stateNext = fsm_sBulkWriteAW;
@@ -5290,11 +2916,11 @@ module Ddr3MemtestEngine (
       end
       fsm_sBulkReadR : begin
         if(io_axi_r_valid) begin
-          if(when_Ddr3MemtestEngine_l553) begin
+          if(when_Ddr3MemtestEngine_l470) begin
             fsm_stateNext = fsm_sReportFail;
           end else begin
-            if(when_Ddr3MemtestEngine_l557) begin
-              if(when_Ddr3MemtestEngine_l558) begin
+            if(when_Ddr3MemtestEngine_l474) begin
+              if(when_Ddr3MemtestEngine_l475) begin
                 fsm_stateNext = fsm_sReportPass;
               end else begin
                 fsm_stateNext = fsm_sBulkReadAR;
@@ -5305,7 +2931,7 @@ module Ddr3MemtestEngine (
       end
       fsm_sReportPass : begin
         if(canPrint) begin
-          if(!when_Ddr3MemtestEngine_l585) begin
+          if(!when_Ddr3MemtestEngine_l515) begin
             fsm_stateNext = fsm_sLoopDelay;
           end
         end
@@ -5313,7 +2939,7 @@ module Ddr3MemtestEngine (
       fsm_sReportFail : begin
       end
       fsm_sLoopDelay : begin
-        if(when_Ddr3MemtestEngine_l622) begin
+        if(when_Ddr3MemtestEngine_l573) begin
           fsm_stateNext = fsm_sBulkWriteAW;
         end
       end
@@ -5328,26 +2954,30 @@ module Ddr3MemtestEngine (
     end
   end
 
-  assign when_Ddr3MemtestEngine_l244 = (((io_pll_lock && io_init_done) && io_write_level_done) && io_read_calib_done);
-  assign when_Ddr3MemtestEngine_l252 = (fsm_delayCounter == 28'h2435b6e);
-  assign when_Ddr3MemtestEngine_l455 = ((! errorReg) && (io_axi_r_payload_data != 64'h0123456789abcdef));
-  assign when_Ddr3MemtestEngine_l471 = ((! errorReg) && (io_axi_r_payload_data != 64'hfedcba9876543210));
-  assign when_Ddr3MemtestEngine_l477 = (errorReg || (io_axi_r_payload_data != 64'hfedcba9876543210));
-  assign when_Ddr3MemtestEngine_l508 = (beatIdx == 8'h7f);
-  assign when_Ddr3MemtestEngine_l519 = (11'h400 <= _zz_when_Ddr3MemtestEngine_l519);
+  assign when_Ddr3MemtestEngine_l236 = (((io_pll_lock && io_init_done) && io_write_level_done) && io_read_calib_done);
+  assign when_Ddr3MemtestEngine_l244 = (fsm_delayCounter == 28'h2435b6e);
+  assign when_Ddr3MemtestEngine_l372 = ((! errorReg) && (io_axi_r_payload_data != 64'h0123456789abcdef));
+  assign when_Ddr3MemtestEngine_l388 = ((! errorReg) && (io_axi_r_payload_data != 64'hfedcba9876543210));
+  assign when_Ddr3MemtestEngine_l394 = (errorReg || (io_axi_r_payload_data != 64'hfedcba9876543210));
+  assign when_Ddr3MemtestEngine_l425 = (beatIdx == 8'h7f);
+  assign when_Ddr3MemtestEngine_l436 = (11'h400 <= _zz_when_Ddr3MemtestEngine_l436);
   assign _zz_errExpected = (beatIdx[0] ? {(beatBlockAddr ^ 32'h12345678),_zz__zz_errExpected} : {(beatBlockAddr ^ 32'h5aa55aa5),_zz__zz_errExpected_1});
-  assign _zz_when_Ddr3MemtestEngine_l547 = (io_axi_r_payload_data != _zz_errExpected);
-  assign when_Ddr3MemtestEngine_l547 = ((! errorReg) && _zz_when_Ddr3MemtestEngine_l547);
-  assign when_Ddr3MemtestEngine_l553 = (errorReg || _zz_when_Ddr3MemtestEngine_l547);
-  assign when_Ddr3MemtestEngine_l557 = (beatIdx == 8'h7f);
-  assign when_Ddr3MemtestEngine_l558 = (11'h400 <= _zz_when_Ddr3MemtestEngine_l558);
-  assign when_Ddr3MemtestEngine_l585 = (fsm_msgIndex < 7'h23);
-  assign when_Ddr3MemtestEngine_l611 = (fsm_msgIndex < 7'h4c);
-  assign when_Ddr3MemtestEngine_l622 = (fsm_delayCounter == 28'h00b964f);
+  assign _zz_when_Ddr3MemtestEngine_l464 = (io_axi_r_payload_data != _zz_errExpected);
+  assign when_Ddr3MemtestEngine_l464 = ((! errorReg) && _zz_when_Ddr3MemtestEngine_l464);
+  assign when_Ddr3MemtestEngine_l470 = (errorReg || _zz_when_Ddr3MemtestEngine_l464);
+  assign when_Ddr3MemtestEngine_l474 = (beatIdx == 8'h7f);
+  assign when_Ddr3MemtestEngine_l475 = (11'h400 <= _zz_when_Ddr3MemtestEngine_l475);
+  assign _zz_nextPrintChar = fsm_msgIndex[5:0];
+  assign when_Ddr3MemtestEngine_l515 = (fsm_msgIndex < 7'h23);
+  assign _zz_nextPrintChar_1 = fsm_msgIndex;
+  assign when_Ddr3MemtestEngine_l560 = (fsm_msgIndex < 7'h4c);
+  assign when_Ddr3MemtestEngine_l573 = (fsm_delayCounter == 28'h00b964f);
   always @(posedge clkoutd or posedge _zz_1) begin
     if(_zz_1) begin
       stageValid <= 1'b0;
       stageChar <= 8'h0;
+      stageUseNib <= 1'b0;
+      stageNib <= 4'b0000;
       printValid <= 1'b0;
       printChar <= 8'h0;
       passCount <= 16'h0;
@@ -5369,15 +2999,17 @@ module Ddr3MemtestEngine (
     end else begin
       stageValid <= nextPrintValid;
       stageChar <= nextPrintChar;
+      stageUseNib <= nextUseNib;
+      stageNib <= nextPrintNib;
       if(txStream_fire) begin
         printValid <= 1'b0;
       end
       if(stageValid) begin
-        printChar <= stageChar;
+        printChar <= (stageUseNib ? _zz_printChar : stageChar);
         printValid <= 1'b1;
       end
       hbCounter <= (hbCounter + 25'h0000001);
-      if(when_Ddr3MemtestEngine_l105) begin
+      if(when_Ddr3MemtestEngine_l104) begin
         hbReg <= (! hbReg);
       end
       fsm_stateReg <= fsm_stateNext;
@@ -5453,11 +3085,11 @@ module Ddr3MemtestEngine (
           end
         end
         fsm_sWaitCalib : begin
-          if(when_Ddr3MemtestEngine_l244) begin
+          if(when_Ddr3MemtestEngine_l236) begin
             fsm_msgIndex <= 7'h0;
           end else begin
             fsm_delayCounter <= (fsm_delayCounter + 28'h0000001);
-            if(when_Ddr3MemtestEngine_l252) begin
+            if(when_Ddr3MemtestEngine_l244) begin
               fsm_delayCounter <= 28'h0;
               fsm_msgIndex <= 7'h0;
             end
@@ -5628,174 +3260,6 @@ module Ddr3MemtestEngine (
             endcase
           end
         end
-        fsm_sPrintWlmap : begin
-          if(canPrint) begin
-            case(fsm_msgIndex)
-              7'h0 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h01 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h02 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h03 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h04 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h05 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h06 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h07 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h08 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h09 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h0a : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h0b : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h0c : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h0d : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h0e : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h0f : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h10 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h11 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h12 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h13 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h14 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h15 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h16 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h17 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h18 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h19 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h5a : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h5b : begin
-                fsm_msgIndex <= 7'h0;
-              end
-              default : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-            endcase
-          end
-        end
-        fsm_sPrintLatch : begin
-          if(canPrint) begin
-            case(fsm_msgIndex)
-              7'h0 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h01 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h02 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h03 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h04 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h05 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h06 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h07 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h08 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h09 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h0a : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h0b : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h0c : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h0d : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h0e : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h0f : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h10 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h11 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h12 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h13 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h34 : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-              7'h35 : begin
-                fsm_msgIndex <= 7'h0;
-              end
-              default : begin
-                fsm_msgIndex <= (fsm_msgIndex + 7'h01);
-              end
-            endcase
-          end
-        end
         fsm_sSingleWriteAW : begin
         end
         fsm_sSingleWriteW0 : begin
@@ -5808,7 +3272,7 @@ module Ddr3MemtestEngine (
         end
         fsm_sSingleReadR0 : begin
           if(io_axi_r_valid) begin
-            if(when_Ddr3MemtestEngine_l455) begin
+            if(when_Ddr3MemtestEngine_l372) begin
               errorReg <= 1'b1;
               errAddr <= 32'h0;
               errExpected <= 64'h0123456789abcdef;
@@ -5821,13 +3285,13 @@ module Ddr3MemtestEngine (
             if(errorReg) begin
               errActual1 <= io_axi_r_payload_data;
             end
-            if(when_Ddr3MemtestEngine_l471) begin
+            if(when_Ddr3MemtestEngine_l388) begin
               errorReg <= 1'b1;
               errAddr <= 32'h00000008;
               errExpected <= 64'hfedcba9876543210;
               errActual <= io_axi_r_payload_data;
             end
-            if(when_Ddr3MemtestEngine_l477) begin
+            if(when_Ddr3MemtestEngine_l394) begin
               fsm_msgIndex <= 7'h0;
             end else begin
               burstIndex <= 11'h0;
@@ -5845,7 +3309,7 @@ module Ddr3MemtestEngine (
         fsm_sBulkWriteW : begin
           wrCycleCnt <= (wrCycleCnt + 32'h00000001);
           if(io_axi_w_ready) begin
-            if(!when_Ddr3MemtestEngine_l508) begin
+            if(!when_Ddr3MemtestEngine_l425) begin
               beatIdx <= (beatIdx + 8'h01);
             end
           end
@@ -5853,7 +3317,7 @@ module Ddr3MemtestEngine (
         fsm_sBulkWriteB : begin
           wrCycleCnt <= (wrCycleCnt + 32'h00000001);
           if(io_axi_b_valid) begin
-            if(when_Ddr3MemtestEngine_l519) begin
+            if(when_Ddr3MemtestEngine_l436) begin
               burstIndex <= 11'h0;
               rdCycleCnt <= 32'h0;
             end else begin
@@ -5870,17 +3334,17 @@ module Ddr3MemtestEngine (
         fsm_sBulkReadR : begin
           rdCycleCnt <= (rdCycleCnt + 32'h00000001);
           if(io_axi_r_valid) begin
-            if(when_Ddr3MemtestEngine_l547) begin
+            if(when_Ddr3MemtestEngine_l464) begin
               errorReg <= 1'b1;
               errAddr <= (beatBlockAddr + (beatIdx[0] ? 32'h00000008 : 32'h0));
               errExpected <= _zz_errExpected;
               errActual <= io_axi_r_payload_data;
             end
-            if(when_Ddr3MemtestEngine_l553) begin
+            if(when_Ddr3MemtestEngine_l470) begin
               fsm_msgIndex <= 7'h0;
             end else begin
-              if(when_Ddr3MemtestEngine_l557) begin
-                if(when_Ddr3MemtestEngine_l558) begin
+              if(when_Ddr3MemtestEngine_l474) begin
+                if(when_Ddr3MemtestEngine_l475) begin
                   fsm_msgIndex <= 7'h0;
                 end else begin
                   burstIndex <= (burstIndex + 11'h040);
@@ -5894,7 +3358,7 @@ module Ddr3MemtestEngine (
         fsm_sReportPass : begin
           passReg <= 1'b1;
           if(canPrint) begin
-            if(when_Ddr3MemtestEngine_l585) begin
+            if(when_Ddr3MemtestEngine_l515) begin
               fsm_msgIndex <= (fsm_msgIndex + 7'h01);
             end else begin
               passCount <= (passCount + 16'h0001);
@@ -5904,14 +3368,14 @@ module Ddr3MemtestEngine (
         end
         fsm_sReportFail : begin
           if(canPrint) begin
-            if(when_Ddr3MemtestEngine_l611) begin
+            if(when_Ddr3MemtestEngine_l560) begin
               fsm_msgIndex <= (fsm_msgIndex + 7'h01);
             end
           end
         end
         fsm_sLoopDelay : begin
           fsm_delayCounter <= (fsm_delayCounter + 28'h0000001);
-          if(when_Ddr3MemtestEngine_l622) begin
+          if(when_Ddr3MemtestEngine_l573) begin
             burstIndex <= 11'h0;
             wrCycleCnt <= 32'h0;
             rdCycleCnt <= 32'h0;
@@ -5979,13 +3443,6 @@ module Ddr3Axi4 (
   output wire [2:0]    io_best_rot,
   output wire [3:0]    io_best_score,
   output wire [3:0]    io_dbg_state,
-  output wire [255:0]  io_wlMap,
-  output wire [7:0]    io_wlFirst,
-  output wire [7:0]    io_wlLast,
-  output wire [7:0]    io_wlMatchN,
-  output wire [1:0]    io_wr_adv,
-  output wire [11:0]   io_w_scores,
-  output wire [127:0]  io_train_latch,
   inout  wire [15:0]   io_pad_DDR3_DQ,
   inout  wire [1:0]    io_pad_DDR3_DQS,
   output wire [1:0]    io_pad_DDR3_DM,
@@ -6029,13 +3486,6 @@ module Ddr3Axi4 (
   wire       [2:0]    area_ctrl_io_best_rot;
   wire       [3:0]    area_ctrl_io_best_score;
   wire       [3:0]    area_ctrl_io_dbg_state;
-  wire       [255:0]  area_ctrl_io_wlMap;
-  wire       [7:0]    area_ctrl_io_wlFirst;
-  wire       [7:0]    area_ctrl_io_wlLast;
-  wire       [7:0]    area_ctrl_io_wlMatchN;
-  wire       [1:0]    area_ctrl_io_wr_adv;
-  wire       [11:0]   area_ctrl_io_w_scores;
-  wire       [127:0]  area_ctrl_io_train_latch;
   wire       [1:0]    area_ctrl_io_pad_DDR3_DM;
   wire       [13:0]   area_ctrl_io_pad_DDR3_A;
   wire       [2:0]    area_ctrl_io_pad_DDR3_BA;
@@ -6123,13 +3573,6 @@ module Ddr3Axi4 (
     .io_best_rot          (area_ctrl_io_best_rot[2:0]             ), //o
     .io_best_score        (area_ctrl_io_best_score[3:0]           ), //o
     .io_dbg_state         (area_ctrl_io_dbg_state[3:0]            ), //o
-    .io_wlMap             (area_ctrl_io_wlMap[255:0]              ), //o
-    .io_wlFirst           (area_ctrl_io_wlFirst[7:0]              ), //o
-    .io_wlLast            (area_ctrl_io_wlLast[7:0]               ), //o
-    .io_wlMatchN          (area_ctrl_io_wlMatchN[7:0]             ), //o
-    .io_wr_adv            (area_ctrl_io_wr_adv[1:0]               ), //o
-    .io_w_scores          (area_ctrl_io_w_scores[11:0]            ), //o
-    .io_train_latch       (area_ctrl_io_train_latch[127:0]        ), //o
     .io_pad_DDR3_DQ       (io_pad_DDR3_DQ                         ), //~
     .io_pad_DDR3_DQS      (io_pad_DDR3_DQS                        ), //~
     .io_pad_DDR3_DM       (area_ctrl_io_pad_DDR3_DM[1:0]          ), //o
@@ -6176,13 +3619,6 @@ module Ddr3Axi4 (
   assign io_best_rot = area_ctrl_io_best_rot;
   assign io_best_score = area_ctrl_io_best_score;
   assign io_dbg_state = area_ctrl_io_dbg_state;
-  assign io_wlMap = area_ctrl_io_wlMap;
-  assign io_wlFirst = area_ctrl_io_wlFirst;
-  assign io_wlLast = area_ctrl_io_wlLast;
-  assign io_wlMatchN = area_ctrl_io_wlMatchN;
-  assign io_wr_adv = area_ctrl_io_wr_adv;
-  assign io_w_scores = area_ctrl_io_w_scores;
-  assign io_train_latch = area_ctrl_io_train_latch;
 
 endmodule
 
@@ -6303,13 +3739,6 @@ module Ddr3Controller (
   output wire [2:0]    io_best_rot,
   output wire [3:0]    io_best_score,
   output wire [3:0]    io_dbg_state,
-  output wire [255:0]  io_wlMap,
-  output wire [7:0]    io_wlFirst,
-  output wire [7:0]    io_wlLast,
-  output wire [7:0]    io_wlMatchN,
-  output wire [1:0]    io_wr_adv,
-  output wire [11:0]   io_w_scores,
-  output wire [127:0]  io_train_latch,
   inout  wire [15:0]   io_pad_DDR3_DQ,
   inout  wire [1:0]    io_pad_DDR3_DQS,
   output wire [1:0]    io_pad_DDR3_DM,
@@ -6337,13 +3766,6 @@ module Ddr3Controller (
   wire       [2:0]    coreArea_core_io_best_rot;
   wire       [3:0]    coreArea_core_io_best_score;
   wire       [3:0]    coreArea_core_io_dbg_state;
-  wire       [255:0]  coreArea_core_io_wlMap;
-  wire       [7:0]    coreArea_core_io_wlFirst;
-  wire       [7:0]    coreArea_core_io_wlLast;
-  wire       [7:0]    coreArea_core_io_wlMatchN;
-  wire       [1:0]    coreArea_core_io_wr_adv;
-  wire       [11:0]   coreArea_core_io_w_scores;
-  wire       [127:0]  coreArea_core_io_train_latch;
   wire                coreArea_core_io_phy_dqs_hold;
   wire       [7:0]    coreArea_core_io_phy_wstep;
   wire                coreArea_core_io_phy_rloadn;
@@ -6415,7 +3837,7 @@ module Ddr3Controller (
   wire                phy_io_pad_DDR3_CKE;
   wire                phy_io_pad_DDR3_nRESET;
   wire                phy_io_pad_DDR3_ODT;
-  wire                _zz_when_Ddr3ControllerCore_l2226;
+  wire                _zz_when_Ddr3ControllerCore_l2176;
 
   Ddr3ControllerCore coreArea_core (
     .io_req_valid                      (io_req_valid                             ), //i
@@ -6435,13 +3857,6 @@ module Ddr3Controller (
     .io_best_rot                       (coreArea_core_io_best_rot[2:0]           ), //o
     .io_best_score                     (coreArea_core_io_best_score[3:0]         ), //o
     .io_dbg_state                      (coreArea_core_io_dbg_state[3:0]          ), //o
-    .io_wlMap                          (coreArea_core_io_wlMap[255:0]            ), //o
-    .io_wlFirst                        (coreArea_core_io_wlFirst[7:0]            ), //o
-    .io_wlLast                         (coreArea_core_io_wlLast[7:0]             ), //o
-    .io_wlMatchN                       (coreArea_core_io_wlMatchN[7:0]           ), //o
-    .io_wr_adv                         (coreArea_core_io_wr_adv[1:0]             ), //o
-    .io_w_scores                       (coreArea_core_io_w_scores[11:0]          ), //o
-    .io_train_latch                    (coreArea_core_io_train_latch[127:0]      ), //o
     .io_phy_dlllock                    (phy_io_dlllock                           ), //i
     .io_phy_rst_lock_n                 (phy_io_rst_lock_n                        ), //i
     .io_phy_rburst                     (phy_io_rburst[1:0]                       ), //i
@@ -6502,7 +3917,7 @@ module Ddr3Controller (
     .io_phy_CKE                        (coreArea_core_io_phy_CKE                 ), //o
     .io_phy_resetn_delay               (coreArea_core_io_phy_resetn_delay        ), //o
     .io_phy_wser_rst                   (coreArea_core_io_phy_wser_rst            ), //o
-    ._zz_when_Ddr3ControllerCore_l2226 (_zz_when_Ddr3ControllerCore_l2226        ), //i
+    ._zz_when_Ddr3ControllerCore_l2176 (_zz_when_Ddr3ControllerCore_l2176        ), //i
     .io_pclk                           (io_pclk                                  )  //i
   );
   GowinDdr3Phy phy (
@@ -6584,7 +3999,7 @@ module Ddr3Controller (
     .io_pad_DDR3_nRESET (phy_io_pad_DDR3_nRESET             ), //o
     .io_pad_DDR3_ODT    (phy_io_pad_DDR3_ODT                )  //o
   );
-  assign _zz_when_Ddr3ControllerCore_l2226 = (! io_resetn);
+  assign _zz_when_Ddr3ControllerCore_l2176 = (! io_resetn);
   assign io_pad_DDR3_DM = phy_io_pad_DDR3_DM;
   assign io_pad_DDR3_A = phy_io_pad_DDR3_A;
   assign io_pad_DDR3_BA = phy_io_pad_DDR3_BA;
@@ -6608,13 +4023,6 @@ module Ddr3Controller (
   assign io_best_rot = coreArea_core_io_best_rot;
   assign io_best_score = coreArea_core_io_best_score;
   assign io_dbg_state = coreArea_core_io_dbg_state;
-  assign io_wlMap = coreArea_core_io_wlMap;
-  assign io_wlFirst = coreArea_core_io_wlFirst;
-  assign io_wlLast = coreArea_core_io_wlLast;
-  assign io_wlMatchN = coreArea_core_io_wlMatchN;
-  assign io_wr_adv = coreArea_core_io_wr_adv;
-  assign io_w_scores = coreArea_core_io_w_scores;
-  assign io_train_latch = coreArea_core_io_train_latch;
 
 endmodule
 
@@ -10016,13 +7424,6 @@ module Ddr3ControllerCore (
   output wire [2:0]    io_best_rot,
   output wire [3:0]    io_best_score,
   output wire [3:0]    io_dbg_state,
-  output wire [255:0]  io_wlMap,
-  output wire [7:0]    io_wlFirst,
-  output wire [7:0]    io_wlLast,
-  output wire [7:0]    io_wlMatchN,
-  output wire [1:0]    io_wr_adv,
-  output wire [11:0]   io_w_scores,
-  output wire [127:0]  io_train_latch,
   input  wire          io_phy_dlllock,
   input  wire          io_phy_rst_lock_n,
   input  wire [1:0]    io_phy_rburst,
@@ -10083,7 +7484,7 @@ module Ddr3ControllerCore (
   output wire          io_phy_CKE,
   output wire          io_phy_resetn_delay,
   output wire          io_phy_wser_rst,
-  input  wire          _zz_when_Ddr3ControllerCore_l2226,
+  input  wire          _zz_when_Ddr3ControllerCore_l2176,
   input  wire          io_pclk
 );
   localparam Ddr3State_RST_WAIT = 4'd0;
@@ -10285,14 +7686,14 @@ module Ddr3ControllerCore (
   wire       [6:0]    _zz_rdCyc;
   wire       [1:0]    _zz_rdCyc_1;
   wire       [0:0]    _zz_rotSplit;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l597;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l601;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l601_1;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l601_2;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l601_3;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l601_4;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l601_5;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l601_6;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l579;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l583;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l583_1;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l583_2;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l583_3;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l583_4;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l583_5;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l583_6;
   wire       [6:0]    _zz_cycle_1;
   wire       [16:0]   _zz_tick_counter;
   wire       [12:0]   _zz_A_0_1;
@@ -10302,9 +7703,6 @@ module Ddr3ControllerCore (
   wire       [13:0]   _zz_A_0_5;
   wire       [0:0]    _zz_A_0_6;
   wire       [12:0]   _zz_A_0_7;
-  wire       [2:0]    _zz_when_Ddr3ControllerCore_l744;
-  wire       [2:0]    _zz_when_Ddr3ControllerCore_l744_1;
-  wire       [0:0]    _zz_when_Ddr3ControllerCore_l744_2;
   wire       [12:0]   _zz_A_0_8;
   wire       [7:0]    _zz_wstep;
   wire       [7:0]    _zz_wstep_1;
@@ -10313,6 +7711,9 @@ module Ddr3ControllerCore (
   wire       [8:0]    _zz_wstep_4;
   wire       [7:0]    _zz_wstep_5;
   wire       [12:0]   _zz_A_0_9;
+  wire       [2:0]    _zz_when_Ddr3ControllerCore_l727;
+  wire       [2:0]    _zz_when_Ddr3ControllerCore_l727_1;
+  wire       [0:0]    _zz_when_Ddr3ControllerCore_l727_2;
   wire       [12:0]   _zz_A_0_10;
   wire       [0:0]    _zz_A_0_11;
   wire       [13:0]   _zz_A_2_2;
@@ -10324,8 +7725,8 @@ module Ddr3ControllerCore (
   wire       [0:0]    _zz_A_0_13;
   wire       [2:0]    _zz_rclksel;
   wire       [1:0]    _zz_rclkpos_1;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1309;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1321;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1268;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1280;
   wire       [7:0]    _zz_wstep_6;
   wire       [7:0]    _zz_wstep_7;
   wire       [0:0]    _zz_A_0_14;
@@ -10343,7 +7744,7 @@ module Ddr3ControllerCore (
   wire       [0:0]    _zz_rdRspLeft_2;
   wire       [5:0]    _zz_rdRspLeft_3;
   wire       [0:0]    _zz_rdRspLeft_4;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1685_1;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1642_1;
   wire       [15:0]   _zz_A_2_6;
   wire       [15:0]   _zz_A_2_7;
   wire       [15:0]   _zz_A_2_8;
@@ -10441,11 +7842,6 @@ module Ddr3ControllerCore (
   reg                 wlevel_done;
   reg        [3:0]    wlevel_cnt;
   reg        [8:0]    wlevel_tries;
-  reg        [255:0]  wlMapR;
-  reg        [7:0]    wlFirstR;
-  reg        [7:0]    wlLastR;
-  reg                 wlSeenR;
-  reg        [7:0]    wlMatchNR;
   reg        [2:0]    wlVoteN;
   reg        [2:0]    wlVoteCnt;
   reg        [2:0]    wlVoteCnt0;
@@ -10553,15 +7949,11 @@ module Ddr3ControllerCore (
   reg        [2:0]    best0Sel;
   reg        [2:0]    best0Rot;
   reg        [1:0]    bestMode;
-  reg        [127:0]  bestLatch;
   reg        [3:0]    bestWCnt;
   reg        [1:0]    bestWPos;
   reg        [2:0]    bestWSel;
   reg        [2:0]    bestWRot;
   reg        [1:0]    bestWMode;
-  reg        [3:0]    wScores_0;
-  reg        [3:0]    wScores_1;
-  reg        [3:0]    wScores_2;
   reg                 dllSweepOn;
   reg                 dllSweepDone;
   reg        [3:0]    bestCntDll;
@@ -10596,8 +7988,8 @@ module Ddr3ControllerCore (
   reg                 rdir;
   reg        [10:0]   refresh_timer;
   reg                 refresh_due;
-  wire                when_Ddr3ControllerCore_l471;
-  wire                when_Ddr3ControllerCore_l472;
+  wire                when_Ddr3ControllerCore_l453;
+  wire                when_Ddr3ControllerCore_l454;
   reg                 reqReg_write;
   reg        [26:0]   reqReg_addr;
   reg        [127:0]  reqReg_wdata;
@@ -10634,111 +8026,107 @@ module Ddr3ControllerCore (
   reg        [7:0]    dqs_out;
   reg        [3:0]    dqs_oen;
   reg        [7:0]    dm_out;
-  wire                when_Ddr3ControllerCore_l555;
-  wire                when_Ddr3ControllerCore_l556;
+  wire                when_Ddr3ControllerCore_l537;
+  wire                when_Ddr3ControllerCore_l538;
   wire       [6:0]    rdCyc;
   wire       [6:0]    rotSplit;
   reg        [3:0]    dqs_read;
-  wire                when_Ddr3ControllerCore_l597;
-  wire                when_Ddr3ControllerCore_l601;
+  wire                when_Ddr3ControllerCore_l579;
+  wire                when_Ddr3ControllerCore_l583;
   wire       [13:0]   inRow;
   wire       [2:0]    inBank;
   wire                inSameRow;
   wire                canAcceptWrStream;
   wire                canAcceptRdStream;
   wire                acceptReq;
-  wire                when_Ddr3ControllerCore_l640;
-  wire                when_Ddr3ControllerCore_l645;
-  wire                when_Ddr3ControllerCore_l660;
+  wire                when_Ddr3ControllerCore_l622;
+  wire                when_Ddr3ControllerCore_l627;
+  wire                when_Ddr3ControllerCore_l642;
   wire       [15:0]   _zz_A_0;
-  wire                when_Ddr3ControllerCore_l785;
-  wire                when_Ddr3ControllerCore_l744;
-  wire                when_Ddr3ControllerCore_l737;
-  wire                when_Ddr3ControllerCore_l745;
-  wire                when_Ddr3ControllerCore_l750;
-  wire                when_Ddr3ControllerCore_l759;
-  wire                when_Ddr3ControllerCore_l774;
-  wire                when_Ddr3ControllerCore_l763;
-  wire                when_Ddr3ControllerCore_l924;
-  wire                when_Ddr3ControllerCore_l929;
+  wire                when_Ddr3ControllerCore_l749;
+  wire                when_Ddr3ControllerCore_l714;
+  wire                when_Ddr3ControllerCore_l723;
+  wire                when_Ddr3ControllerCore_l738;
+  wire                when_Ddr3ControllerCore_l727;
+  wire                when_Ddr3ControllerCore_l886;
+  wire                when_Ddr3ControllerCore_l891;
+  wire                when_Ddr3ControllerCore_l911;
+  wire                when_Ddr3ControllerCore_l913;
+  wire                when_Ddr3ControllerCore_l925;
   wire                when_Ddr3ControllerCore_l949;
-  wire                when_Ddr3ControllerCore_l951;
-  wire                when_Ddr3ControllerCore_l963;
-  wire                when_Ddr3ControllerCore_l987;
-  wire                when_Ddr3ControllerCore_l988;
-  wire                when_Ddr3ControllerCore_l1003;
-  wire                when_Ddr3ControllerCore_l1028;
-  wire                when_Ddr3ControllerCore_l1046;
-  wire                when_Ddr3ControllerCore_l1071;
-  wire                when_Ddr3ControllerCore_l1076;
-  wire                when_Ddr3ControllerCore_l1087;
-  wire                when_Ddr3ControllerCore_l1112;
-  wire                when_Ddr3ControllerCore_l1148;
-  wire                when_Ddr3ControllerCore_l1154;
-  wire                when_Ddr3ControllerCore_l1176;
-  wire                when_Ddr3ControllerCore_l1195;
-  wire                when_Ddr3ControllerCore_l1200;
-  wire                when_Ddr3ControllerCore_l1225;
-  wire                when_Ddr3ControllerCore_l1233;
-  wire                when_Ddr3ControllerCore_l1237;
-  wire                when_Ddr3ControllerCore_l1244;
-  wire                when_Ddr3ControllerCore_l1252;
-  wire                when_Ddr3ControllerCore_l1254;
-  wire                when_Ddr3ControllerCore_l1260;
-  wire                when_Ddr3ControllerCore_l1267;
+  wire                when_Ddr3ControllerCore_l950;
+  wire                when_Ddr3ControllerCore_l965;
+  wire                when_Ddr3ControllerCore_l990;
+  wire                when_Ddr3ControllerCore_l1008;
+  wire                when_Ddr3ControllerCore_l1033;
+  wire                when_Ddr3ControllerCore_l1038;
+  wire                when_Ddr3ControllerCore_l1048;
+  wire                when_Ddr3ControllerCore_l1073;
+  wire                when_Ddr3ControllerCore_l1109;
+  wire                when_Ddr3ControllerCore_l1115;
+  wire                when_Ddr3ControllerCore_l1137;
+  wire                when_Ddr3ControllerCore_l1156;
+  wire                when_Ddr3ControllerCore_l1161;
+  wire                when_Ddr3ControllerCore_l1186;
+  wire                when_Ddr3ControllerCore_l1193;
+  wire                when_Ddr3ControllerCore_l1197;
+  wire                when_Ddr3ControllerCore_l1204;
+  wire                when_Ddr3ControllerCore_l1212;
+  wire                when_Ddr3ControllerCore_l1214;
+  wire                when_Ddr3ControllerCore_l1220;
+  wire                when_Ddr3ControllerCore_l1227;
   wire       [1:0]    _zz_wrMode;
-  wire                when_Ddr3ControllerCore_l1276;
-  wire                when_Ddr3ControllerCore_l1293;
-  wire                when_Ddr3ControllerCore_l1300;
-  wire                when_Ddr3ControllerCore_l1309;
+  wire                when_Ddr3ControllerCore_l1235;
+  wire                when_Ddr3ControllerCore_l1252;
+  wire                when_Ddr3ControllerCore_l1259;
+  wire                when_Ddr3ControllerCore_l1268;
   wire       [6:0]    _zz_s0Mag;
-  wire                when_Ddr3ControllerCore_l1321;
+  wire                when_Ddr3ControllerCore_l1280;
   wire       [6:0]    _zz_s0Mag_1;
-  wire                when_Ddr3ControllerCore_l1314;
-  wire                when_Ddr3ControllerCore_l1350;
-  wire                when_Ddr3ControllerCore_l1387;
-  wire                when_Ddr3ControllerCore_l1432;
-  wire       [3:0]    _zz_1;
-  wire                when_Ddr3ControllerCore_l1435;
-  wire                when_Ddr3ControllerCore_l1436;
-  wire                when_Ddr3ControllerCore_l1444;
-  wire                when_Ddr3ControllerCore_l1466;
+  wire                when_Ddr3ControllerCore_l1273;
+  wire                when_Ddr3ControllerCore_l1309;
+  wire                when_Ddr3ControllerCore_l1346;
+  wire                when_Ddr3ControllerCore_l1391;
+  wire                when_Ddr3ControllerCore_l1393;
+  wire                when_Ddr3ControllerCore_l1394;
+  wire                when_Ddr3ControllerCore_l1402;
+  wire                when_Ddr3ControllerCore_l1423;
   wire       [13:0]   _zz_openRow;
   wire       [2:0]    _zz_openBank;
   wire                _zz_cycle;
-  wire                when_Ddr3ControllerCore_l1570;
-  wire                when_Ddr3ControllerCore_l1579;
-  wire                when_Ddr3ControllerCore_l1611;
+  wire                when_Ddr3ControllerCore_l1527;
+  wire                when_Ddr3ControllerCore_l1536;
+  wire                when_Ddr3ControllerCore_l1568;
   wire       [13:0]   _zz_openRow_1;
   wire       [2:0]    _zz_openBank_1;
   wire       [2:0]    _zz_BA_2;
   wire       [15:0]   _zz_A_2;
-  wire                when_Ddr3ControllerCore_l1657;
-  wire                when_Ddr3ControllerCore_l1661;
-  wire                when_Ddr3ControllerCore_l1667;
-  wire                when_Ddr3ControllerCore_l1666;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1685;
+  wire                when_Ddr3ControllerCore_l1614;
+  wire                when_Ddr3ControllerCore_l1618;
+  wire                when_Ddr3ControllerCore_l1624;
+  wire                when_Ddr3ControllerCore_l1623;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1642;
   wire                _zz_data_ready;
-  wire                when_Ddr3ControllerCore_l1685;
+  wire                when_Ddr3ControllerCore_l1642;
   wire       [9:0]    _zz_A_2_1;
   wire       [2:0]    _zz_BA_2_1;
-  wire                when_Ddr3ControllerCore_l1700;
-  wire                when_Ddr3ControllerCore_l1706;
-  wire                when_Ddr3ControllerCore_l1741;
-  wire                when_Ddr3ControllerCore_l1827;
-  wire                when_Ddr3ControllerCore_l1859;
-  wire                when_Ddr3ControllerCore_l1877;
-  wire                when_Ddr3ControllerCore_l1889;
-  wire                when_Ddr3ControllerCore_l1900;
-  wire                when_Ddr3ControllerCore_l1930;
-  wire                when_Ddr3ControllerCore_l1966;
-  wire                when_Ddr3ControllerCore_l1969;
-  wire                when_Ddr3ControllerCore_l1979;
-  wire                when_Ddr3ControllerCore_l2000;
-  wire                when_Ddr3ControllerCore_l2010;
-  wire                when_Ddr3ControllerCore_l2038;
-  wire                when_Ddr3ControllerCore_l2042;
-  wire                when_Ddr3ControllerCore_l2051;
+  wire                when_Ddr3ControllerCore_l1657;
+  wire                when_Ddr3ControllerCore_l1663;
+  wire                when_Ddr3ControllerCore_l1698;
+  wire                when_Ddr3ControllerCore_l1784;
+  wire                when_Ddr3ControllerCore_l1816;
+  wire                when_Ddr3ControllerCore_l1834;
+  wire                when_Ddr3ControllerCore_l1846;
+  wire                when_Ddr3ControllerCore_l1857;
+  wire                when_Ddr3ControllerCore_l1887;
+  wire                when_Ddr3ControllerCore_l1923;
+  wire                when_Ddr3ControllerCore_l1926;
+  wire                when_Ddr3ControllerCore_l1936;
+  wire                when_Ddr3ControllerCore_l1957;
+  wire                when_Ddr3ControllerCore_l1967;
+  wire                when_Ddr3ControllerCore_l1995;
+  wire                when_Ddr3ControllerCore_l1999;
+  wire                when_Ddr3ControllerCore_l2008;
   reg        [15:0]   dqPrevVec_0;
   reg        [15:0]   dqPrevVec_1;
   reg        [15:0]   dqPrevVec_2;
@@ -10764,7 +8152,7 @@ module Ddr3ControllerCore (
   wire       [2:0]    _zz_rdataVec_5;
   wire       [2:0]    _zz_rdataVec_6;
   wire       [2:0]    _zz_rdataVec_7;
-  wire                when_Ddr3ControllerCore_l2226;
+  wire                when_Ddr3ControllerCore_l2176;
   `ifndef SYNTHESIS
   reg [111:0] state_string;
   `endif
@@ -10957,14 +8345,14 @@ module Ddr3ControllerCore (
   assign _zz_rdCyc_1 = rclkpos;
   assign _zz_rdCyc = {5'd0, _zz_rdCyc_1};
   assign _zz_rotSplit = (bestRot != 3'b000);
-  assign _zz_when_Ddr3ControllerCore_l597 = (rdCyc + 7'h07);
-  assign _zz_when_Ddr3ControllerCore_l601 = (_zz_when_Ddr3ControllerCore_l601_1 + _zz_when_Ddr3ControllerCore_l601_3);
-  assign _zz_when_Ddr3ControllerCore_l601_1 = (_zz_when_Ddr3ControllerCore_l601_2 + rotSplit);
-  assign _zz_when_Ddr3ControllerCore_l601_2 = (rdCyc + 7'h07);
-  assign _zz_when_Ddr3ControllerCore_l601_3 = {1'd0, rdExtraCnt};
-  assign _zz_when_Ddr3ControllerCore_l601_4 = (_zz_when_Ddr3ControllerCore_l601_5 + _zz_when_Ddr3ControllerCore_l601_6);
-  assign _zz_when_Ddr3ControllerCore_l601_5 = (7'h0a + rotSplit);
-  assign _zz_when_Ddr3ControllerCore_l601_6 = {1'd0, rdExtraCnt};
+  assign _zz_when_Ddr3ControllerCore_l579 = (rdCyc + 7'h07);
+  assign _zz_when_Ddr3ControllerCore_l583 = (_zz_when_Ddr3ControllerCore_l583_1 + _zz_when_Ddr3ControllerCore_l583_3);
+  assign _zz_when_Ddr3ControllerCore_l583_1 = (_zz_when_Ddr3ControllerCore_l583_2 + rotSplit);
+  assign _zz_when_Ddr3ControllerCore_l583_2 = (rdCyc + 7'h07);
+  assign _zz_when_Ddr3ControllerCore_l583_3 = {1'd0, rdExtraCnt};
+  assign _zz_when_Ddr3ControllerCore_l583_4 = (_zz_when_Ddr3ControllerCore_l583_5 + _zz_when_Ddr3ControllerCore_l583_6);
+  assign _zz_when_Ddr3ControllerCore_l583_5 = (7'h0a + rotSplit);
+  assign _zz_when_Ddr3ControllerCore_l583_6 = {1'd0, rdExtraCnt};
   assign _zz_cycle_1 = (cycle + 7'h01);
   assign _zz_tick_counter = (tick_counter - 17'h00001);
   assign _zz_A_0_1 = MR2[12 : 0];
@@ -10974,9 +8362,6 @@ module Ddr3ControllerCore (
   assign _zz_A_0_6 = 1'b1;
   assign _zz_A_0_5 = {13'd0, _zz_A_0_6};
   assign _zz_A_0_7 = _zz_A_0[12 : 0];
-  assign _zz_when_Ddr3ControllerCore_l744 = (wlVoteCnt + _zz_when_Ddr3ControllerCore_l744_1);
-  assign _zz_when_Ddr3ControllerCore_l744_2 = when_Ddr3ControllerCore_l785;
-  assign _zz_when_Ddr3ControllerCore_l744_1 = {2'd0, _zz_when_Ddr3ControllerCore_l744_2};
   assign _zz_A_0_8 = MR1[12 : 0];
   assign _zz_wstep = (wstep + 8'h01);
   assign _zz_wstep_2 = ($signed(_zz_wstep_3) + $signed(9'h0));
@@ -10985,6 +8370,9 @@ module Ddr3ControllerCore (
   assign _zz_wstep_5 = wstep;
   assign _zz_wstep_4 = {1'd0, _zz_wstep_5};
   assign _zz_A_0_9 = MR1[12 : 0];
+  assign _zz_when_Ddr3ControllerCore_l727 = (wlVoteCnt + _zz_when_Ddr3ControllerCore_l727_1);
+  assign _zz_when_Ddr3ControllerCore_l727_2 = when_Ddr3ControllerCore_l749;
+  assign _zz_when_Ddr3ControllerCore_l727_1 = {2'd0, _zz_when_Ddr3ControllerCore_l727_2};
   assign _zz_A_0_10 = MR2_RTT_WR[12 : 0];
   assign _zz_A_0_11 = 1'b0;
   assign _zz_A_2_3 = 1'b1;
@@ -10996,8 +8384,8 @@ module Ddr3ControllerCore (
   assign _zz_A_0_13 = 1'b0;
   assign _zz_rclksel = (rclksel + 3'b001);
   assign _zz_rclkpos_1 = (rclkpos + 2'b01);
-  assign _zz_when_Ddr3ControllerCore_l1309 = (scMag + 7'h02);
-  assign _zz_when_Ddr3ControllerCore_l1321 = (scMag + 7'h02);
+  assign _zz_when_Ddr3ControllerCore_l1268 = (scMag + 7'h02);
+  assign _zz_when_Ddr3ControllerCore_l1280 = (scMag + 7'h02);
   assign _zz_wstep_6 = (wstep - 8'h06);
   assign _zz_wstep_7 = (wBase + 8'h06);
   assign _zz_A_0_14 = 1'b0;
@@ -11011,11 +8399,11 @@ module Ddr3ControllerCore (
   assign _zz__zz_A_2_1 = {reqReg_addr[6 : 0],3'b000};
   assign _zz__zz_A_2 = {6'd0, _zz__zz_A_2_1};
   assign _zz_rdRspLeft = (rdRspLeft + _zz_rdRspLeft_1);
-  assign _zz_rdRspLeft_2 = when_Ddr3ControllerCore_l1667;
+  assign _zz_rdRspLeft_2 = when_Ddr3ControllerCore_l1624;
   assign _zz_rdRspLeft_1 = {5'd0, _zz_rdRspLeft_2};
   assign _zz_rdRspLeft_4 = _zz_data_ready;
   assign _zz_rdRspLeft_3 = {5'd0, _zz_rdRspLeft_4};
-  assign _zz_when_Ddr3ControllerCore_l1685_1 = (_zz_when_Ddr3ControllerCore_l1685 + 7'h02);
+  assign _zz_when_Ddr3ControllerCore_l1642_1 = (_zz_when_Ddr3ControllerCore_l1642 + 7'h02);
   assign _zz_A_2_6 = (_zz_A_2_7 | 16'h1400);
   assign _zz_A_2_7 = {6'd0, _zz_A_2_1};
   assign _zz_A_2_8 = (_zz_A_2_9 | 16'h1000);
@@ -11437,14 +8825,14 @@ module Ddr3ControllerCore (
   assign winEndRaw = (sweepMag0 + sweepMagN);
   assign winEnd = (((sweepMagN == 7'h0) || (7'h40 < winEndRaw)) ? 7'h40 : winEndRaw[6 : 0]);
   assign winDoneNow = (((sweepMagN != 7'h0) && (! s2Side)) && (s2Mag == winEnd));
-  assign when_Ddr3ControllerCore_l471 = ((((state == Ddr3State_IDLE) || (state == Ddr3State_READ)) || (state == Ddr3State_WRITE)) || (state == Ddr3State_PRECHARGE));
-  assign when_Ddr3ControllerCore_l472 = (refresh_timer == 11'h250);
-  assign when_Ddr3ControllerCore_l555 = io_phy_rburst[0];
-  assign when_Ddr3ControllerCore_l556 = io_phy_rburst[1];
+  assign when_Ddr3ControllerCore_l453 = ((((state == Ddr3State_IDLE) || (state == Ddr3State_READ)) || (state == Ddr3State_WRITE)) || (state == Ddr3State_PRECHARGE));
+  assign when_Ddr3ControllerCore_l454 = (refresh_timer == 11'h250);
+  assign when_Ddr3ControllerCore_l537 = io_phy_rburst[0];
+  assign when_Ddr3ControllerCore_l538 = io_phy_rburst[1];
   assign rdCyc = (_zz_rdCyc + 7'h01);
   assign rotSplit = {6'd0, _zz_rotSplit};
-  assign when_Ddr3ControllerCore_l597 = ((state == Ddr3State_READ_CALIB) && (((rdCyc <= cycle) && (cycle <= _zz_when_Ddr3ControllerCore_l597)) && (cycle <= 7'h0a)));
-  assign when_Ddr3ControllerCore_l601 = ((state == Ddr3State_READ) && (((rdCyc <= cycle) && (cycle <= _zz_when_Ddr3ControllerCore_l601)) && (cycle <= _zz_when_Ddr3ControllerCore_l601_4)));
+  assign when_Ddr3ControllerCore_l579 = ((state == Ddr3State_READ_CALIB) && (((rdCyc <= cycle) && (cycle <= _zz_when_Ddr3ControllerCore_l579)) && (cycle <= 7'h0a)));
+  assign when_Ddr3ControllerCore_l583 = ((state == Ddr3State_READ) && (((rdCyc <= cycle) && (cycle <= _zz_when_Ddr3ControllerCore_l583)) && (cycle <= _zz_when_Ddr3ControllerCore_l583_4)));
   assign inRow = io_req_payload_addr[20 : 7];
   assign inBank = io_req_payload_addr[23 : 21];
   assign inSameRow = ((inBank == openBank) && (inRow == openRow));
@@ -11452,98 +8840,94 @@ module Ddr3ControllerCore (
   assign canAcceptRdStream = (((((((state == Ddr3State_READ) && rdStreamOpen) && (! refresh_due)) && (rdExtraCnt < 6'h1f)) && (7'h02 <= cycle)) && (! io_req_payload_write)) && inSameRow);
   assign acceptReq = (((((state == Ddr3State_IDLE) && (! busy)) && (! refresh_due)) || canAcceptWrStream) || canAcceptRdStream);
   assign io_req_ready = acceptReq;
-  assign when_Ddr3ControllerCore_l640 = (wserRstCnt != 3'b000);
-  assign when_Ddr3ControllerCore_l645 = (! (wserRstCnt != 3'b000));
-  assign when_Ddr3ControllerCore_l660 = (tick_counter == 17'h0000f);
+  assign when_Ddr3ControllerCore_l622 = (wserRstCnt != 3'b000);
+  assign when_Ddr3ControllerCore_l627 = (! (wserRstCnt != 3'b000));
+  assign when_Ddr3ControllerCore_l642 = (tick_counter == 17'h0000f);
   assign _zz_A_0 = (MR1 | 16'h0084);
-  assign when_Ddr3ControllerCore_l785 = (io_phy_dq_raw[0] && io_phy_dq_raw[8]);
-  assign when_Ddr3ControllerCore_l744 = (3'b010 <= _zz_when_Ddr3ControllerCore_l744);
-  assign when_Ddr3ControllerCore_l737 = (wlVoteN == 3'b011);
-  assign when_Ddr3ControllerCore_l745 = (! wlSeenR);
-  assign when_Ddr3ControllerCore_l750 = (wlMatchNR != 8'hff);
-  assign when_Ddr3ControllerCore_l759 = (wlevel_tries == 9'h1ff);
-  assign when_Ddr3ControllerCore_l774 = ((wlevel_cnt == 4'b0001) && (8'h08 <= wstep));
-  assign when_Ddr3ControllerCore_l763 = (! when_Ddr3ControllerCore_l744);
-  assign when_Ddr3ControllerCore_l924 = ((((! aligning) && (anchorLeft == 2'b00)) && (settleLeft == 2'b00)) && (pinLeft == 2'b00));
-  assign when_Ddr3ControllerCore_l929 = ((((! aligning) && (anchorLeft == 2'b00)) && (settleLeft == 2'b00)) && (pinLeft == 2'b00));
-  assign when_Ddr3ControllerCore_l949 = (scanOn && ((aligning || (anchorLeft != 2'b00)) || (settleLeft != 2'b00)));
-  assign when_Ddr3ControllerCore_l951 = (anchorLeft != 2'b00);
-  assign when_Ddr3ControllerCore_l963 = (navigateLeft != 8'h0);
-  assign when_Ddr3ControllerCore_l987 = (((aligning || (anchorLeft != 2'b00)) || (settleLeft != 2'b00)) || (pinLeft != 2'b00));
-  assign when_Ddr3ControllerCore_l988 = (anchorLeft != 2'b00);
-  assign when_Ddr3ControllerCore_l1003 = (navigateLeft != 8'h0);
-  assign when_Ddr3ControllerCore_l1028 = (pinLeft != 2'b00);
-  assign when_Ddr3ControllerCore_l1046 = ((settleLeft == 2'b01) && applyArmed);
-  assign when_Ddr3ControllerCore_l1071 = (settleLeft == 2'b00);
-  assign when_Ddr3ControllerCore_l1076 = (bestCntDll < sweepScoreReg);
-  assign when_Ddr3ControllerCore_l1087 = (bestCntDll == 4'b1000);
-  assign when_Ddr3ControllerCore_l1112 = ((s2Side && (s2Mag == 7'h40)) && (rclkpos == 2'b11));
-  assign when_Ddr3ControllerCore_l1148 = (rclkpos == 2'b11);
-  assign when_Ddr3ControllerCore_l1154 = (((! s2Side) && (s2Mag == 7'h40)) && (! winDoneNow));
-  assign when_Ddr3ControllerCore_l1176 = ((s0Mag != 7'h40) && (! winDoneNow));
-  assign when_Ddr3ControllerCore_l1195 = (! training);
-  assign when_Ddr3ControllerCore_l1200 = (! winDoneNow);
-  assign when_Ddr3ControllerCore_l1225 = (bestCnt < sweepScoreReg);
-  assign when_Ddr3ControllerCore_l1233 = (rclksel == 3'b111);
-  assign when_Ddr3ControllerCore_l1237 = (rcalib_tries == 10'h028);
-  assign when_Ddr3ControllerCore_l1244 = ((! training) && (! dllSweepDone));
-  assign when_Ddr3ControllerCore_l1252 = ((! scanOn) && (! shiftCalDone));
-  assign when_Ddr3ControllerCore_l1254 = ((bestCnt == 4'b1000) && ((tryMode == 2'b00) || (! 1'b0)));
-  assign when_Ddr3ControllerCore_l1260 = ((tryMode == 2'b00) || (best0 < bestCnt));
-  assign when_Ddr3ControllerCore_l1267 = (tryMode < 2'b11);
+  assign when_Ddr3ControllerCore_l749 = (io_phy_dq_raw[0] && io_phy_dq_raw[8]);
+  assign when_Ddr3ControllerCore_l714 = (wlVoteN == 3'b011);
+  assign when_Ddr3ControllerCore_l723 = (wlevel_tries == 9'h1ff);
+  assign when_Ddr3ControllerCore_l738 = ((wlevel_cnt == 4'b0001) && (8'h08 <= wstep));
+  assign when_Ddr3ControllerCore_l727 = (! (3'b010 <= _zz_when_Ddr3ControllerCore_l727));
+  assign when_Ddr3ControllerCore_l886 = ((((! aligning) && (anchorLeft == 2'b00)) && (settleLeft == 2'b00)) && (pinLeft == 2'b00));
+  assign when_Ddr3ControllerCore_l891 = ((((! aligning) && (anchorLeft == 2'b00)) && (settleLeft == 2'b00)) && (pinLeft == 2'b00));
+  assign when_Ddr3ControllerCore_l911 = (scanOn && ((aligning || (anchorLeft != 2'b00)) || (settleLeft != 2'b00)));
+  assign when_Ddr3ControllerCore_l913 = (anchorLeft != 2'b00);
+  assign when_Ddr3ControllerCore_l925 = (navigateLeft != 8'h0);
+  assign when_Ddr3ControllerCore_l949 = (((aligning || (anchorLeft != 2'b00)) || (settleLeft != 2'b00)) || (pinLeft != 2'b00));
+  assign when_Ddr3ControllerCore_l950 = (anchorLeft != 2'b00);
+  assign when_Ddr3ControllerCore_l965 = (navigateLeft != 8'h0);
+  assign when_Ddr3ControllerCore_l990 = (pinLeft != 2'b00);
+  assign when_Ddr3ControllerCore_l1008 = ((settleLeft == 2'b01) && applyArmed);
+  assign when_Ddr3ControllerCore_l1033 = (settleLeft == 2'b00);
+  assign when_Ddr3ControllerCore_l1038 = (bestCntDll < sweepScoreReg);
+  assign when_Ddr3ControllerCore_l1048 = (bestCntDll == 4'b1000);
+  assign when_Ddr3ControllerCore_l1073 = ((s2Side && (s2Mag == 7'h40)) && (rclkpos == 2'b11));
+  assign when_Ddr3ControllerCore_l1109 = (rclkpos == 2'b11);
+  assign when_Ddr3ControllerCore_l1115 = (((! s2Side) && (s2Mag == 7'h40)) && (! winDoneNow));
+  assign when_Ddr3ControllerCore_l1137 = ((s0Mag != 7'h40) && (! winDoneNow));
+  assign when_Ddr3ControllerCore_l1156 = (! training);
+  assign when_Ddr3ControllerCore_l1161 = (! winDoneNow);
+  assign when_Ddr3ControllerCore_l1186 = (bestCnt < sweepScoreReg);
+  assign when_Ddr3ControllerCore_l1193 = (rclksel == 3'b111);
+  assign when_Ddr3ControllerCore_l1197 = (rcalib_tries == 10'h028);
+  assign when_Ddr3ControllerCore_l1204 = ((! training) && (! dllSweepDone));
+  assign when_Ddr3ControllerCore_l1212 = ((! scanOn) && (! shiftCalDone));
+  assign when_Ddr3ControllerCore_l1214 = ((bestCnt == 4'b1000) && ((tryMode == 2'b00) || (! 1'b0)));
+  assign when_Ddr3ControllerCore_l1220 = ((tryMode == 2'b00) || (best0 < bestCnt));
+  assign when_Ddr3ControllerCore_l1227 = (tryMode < 2'b11);
   assign _zz_wrMode = (tryMode + 2'b01);
-  assign when_Ddr3ControllerCore_l1276 = (bestCnt <= best0);
-  assign when_Ddr3ControllerCore_l1293 = (bestSurveyCnt < bestCnt);
-  assign when_Ddr3ControllerCore_l1300 = (bestCnt == 4'b1000);
-  assign when_Ddr3ControllerCore_l1309 = ((! scSide) && (_zz_when_Ddr3ControllerCore_l1309 <= 7'h40));
+  assign when_Ddr3ControllerCore_l1235 = (bestCnt <= best0);
+  assign when_Ddr3ControllerCore_l1252 = (bestSurveyCnt < bestCnt);
+  assign when_Ddr3ControllerCore_l1259 = (bestCnt == 4'b1000);
+  assign when_Ddr3ControllerCore_l1268 = ((! scSide) && (_zz_when_Ddr3ControllerCore_l1268 <= 7'h40));
   assign _zz_s0Mag = (scMag + 7'h02);
-  assign when_Ddr3ControllerCore_l1321 = (_zz_when_Ddr3ControllerCore_l1321 <= 7'h40);
+  assign when_Ddr3ControllerCore_l1280 = (_zz_when_Ddr3ControllerCore_l1280 <= 7'h40);
   assign _zz_s0Mag_1 = (scMag + 7'h02);
-  assign when_Ddr3ControllerCore_l1314 = (! scSide);
-  assign when_Ddr3ControllerCore_l1350 = (sweepMagN != 7'h0);
-  assign when_Ddr3ControllerCore_l1387 = (bestCnt == 4'b1000);
-  assign when_Ddr3ControllerCore_l1432 = (! training);
-  assign _zz_1 = ({3'd0,1'b1} <<< wTry);
-  assign when_Ddr3ControllerCore_l1435 = ((bestCnt < 4'b1000) && (wTry < 2'b10));
-  assign when_Ddr3ControllerCore_l1436 = ((wTry == 2'b00) || (bestWCnt < bestCnt));
-  assign when_Ddr3ControllerCore_l1444 = (wTry == 2'b00);
-  assign when_Ddr3ControllerCore_l1466 = ((wTry == 2'b10) && (bestCnt < bestWCnt));
+  assign when_Ddr3ControllerCore_l1273 = (! scSide);
+  assign when_Ddr3ControllerCore_l1309 = (sweepMagN != 7'h0);
+  assign when_Ddr3ControllerCore_l1346 = (bestCnt == 4'b1000);
+  assign when_Ddr3ControllerCore_l1391 = (! training);
+  assign when_Ddr3ControllerCore_l1393 = ((bestCnt < 4'b1000) && (wTry < 2'b10));
+  assign when_Ddr3ControllerCore_l1394 = ((wTry == 2'b00) || (bestWCnt < bestCnt));
+  assign when_Ddr3ControllerCore_l1402 = (wTry == 2'b00);
+  assign when_Ddr3ControllerCore_l1423 = ((wTry == 2'b10) && (bestCnt < bestWCnt));
   assign _zz_openRow = io_req_payload_addr[20 : 7];
   assign _zz_openBank = io_req_payload_addr[23 : 21];
   assign _zz_cycle = ((rowOpen && (_zz_openBank == openBank)) && (_zz_openRow == openRow));
-  assign when_Ddr3ControllerCore_l1570 = (rowOpen && (! _zz_cycle));
-  assign when_Ddr3ControllerCore_l1579 = (! rowOpen);
-  assign when_Ddr3ControllerCore_l1611 = (cycle == 7'h02);
+  assign when_Ddr3ControllerCore_l1527 = (rowOpen && (! _zz_cycle));
+  assign when_Ddr3ControllerCore_l1536 = (! rowOpen);
+  assign when_Ddr3ControllerCore_l1568 = (cycle == 7'h02);
   assign _zz_openRow_1 = reqReg_addr[20 : 7];
   assign _zz_openBank_1 = reqReg_addr[23 : 21];
   assign _zz_BA_2 = reqReg_addr[23 : 21];
   assign _zz_A_2 = (_zz__zz_A_2 | 16'h1000);
-  assign when_Ddr3ControllerCore_l1657 = (cycle == 7'h01);
-  assign when_Ddr3ControllerCore_l1661 = ((cycle == 7'h02) || rdHavePending);
-  assign when_Ddr3ControllerCore_l1667 = (canAcceptRdStream && io_req_valid);
-  assign when_Ddr3ControllerCore_l1666 = (7'h02 <= cycle);
-  assign _zz_when_Ddr3ControllerCore_l1685 = (7'h09 + rotSplit);
-  assign _zz_data_ready = ((_zz_when_Ddr3ControllerCore_l1685 <= cycle) && (rdRspLeft != 6'h0));
-  assign when_Ddr3ControllerCore_l1685 = (((((! rdStreamOpen) && (! rdHavePending)) && (rdRspLeft == 6'h0)) && (! data_ready)) && (_zz_when_Ddr3ControllerCore_l1685_1 <= cycle));
+  assign when_Ddr3ControllerCore_l1614 = (cycle == 7'h01);
+  assign when_Ddr3ControllerCore_l1618 = ((cycle == 7'h02) || rdHavePending);
+  assign when_Ddr3ControllerCore_l1624 = (canAcceptRdStream && io_req_valid);
+  assign when_Ddr3ControllerCore_l1623 = (7'h02 <= cycle);
+  assign _zz_when_Ddr3ControllerCore_l1642 = (7'h09 + rotSplit);
+  assign _zz_data_ready = ((_zz_when_Ddr3ControllerCore_l1642 <= cycle) && (rdRspLeft != 6'h0));
+  assign when_Ddr3ControllerCore_l1642 = (((((! rdStreamOpen) && (! rdHavePending)) && (rdRspLeft == 6'h0)) && (! data_ready)) && (_zz_when_Ddr3ControllerCore_l1642_1 <= cycle));
   assign _zz_A_2_1 = {reqReg_addr[6 : 0],3'b000};
   assign _zz_BA_2_1 = reqReg_addr[23 : 21];
-  assign when_Ddr3ControllerCore_l1700 = (cycle == 7'h01);
-  assign when_Ddr3ControllerCore_l1706 = (cycle == 7'h02);
-  assign when_Ddr3ControllerCore_l1741 = (cycle == 7'h03);
-  assign when_Ddr3ControllerCore_l1827 = (cycle == 7'h04);
-  assign when_Ddr3ControllerCore_l1859 = (cycle == ((2'b10 <= wrMode) ? 7'h08 : 7'h07));
-  assign when_Ddr3ControllerCore_l1877 = ((cycle == 7'h01) || wrHavePending);
-  assign when_Ddr3ControllerCore_l1889 = (canAcceptWrStream && io_req_valid);
-  assign when_Ddr3ControllerCore_l1900 = (st1Valid && (! st2Valid));
-  assign when_Ddr3ControllerCore_l1930 = (st1Valid && (! st2Valid));
-  assign when_Ddr3ControllerCore_l1966 = (st1Valid && (! st2Valid));
-  assign when_Ddr3ControllerCore_l1969 = (st2Valid && (! st3Valid));
-  assign when_Ddr3ControllerCore_l1979 = (st3Valid && st2Valid);
-  assign when_Ddr3ControllerCore_l2000 = (st2Valid && (! st3Valid));
-  assign when_Ddr3ControllerCore_l2010 = (st3Valid && st2Valid);
-  assign when_Ddr3ControllerCore_l2038 = (wrCooldown != 4'b0000);
-  assign when_Ddr3ControllerCore_l2042 = (((((! when_Ddr3ControllerCore_l1877) && (! st1Valid)) && (! st2Valid)) && (! st3Valid)) && (wrCooldown == 4'b0000));
-  assign when_Ddr3ControllerCore_l2051 = (cycle == 7'h10);
+  assign when_Ddr3ControllerCore_l1657 = (cycle == 7'h01);
+  assign when_Ddr3ControllerCore_l1663 = (cycle == 7'h02);
+  assign when_Ddr3ControllerCore_l1698 = (cycle == 7'h03);
+  assign when_Ddr3ControllerCore_l1784 = (cycle == 7'h04);
+  assign when_Ddr3ControllerCore_l1816 = (cycle == ((2'b10 <= wrMode) ? 7'h08 : 7'h07));
+  assign when_Ddr3ControllerCore_l1834 = ((cycle == 7'h01) || wrHavePending);
+  assign when_Ddr3ControllerCore_l1846 = (canAcceptWrStream && io_req_valid);
+  assign when_Ddr3ControllerCore_l1857 = (st1Valid && (! st2Valid));
+  assign when_Ddr3ControllerCore_l1887 = (st1Valid && (! st2Valid));
+  assign when_Ddr3ControllerCore_l1923 = (st1Valid && (! st2Valid));
+  assign when_Ddr3ControllerCore_l1926 = (st2Valid && (! st3Valid));
+  assign when_Ddr3ControllerCore_l1936 = (st3Valid && st2Valid);
+  assign when_Ddr3ControllerCore_l1957 = (st2Valid && (! st3Valid));
+  assign when_Ddr3ControllerCore_l1967 = (st3Valid && st2Valid);
+  assign when_Ddr3ControllerCore_l1995 = (wrCooldown != 4'b0000);
+  assign when_Ddr3ControllerCore_l1999 = (((((! when_Ddr3ControllerCore_l1834) && (! st1Valid)) && (! st2Valid)) && (! st3Valid)) && (wrCooldown == 4'b0000));
+  assign when_Ddr3ControllerCore_l2008 = (cycle == 7'h10);
   assign needRotSplit = (bestRot != 3'b000);
   assign _zz_rdataVec_0 = _zz__zz_rdataVec_0[2 : 0];
   assign rdataVec_0 = ((needRotSplit && (3'b000 < bestRot)) ? _zz_rdataVec_0_1 : _zz_rdataVec_0_2);
@@ -11606,7 +8990,7 @@ module Ddr3ControllerCore (
   assign io_phy_CKE = CKE;
   assign io_phy_resetn_delay = resetn_delay;
   assign io_phy_wser_rst = wser_rst;
-  assign when_Ddr3ControllerCore_l2226 = (((((io_phy_rst_lock_n && (! _zz_when_Ddr3ControllerCore_l2226)) && (! busy)) && (state == Ddr3State_IDLE)) && wlevel_done) && rcalib_done);
+  assign when_Ddr3ControllerCore_l2176 = (((((io_phy_rst_lock_n && (! _zz_when_Ddr3ControllerCore_l2176)) && (! busy)) && (state == Ddr3State_IDLE)) && wlevel_done) && rcalib_done);
   assign io_init_done = init_done_latched;
   assign io_write_level_done = wlevel_done;
   assign io_read_calib_done = rcalib_done;
@@ -11616,15 +9000,8 @@ module Ddr3ControllerCore (
   assign io_best_rot = bestRot;
   assign io_best_score = bestCnt;
   assign io_dbg_state = state;
-  assign io_wlMap = wlMapR;
-  assign io_wlFirst = wlFirstR;
-  assign io_wlLast = wlLastR;
-  assign io_wlMatchN = wlMatchNR;
-  assign io_wr_adv = wrMode;
-  assign io_w_scores = {{wScores_2,wScores_1},wScores_0};
-  assign io_train_latch = bestLatch;
-  always @(posedge io_pclk or posedge _zz_when_Ddr3ControllerCore_l2226) begin
-    if(_zz_when_Ddr3ControllerCore_l2226) begin
+  always @(posedge io_pclk or posedge _zz_when_Ddr3ControllerCore_l2176) begin
+    if(_zz_when_Ddr3ControllerCore_l2176) begin
       state <= Ddr3State_RST_WAIT;
       cycle <= 7'h0;
       tick_counter <= 17'h0ea60;
@@ -11652,11 +9029,6 @@ module Ddr3ControllerCore (
       wlevel_done <= 1'b0;
       wlevel_cnt <= 4'b0000;
       wlevel_tries <= 9'h0;
-      wlMapR <= 256'h0;
-      wlFirstR <= 8'h0;
-      wlLastR <= 8'h0;
-      wlSeenR <= 1'b0;
-      wlMatchNR <= 8'h0;
       wlVoteN <= 3'b000;
       wlVoteCnt <= 3'b000;
       wlVoteCnt0 <= 3'b000;
@@ -11703,15 +9075,11 @@ module Ddr3ControllerCore (
       best0Sel <= 3'b000;
       best0Rot <= 3'b000;
       bestMode <= 2'b00;
-      bestLatch <= 128'h0;
       bestWCnt <= 4'b0000;
       bestWPos <= 2'b00;
       bestWSel <= 3'b000;
       bestWRot <= 3'b000;
       bestWMode <= 2'b00;
-      wScores_0 <= 4'b0000;
-      wScores_1 <= 4'b0000;
-      wScores_2 <= 4'b0000;
       dllSweepOn <= 1'b0;
       dllSweepDone <= 1'b0;
       bestCntDll <= 4'b0000;
@@ -11787,25 +9155,25 @@ module Ddr3ControllerCore (
     end else begin
       sweepMag0 <= 7'h0;
       sweepMagN <= 7'h0;
-      if(when_Ddr3ControllerCore_l471) begin
-        if(when_Ddr3ControllerCore_l472) begin
+      if(when_Ddr3ControllerCore_l453) begin
+        if(when_Ddr3ControllerCore_l454) begin
           refresh_due <= 1'b1;
           refresh_timer <= 11'h0;
         end else begin
           refresh_timer <= (refresh_timer + 11'h001);
         end
       end
-      if(when_Ddr3ControllerCore_l555) begin
+      if(when_Ddr3ControllerCore_l537) begin
         rburst_seen[0] <= 1'b1;
       end
-      if(when_Ddr3ControllerCore_l556) begin
+      if(when_Ddr3ControllerCore_l538) begin
         rburst_seen[1] <= 1'b1;
       end
       dqs_read <= 4'b0000;
-      if(when_Ddr3ControllerCore_l597) begin
+      if(when_Ddr3ControllerCore_l579) begin
         dqs_read <= 4'b1111;
       end
-      if(when_Ddr3ControllerCore_l601) begin
+      if(when_Ddr3ControllerCore_l583) begin
         dqs_read <= 4'b1111;
       end
       if(io_phy_rst_lock_n) begin
@@ -11835,11 +9203,11 @@ module Ddr3ControllerCore (
         dqs_out <= 8'h0;
         dqs_hold <= 1'b0;
         wser_rst <= 1'b0;
-        if(when_Ddr3ControllerCore_l640) begin
+        if(when_Ddr3ControllerCore_l622) begin
           wserRstCnt <= (wserRstCnt - 3'b001);
           wser_rst <= (3'b010 < wserRstCnt);
         end
-        if(when_Ddr3ControllerCore_l645) begin
+        if(when_Ddr3ControllerCore_l627) begin
           cycle <= ((cycle == 7'h7f) ? 7'h7f : _zz_cycle_1);
           tick <= (tick_counter == 17'h00001);
           tick_counter <= ((tick_counter == 17'h0) ? 17'h0 : _zz_tick_counter);
@@ -11852,7 +9220,7 @@ module Ddr3ControllerCore (
               end
             end
             Ddr3State_CKE_WAIT : begin
-              if(when_Ddr3ControllerCore_l660) begin
+              if(when_Ddr3ControllerCore_l642) begin
                 CKE <= 1'b1;
               end
               if(tick) begin
@@ -11918,11 +9286,6 @@ module Ddr3ControllerCore (
                   BA_0 <= _zz_A_0[15 : 13];
                   A_0 <= {1'd0, _zz_A_0_7};
                   wlevel_cnt <= 4'b0000;
-                  wlMapR <= 256'h0;
-                  wlFirstR <= 8'h0;
-                  wlLastR <= 8'h0;
-                  wlSeenR <= 1'b0;
-                  wlMatchNR <= 8'h0;
                   wlVoteN <= 3'b000;
                   wlVoteCnt <= 3'b000;
                 end
@@ -11937,22 +9300,11 @@ module Ddr3ControllerCore (
                 7'h11 : begin
                   dqs_out <= 8'h0;
                   dqs_oen <= 4'b0000;
-                  if(when_Ddr3ControllerCore_l737) begin
+                  if(when_Ddr3ControllerCore_l714) begin
                     wlVoteN <= 3'b000;
                     wlVoteCnt <= 3'b000;
                     wlevel_tries <= (wlevel_tries + 9'h001);
-                    wlMapR[wstep] <= when_Ddr3ControllerCore_l744;
-                    if(when_Ddr3ControllerCore_l744) begin
-                      if(when_Ddr3ControllerCore_l745) begin
-                        wlSeenR <= 1'b1;
-                        wlFirstR <= wstep;
-                      end
-                      wlLastR <= wstep;
-                      if(when_Ddr3ControllerCore_l750) begin
-                        wlMatchNR <= (wlMatchNR + 8'h01);
-                      end
-                    end
-                    if(when_Ddr3ControllerCore_l759) begin
+                    if(when_Ddr3ControllerCore_l723) begin
                       wlevel_done <= 1'b1;
                       wstep <= 8'hff;
                       nRAS_0 <= CMD_SetModeReg[2];
@@ -11961,13 +9313,13 @@ module Ddr3ControllerCore (
                       BA_0 <= MR1[15 : 13];
                       A_0 <= {1'd0, _zz_A_0_8};
                     end else begin
-                      if(when_Ddr3ControllerCore_l763) begin
+                      if(when_Ddr3ControllerCore_l727) begin
                         wstep <= _zz_wstep;
                         wlevel_cnt <= 4'b0000;
                         cycle <= 7'h0a;
                       end else begin
                         wlevel_cnt <= (wlevel_cnt + 4'b0001);
-                        if(when_Ddr3ControllerCore_l774) begin
+                        if(when_Ddr3ControllerCore_l738) begin
                           wlevel_done <= 1'b1;
                           wstep <= _zz_wstep_1;
                           nRAS_0 <= CMD_SetModeReg[2];
@@ -11981,7 +9333,7 @@ module Ddr3ControllerCore (
                       end
                     end
                   end else begin
-                    if(when_Ddr3ControllerCore_l785) begin
+                    if(when_Ddr3ControllerCore_l749) begin
                       wlVoteCnt <= (wlVoteCnt + 3'b001);
                     end
                     wlVoteN <= (wlVoteN + 3'b001);
@@ -12030,14 +9382,10 @@ module Ddr3ControllerCore (
                       bestWSel <= 3'b000;
                       bestWRot <= 3'b000;
                       bestWMode <= 2'b00;
-                      wScores_0 <= 4'b0000;
-                      wScores_1 <= 4'b0000;
-                      wScores_2 <= 4'b0000;
                     end
                     rcalib_cnt <= 4'b0000;
                     rcalib_tries <= 10'h0;
                     bestCnt <= 4'b0000;
-                    bestLatch <= 128'h0;
                     bestPos <= rclkpos;
                     bestSel <= rclksel;
                     bestRot <= 3'b000;
@@ -12098,29 +9446,29 @@ module Ddr3ControllerCore (
                   sweepRotReg <= rotIdxW_7;
                 end
                 7'h0e : begin
-                  if(when_Ddr3ControllerCore_l924) begin
+                  if(when_Ddr3ControllerCore_l886) begin
                     `ifndef SYNTHESIS
                       `ifdef FORMAL
-                        assert(1'b0); // Ddr3ControllerCore.scala:L925
+                        assert(1'b0); // Ddr3ControllerCore.scala:L887
                       `else
                         if(!1'b0) begin
-                          $display("NOTE RCALIB chk pos=%x sel=%x seen=%x score=%x rot=%x latch=%x best=%x tries=%x", rclkpos, rclksel, rburst_seen, sweepScoreReg, sweepRotReg, trainLatch, bestCnt, rcalib_tries); // Ddr3ControllerCore.scala:L925
+                          $display("NOTE RCALIB chk pos=%x sel=%x seen=%x score=%x rot=%x latch=%x best=%x tries=%x", rclkpos, rclksel, rburst_seen, sweepScoreReg, sweepRotReg, trainLatch, bestCnt, rcalib_tries); // Ddr3ControllerCore.scala:L887
                         end
                       `endif
                     `endif
                   end
                   rcalib_cnt <= 4'b0000;
-                  if(when_Ddr3ControllerCore_l929) begin
+                  if(when_Ddr3ControllerCore_l891) begin
                     rcalib_tries <= (rcalib_tries + 10'h001);
                   end
-                  if(when_Ddr3ControllerCore_l949) begin
+                  if(when_Ddr3ControllerCore_l911) begin
                     rmove <= 1'b0;
-                    if(when_Ddr3ControllerCore_l951) begin
+                    if(when_Ddr3ControllerCore_l913) begin
                       anchorLeft <= (anchorLeft - 2'b01);
                       cycle <= 7'h01;
                     end else begin
                       if(aligning) begin
-                        if(when_Ddr3ControllerCore_l963) begin
+                        if(when_Ddr3ControllerCore_l925) begin
                           rdir <= s0Side;
                           rmove <= navigateLeft[0];
                           navigateLeft <= (navigateLeft - 8'h01);
@@ -12138,13 +9486,13 @@ module Ddr3ControllerCore (
                   end else begin
                     if(dllSweepOn) begin
                       rmove <= 1'b0;
-                      if(when_Ddr3ControllerCore_l987) begin
-                        if(when_Ddr3ControllerCore_l988) begin
+                      if(when_Ddr3ControllerCore_l949) begin
+                        if(when_Ddr3ControllerCore_l950) begin
                           anchorLeft <= (anchorLeft - 2'b01);
                           cycle <= 7'h01;
                         end else begin
                           if(aligning) begin
-                            if(when_Ddr3ControllerCore_l1003) begin
+                            if(when_Ddr3ControllerCore_l965) begin
                               rdir <= (applyArmed ? bestSide : s0Side);
                               rmove <= navigateLeft[0];
                               navigateLeft <= (navigateLeft - 8'h01);
@@ -12155,7 +9503,7 @@ module Ddr3ControllerCore (
                               cycle <= 7'h01;
                             end
                           end else begin
-                            if(when_Ddr3ControllerCore_l1028) begin
+                            if(when_Ddr3ControllerCore_l990) begin
                               dqs_hold <= 1'b1;
                               s1Side <= s0Side;
                               s1Mag <= s0Mag;
@@ -12169,7 +9517,7 @@ module Ddr3ControllerCore (
                               s1Mag <= s0Mag;
                               s2Side <= s1Side;
                               s2Mag <= s1Mag;
-                              if(when_Ddr3ControllerCore_l1046) begin
+                              if(when_Ddr3ControllerCore_l1008) begin
                                 rclkpos <= bestPos;
                                 needFinalSurvey <= 1'b1;
                                 dllSweepDone <= 1'b1;
@@ -12177,10 +9525,10 @@ module Ddr3ControllerCore (
                                 applyArmed <= 1'b0;
                                 `ifndef SYNTHESIS
                                   `ifdef FORMAL
-                                    assert(1'b0); // Ddr3ControllerCore.scala:L1056
+                                    assert(1'b0); // Ddr3ControllerCore.scala:L1018
                                   `else
                                     if(!1'b0) begin
-                                      $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L1056
+                                      $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L1018
                                     end
                                   `endif
                                 `endif
@@ -12196,17 +9544,16 @@ module Ddr3ControllerCore (
                           end
                         end
                       end else begin
-                        if(when_Ddr3ControllerCore_l1071) begin
-                          if(when_Ddr3ControllerCore_l1076) begin
+                        if(when_Ddr3ControllerCore_l1033) begin
+                          if(when_Ddr3ControllerCore_l1038) begin
                             bestCntDll <= sweepScoreReg;
-                            bestLatch <= trainLatch;
                             bestMag <= s2Mag;
                             bestSide <= s2Side;
                             bestPos <= rclkpos;
                             bestSel <= rclksel;
                             bestRot <= sweepRotReg;
                           end
-                          if(when_Ddr3ControllerCore_l1087) begin
+                          if(when_Ddr3ControllerCore_l1048) begin
                             aligning <= 1'b1;
                             anchorLeft <= 2'b10;
                             navigateLeft <= ({1'd0,bestMag} <<< 1'd1);
@@ -12219,16 +9566,16 @@ module Ddr3ControllerCore (
                             s2Mag <= bestMag;
                             `ifndef SYNTHESIS
                               `ifdef FORMAL
-                                assert(1'b0); // Ddr3ControllerCore.scala:L1102
+                                assert(1'b0); // Ddr3ControllerCore.scala:L1063
                               `else
                                 if(!1'b0) begin
-                                  $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L1102
+                                  $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L1063
                                 end
                               `endif
                             `endif
                             cycle <= 7'h01;
                           end else begin
-                            if(when_Ddr3ControllerCore_l1112) begin
+                            if(when_Ddr3ControllerCore_l1073) begin
                               aligning <= 1'b1;
                               anchorLeft <= 2'b10;
                               navigateLeft <= ({1'd0,bestMag} <<< 1'd1);
@@ -12241,10 +9588,10 @@ module Ddr3ControllerCore (
                               s2Mag <= bestMag;
                               `ifndef SYNTHESIS
                                 `ifdef FORMAL
-                                  assert(1'b0); // Ddr3ControllerCore.scala:L1125
+                                  assert(1'b0); // Ddr3ControllerCore.scala:L1086
                                 `else
                                   if(!1'b0) begin
-                                    $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L1125
+                                    $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L1086
                                   end
                                 `endif
                               `endif
@@ -12256,8 +9603,8 @@ module Ddr3ControllerCore (
                               s2Mag <= s1Mag;
                               rclkpos <= _zz_rclkpos;
                               rdir <= s0Side;
-                              if(when_Ddr3ControllerCore_l1148) begin
-                                if(when_Ddr3ControllerCore_l1154) begin
+                              if(when_Ddr3ControllerCore_l1109) begin
+                                if(when_Ddr3ControllerCore_l1115) begin
                                   s0Side <= 1'b1;
                                   s0Mag <= 7'h01;
                                   s1Side <= 1'b1;
@@ -12270,15 +9617,15 @@ module Ddr3ControllerCore (
                                   applyArmed <= 1'b0;
                                   `ifndef SYNTHESIS
                                     `ifdef FORMAL
-                                      assert(1'b0); // Ddr3ControllerCore.scala:L1166
+                                      assert(1'b0); // Ddr3ControllerCore.scala:L1127
                                     `else
                                       if(!1'b0) begin
-                                        $display("NOTE RCALIB dll side switch to minus"); // Ddr3ControllerCore.scala:L1166
+                                        $display("NOTE RCALIB dll side switch to minus"); // Ddr3ControllerCore.scala:L1127
                                       end
                                     `endif
                                   `endif
                                 end else begin
-                                  if(when_Ddr3ControllerCore_l1176) begin
+                                  if(when_Ddr3ControllerCore_l1137) begin
                                     s0Mag <= (s0Mag + 7'h01);
                                     rmove <= 1'b1;
                                     pinLeft <= 2'b10;
@@ -12289,14 +9636,14 @@ module Ddr3ControllerCore (
                                 dllSweepOn <= 1'b0;
                                 `ifndef SYNTHESIS
                                   `ifdef FORMAL
-                                    assert(1'b0); // Ddr3ControllerCore.scala:L1193
+                                    assert(1'b0); // Ddr3ControllerCore.scala:L1154
                                   `else
                                     if(!1'b0) begin
-                                      $display("NOTE RCALIB window side=%x mag=%x pos=%x rot=%x score=%x", bestSide, bestMag, bestPos, bestRot, bestCntDll); // Ddr3ControllerCore.scala:L1193
+                                      $display("NOTE RCALIB window side=%x mag=%x pos=%x rot=%x score=%x", bestSide, bestMag, bestPos, bestRot, bestCntDll); // Ddr3ControllerCore.scala:L1154
                                     end
                                   `endif
                                 `endif
-                                if(when_Ddr3ControllerCore_l1195) begin
+                                if(when_Ddr3ControllerCore_l1156) begin
                                   rcalib_done <= 1'b1;
                                 end
                                 nRAS_0 <= CMD_PreCharge[2];
@@ -12305,7 +9652,7 @@ module Ddr3ControllerCore (
                                 BA_0 <= 3'b000;
                                 A_0 <= {13'd0, _zz_A_0_13};
                               end
-                              if(when_Ddr3ControllerCore_l1200) begin
+                              if(when_Ddr3ControllerCore_l1161) begin
                                 trainDone <= 1'b1;
                                 needPoison <= 1'b0;
                                 bistReturn <= 1'b1;
@@ -12317,23 +9664,22 @@ module Ddr3ControllerCore (
                         end
                       end
                     end else begin
-                      if(when_Ddr3ControllerCore_l1225) begin
+                      if(when_Ddr3ControllerCore_l1186) begin
                         bestCnt <= sweepScoreReg;
-                        bestLatch <= trainLatch;
                         bestPos <= rclkpos;
                         bestSel <= rclksel;
                         bestRot <= sweepRotReg;
                       end
                       rclksel <= _zz_rclksel;
-                      if(when_Ddr3ControllerCore_l1233) begin
+                      if(when_Ddr3ControllerCore_l1193) begin
                         rclkpos <= _zz_rclkpos_1;
                       end
-                      if(when_Ddr3ControllerCore_l1237) begin
+                      if(when_Ddr3ControllerCore_l1197) begin
                         rclkpos <= bestPos;
                         rclksel <= bestSel;
-                        if(when_Ddr3ControllerCore_l1244) begin
-                          if(when_Ddr3ControllerCore_l1252) begin
-                            if(when_Ddr3ControllerCore_l1254) begin
+                        if(when_Ddr3ControllerCore_l1204) begin
+                          if(when_Ddr3ControllerCore_l1212) begin
+                            if(when_Ddr3ControllerCore_l1214) begin
                               shiftCalDone <= 1'b1;
                               dllSweepDone <= 1'b1;
                               rcalib_tries <= 10'h028;
@@ -12343,26 +9689,25 @@ module Ddr3ControllerCore (
                               state <= Ddr3State_WRITE;
                               cycle <= 7'h0;
                             end else begin
-                              if(when_Ddr3ControllerCore_l1260) begin
+                              if(when_Ddr3ControllerCore_l1220) begin
                                 best0 <= bestCnt;
                                 bestMode <= wrMode;
                                 best0Pos <= bestPos;
                                 best0Sel <= bestSel;
                                 best0Rot <= bestRot;
                               end
-                              if(when_Ddr3ControllerCore_l1267) begin
+                              if(when_Ddr3ControllerCore_l1227) begin
                                 tryMode <= _zz_wrMode;
                                 wrMode <= _zz_wrMode;
                                 rcalib_tries <= 10'h0;
                                 bestCnt <= 4'b0000;
-                                bestLatch <= 128'h0;
                                 trainDone <= 1'b1;
                                 needPoison <= 1'b0;
                                 bistReturn <= 1'b1;
                                 state <= Ddr3State_WRITE;
                                 cycle <= 7'h0;
                               end else begin
-                                if(when_Ddr3ControllerCore_l1276) begin
+                                if(when_Ddr3ControllerCore_l1235) begin
                                   bestCnt <= best0;
                                   bestPos <= best0Pos;
                                   bestSel <= best0Sel;
@@ -12381,18 +9726,18 @@ module Ddr3ControllerCore (
                             end
                           end
                           if(scanOn) begin
-                            if(when_Ddr3ControllerCore_l1293) begin
+                            if(when_Ddr3ControllerCore_l1252) begin
                               bestSurveyCnt <= bestCnt;
                               bestSurveySide <= scSide;
                               bestSurveyMag <= scMag;
                             end
-                            if(when_Ddr3ControllerCore_l1300) begin
+                            if(when_Ddr3ControllerCore_l1259) begin
                               `ifndef SYNTHESIS
                                 `ifdef FORMAL
-                                  assert(1'b0); // Ddr3ControllerCore.scala:L1302
+                                  assert(1'b0); // Ddr3ControllerCore.scala:L1261
                                 `else
                                   if(!1'b0) begin
-                                    $display("NOTE RCALIB scan sweep at side=%x mag=%x score=%x", scSide, scMag, bestCnt); // Ddr3ControllerCore.scala:L1302
+                                    $display("NOTE RCALIB scan sweep at side=%x mag=%x score=%x", scSide, scMag, bestCnt); // Ddr3ControllerCore.scala:L1261
                                   end
                                 `endif
                               `endif
@@ -12416,7 +9761,7 @@ module Ddr3ControllerCore (
                               applyArmed <= 1'b0;
                               cycle <= 7'h01;
                             end else begin
-                              if(when_Ddr3ControllerCore_l1309) begin
+                              if(when_Ddr3ControllerCore_l1268) begin
                                 scMag <= (scMag + 7'h02);
                                 rcalib_tries <= 10'h0;
                                 bestCnt <= 4'b0000;
@@ -12433,7 +9778,7 @@ module Ddr3ControllerCore (
                                 applyArmed <= 1'b0;
                                 cycle <= 7'h01;
                               end else begin
-                                if(when_Ddr3ControllerCore_l1314) begin
+                                if(when_Ddr3ControllerCore_l1273) begin
                                   scSide <= 1'b1;
                                   scMag <= 7'h02;
                                   rcalib_tries <= 10'h0;
@@ -12451,7 +9796,7 @@ module Ddr3ControllerCore (
                                   applyArmed <= 1'b0;
                                   cycle <= 7'h01;
                                 end else begin
-                                  if(when_Ddr3ControllerCore_l1321) begin
+                                  if(when_Ddr3ControllerCore_l1280) begin
                                     scMag <= (scMag + 7'h02);
                                     rcalib_tries <= 10'h0;
                                     bestCnt <= 4'b0000;
@@ -12470,10 +9815,10 @@ module Ddr3ControllerCore (
                                   end else begin
                                     `ifndef SYNTHESIS
                                       `ifdef FORMAL
-                                        assert(1'b0); // Ddr3ControllerCore.scala:L1329
+                                        assert(1'b0); // Ddr3ControllerCore.scala:L1288
                                       `else
                                         if(!1'b0) begin
-                                          $display("NOTE RCALIB scan done best side=%x mag=%x score=%x", bestSurveySide, bestSurveyMag, bestSurveyCnt); // Ddr3ControllerCore.scala:L1329
+                                          $display("NOTE RCALIB scan done best side=%x mag=%x score=%x", bestSurveySide, bestSurveyMag, bestSurveyCnt); // Ddr3ControllerCore.scala:L1288
                                         end
                                       `endif
                                     `endif
@@ -12506,7 +9851,7 @@ module Ddr3ControllerCore (
                               bestSurveySide <= 1'b0;
                               bestSurveyMag <= 7'h0;
                               rclksel[0] <= 1'b0;
-                              if(when_Ddr3ControllerCore_l1350) begin
+                              if(when_Ddr3ControllerCore_l1309) begin
                                 dllSweepOn <= 1'b1;
                                 bestCntDll <= 4'b0000;
                                 bestSide <= 1'b0;
@@ -12525,16 +9870,16 @@ module Ddr3ControllerCore (
                                 applyArmed <= 1'b0;
                                 `ifndef SYNTHESIS
                                   `ifdef FORMAL
-                                    assert(1'b0); // Ddr3ControllerCore.scala:L1379
+                                    assert(1'b0); // Ddr3ControllerCore.scala:L1338
                                   `else
                                     if(!1'b0) begin
-                                      $display("NOTE RCALIB window start mag0=%x n=%x", sweepMag0, sweepMagN); // Ddr3ControllerCore.scala:L1379
+                                      $display("NOTE RCALIB window start mag0=%x n=%x", sweepMag0, sweepMagN); // Ddr3ControllerCore.scala:L1338
                                     end
                                   `endif
                                 `endif
                                 cycle <= 7'h01;
                               end else begin
-                                if(when_Ddr3ControllerCore_l1387) begin
+                                if(when_Ddr3ControllerCore_l1346) begin
                                   dllSweepOn <= 1'b1;
                                   bestCntDll <= 4'b0000;
                                   bestSide <= 1'b0;
@@ -12553,10 +9898,10 @@ module Ddr3ControllerCore (
                                   bestCnt <= 4'b0000;
                                   `ifndef SYNTHESIS
                                     `ifdef FORMAL
-                                      assert(1'b0); // Ddr3ControllerCore.scala:L1416
+                                      assert(1'b0); // Ddr3ControllerCore.scala:L1375
                                     `else
                                       if(!1'b0) begin
-                                        $display("NOTE RCALIB scan start"); // Ddr3ControllerCore.scala:L1416
+                                        $display("NOTE RCALIB scan start"); // Ddr3ControllerCore.scala:L1375
                                       end
                                     `endif
                                   `endif
@@ -12580,25 +9925,16 @@ module Ddr3ControllerCore (
                           dllSweepOn <= 1'b0;
                           `ifndef SYNTHESIS
                             `ifdef FORMAL
-                              assert(1'b0); // Ddr3ControllerCore.scala:L1425
+                              assert(1'b0); // Ddr3ControllerCore.scala:L1384
                             `else
                               if(!1'b0) begin
-                                $display("NOTE RCALIB lock best pos=%x sel=%x rot=%x score=%x", bestPos, bestSel, bestRot, bestCnt); // Ddr3ControllerCore.scala:L1425
+                                $display("NOTE RCALIB lock best pos=%x sel=%x rot=%x score=%x", bestPos, bestSel, bestRot, bestCnt); // Ddr3ControllerCore.scala:L1384
                               end
                             `endif
                           `endif
-                          if(when_Ddr3ControllerCore_l1432) begin
-                            if(_zz_1[0]) begin
-                              wScores_0 <= bestCnt;
-                            end
-                            if(_zz_1[1]) begin
-                              wScores_1 <= bestCnt;
-                            end
-                            if(_zz_1[2]) begin
-                              wScores_2 <= bestCnt;
-                            end
-                            if(when_Ddr3ControllerCore_l1435) begin
-                              if(when_Ddr3ControllerCore_l1436) begin
+                          if(when_Ddr3ControllerCore_l1391) begin
+                            if(when_Ddr3ControllerCore_l1393) begin
+                              if(when_Ddr3ControllerCore_l1394) begin
                                 bestWCnt <= bestCnt;
                                 bestWstep <= wstep;
                                 bestWPos <= bestPos;
@@ -12606,7 +9942,7 @@ module Ddr3ControllerCore (
                                 bestWRot <= bestRot;
                                 bestWMode <= wrMode;
                               end
-                              if(when_Ddr3ControllerCore_l1444) begin
+                              if(when_Ddr3ControllerCore_l1402) begin
                                 wBase <= wstep;
                                 wTry <= 2'b01;
                                 wstep <= _zz_wstep_6;
@@ -12621,7 +9957,6 @@ module Ddr3ControllerCore (
                               tryMode <= 2'b00;
                               wrMode <= 2'b00;
                               bestCnt <= 4'b0000;
-                              bestLatch <= 128'h0;
                               rcalib_tries <= 10'h0;
                               rclkpos <= 2'b00;
                               rclksel <= 3'b000;
@@ -12632,7 +9967,7 @@ module Ddr3ControllerCore (
                               state <= Ddr3State_WRITE;
                               cycle <= 7'h0;
                             end else begin
-                              if(when_Ddr3ControllerCore_l1466) begin
+                              if(when_Ddr3ControllerCore_l1423) begin
                                 bestCnt <= bestWCnt;
                                 wstep <= bestWstep;
                                 wserRstCnt <= 3'b101;
@@ -12732,7 +10067,7 @@ module Ddr3ControllerCore (
                       cycle <= 7'h0;
                     end else begin
                       if(io_req_valid) begin
-                        if(when_Ddr3ControllerCore_l1570) begin
+                        if(when_Ddr3ControllerCore_l1527) begin
                           nRAS_0 <= CMD_PreCharge[2];
                           nCAS_0 <= CMD_PreCharge[1];
                           nWE_0 <= CMD_PreCharge[0];
@@ -12744,7 +10079,7 @@ module Ddr3ControllerCore (
                           cycle <= 7'h01;
                           busy <= 1'b1;
                         end else begin
-                          if(when_Ddr3ControllerCore_l1579) begin
+                          if(when_Ddr3ControllerCore_l1536) begin
                             nRAS_0 <= CMD_BankActivate[2];
                             nCAS_0 <= CMD_BankActivate[1];
                             nWE_0 <= CMD_BankActivate[0];
@@ -12782,7 +10117,7 @@ module Ddr3ControllerCore (
               end
             end
             Ddr3State_PRECHARGE : begin
-              if(when_Ddr3ControllerCore_l1611) begin
+              if(when_Ddr3ControllerCore_l1568) begin
                 if(prechForReq) begin
                   prechForReq <= 1'b0;
                   nRAS_0 <= CMD_BankActivate[2];
@@ -12825,22 +10160,22 @@ module Ddr3ControllerCore (
               end
             end
             Ddr3State_READ : begin
-              if(when_Ddr3ControllerCore_l1657) begin
+              if(when_Ddr3ControllerCore_l1614) begin
                 nRAS_2 <= CMD_Read[2];
                 nCAS_2 <= CMD_Read[1];
                 nWE_2 <= CMD_Read[0];
                 BA_2 <= _zz_BA_2;
                 A_2 <= _zz_A_2[13:0];
               end
-              if(when_Ddr3ControllerCore_l1661) begin
+              if(when_Ddr3ControllerCore_l1618) begin
                 nRAS_2 <= CMD_Read[2];
                 nCAS_2 <= CMD_Read[1];
                 nWE_2 <= CMD_Read[0];
                 BA_2 <= _zz_BA_2;
                 A_2 <= _zz_A_2[13:0];
               end
-              if(when_Ddr3ControllerCore_l1666) begin
-                if(when_Ddr3ControllerCore_l1667) begin
+              if(when_Ddr3ControllerCore_l1623) begin
+                if(when_Ddr3ControllerCore_l1624) begin
                   rdHavePending <= 1'b1;
                   rdExtraCnt <= (rdExtraCnt + 6'h01);
                 end else begin
@@ -12852,21 +10187,21 @@ module Ddr3ControllerCore (
               end
               data_ready <= _zz_data_ready;
               rdRspLeft <= (_zz_rdRspLeft - _zz_rdRspLeft_3);
-              if(when_Ddr3ControllerCore_l1685) begin
+              if(when_Ddr3ControllerCore_l1642) begin
                 busy <= 1'b0;
                 state <= Ddr3State_IDLE;
               end
             end
             Ddr3State_WRITE : begin
               if(trainDone) begin
-                if(when_Ddr3ControllerCore_l1700) begin
+                if(when_Ddr3ControllerCore_l1657) begin
                   nRAS_2 <= CMD_Write[2];
                   nCAS_2 <= CMD_Write[1];
                   nWE_2 <= CMD_Write[0];
                   BA_2 <= _zz_BA_2_1;
                   A_2 <= _zz_A_2_6[13:0];
                 end
-                if(when_Ddr3ControllerCore_l1706) begin
+                if(when_Ddr3ControllerCore_l1663) begin
                   case(wrMode)
                     2'b00 : begin
                       dqs_out <= 8'h40;
@@ -12898,7 +10233,7 @@ module Ddr3ControllerCore (
                     end
                   endcase
                 end
-                if(when_Ddr3ControllerCore_l1741) begin
+                if(when_Ddr3ControllerCore_l1698) begin
                   case(wrMode)
                     2'b00 : begin
                       dqs_out <= 8'h55;
@@ -12982,7 +10317,7 @@ module Ddr3ControllerCore (
                     end
                   endcase
                 end
-                if(when_Ddr3ControllerCore_l1827) begin
+                if(when_Ddr3ControllerCore_l1784) begin
                   case(wrMode)
                     2'b00, 2'b01 : begin
                       dqs_out <= 8'h0;
@@ -13013,7 +10348,7 @@ module Ddr3ControllerCore (
                     end
                   endcase
                 end
-                if(when_Ddr3ControllerCore_l1859) begin
+                if(when_Ddr3ControllerCore_l1816) begin
                   trainDone <= 1'b0;
                   if(needPoison) begin
                     state <= Ddr3State_IDLE;
@@ -13024,17 +10359,17 @@ module Ddr3ControllerCore (
                   end
                 end
               end else begin
-                if(when_Ddr3ControllerCore_l1877) begin
+                if(when_Ddr3ControllerCore_l1834) begin
                   nRAS_2 <= CMD_Write[2];
                   nCAS_2 <= CMD_Write[1];
                   nWE_2 <= CMD_Write[0];
                   BA_2 <= _zz_BA_2_1;
                   A_2 <= _zz_A_2_8[13:0];
                 end
-                st1Valid <= when_Ddr3ControllerCore_l1877;
+                st1Valid <= when_Ddr3ControllerCore_l1834;
                 st2Valid <= st1Valid;
                 st3Valid <= st2Valid;
-                if(when_Ddr3ControllerCore_l1889) begin
+                if(when_Ddr3ControllerCore_l1846) begin
                   wrHavePending <= 1'b1;
                   wrExtraCnt <= (wrExtraCnt + 6'h01);
                 end else begin
@@ -13043,7 +10378,7 @@ module Ddr3ControllerCore (
                 end
                 case(wrMode)
                   2'b00 : begin
-                    if(when_Ddr3ControllerCore_l1900) begin
+                    if(when_Ddr3ControllerCore_l1857) begin
                       dqs_out <= 8'h40;
                       dqs_oen <= 4'b0011;
                       dq_oen <= 4'b0111;
@@ -13087,7 +10422,7 @@ module Ddr3ControllerCore (
                     end
                   end
                   2'b01 : begin
-                    if(when_Ddr3ControllerCore_l1930) begin
+                    if(when_Ddr3ControllerCore_l1887) begin
                       dqs_out <= 8'h40;
                       dqs_oen <= 4'b0011;
                       dq_oen <= 4'b0011;
@@ -13139,11 +10474,11 @@ module Ddr3ControllerCore (
                     end
                   end
                   2'b10 : begin
-                    if(when_Ddr3ControllerCore_l1966) begin
+                    if(when_Ddr3ControllerCore_l1923) begin
                       dqs_out <= 8'h0;
                       dqs_oen <= 4'b0111;
                     end else begin
-                      if(when_Ddr3ControllerCore_l1969) begin
+                      if(when_Ddr3ControllerCore_l1926) begin
                         dqs_out <= 8'h55;
                         dqs_oen <= 4'b0000;
                         dq_oen <= 4'b0000;
@@ -13164,7 +10499,7 @@ module Ddr3ControllerCore (
                         dq_out_7 <= st2Req_wdata[111 : 96];
                         dm_out[7] <= (! (|st2Req_wstrb[13 : 12]));
                       end else begin
-                        if(when_Ddr3ControllerCore_l1979) begin
+                        if(when_Ddr3ControllerCore_l1936) begin
                           dqs_out <= 8'h55;
                           dqs_oen <= 4'b0000;
                           dq_oen <= 4'b0000;
@@ -13199,7 +10534,7 @@ module Ddr3ControllerCore (
                     end
                   end
                   default : begin
-                    if(when_Ddr3ControllerCore_l2000) begin
+                    if(when_Ddr3ControllerCore_l1957) begin
                       dqs_out <= 8'h54;
                       dqs_oen <= 4'b0000;
                       dq_oen <= 4'b0001;
@@ -13216,7 +10551,7 @@ module Ddr3ControllerCore (
                       dq_out_7 <= st2Req_wdata[79 : 64];
                       dm_out[7] <= (! (|st2Req_wstrb[9 : 8]));
                     end else begin
-                      if(when_Ddr3ControllerCore_l2010) begin
+                      if(when_Ddr3ControllerCore_l1967) begin
                         dqs_out <= 8'h55;
                         dqs_oen <= 4'b0000;
                         dq_oen <= 4'b0000;
@@ -13254,21 +10589,21 @@ module Ddr3ControllerCore (
                     end
                   end
                 endcase
-                if(when_Ddr3ControllerCore_l1877) begin
+                if(when_Ddr3ControllerCore_l1834) begin
                   wrCooldown <= ((2'b10 <= wrMode) ? 4'b0101 : 4'b0100);
                 end else begin
-                  if(when_Ddr3ControllerCore_l2038) begin
+                  if(when_Ddr3ControllerCore_l1995) begin
                     wrCooldown <= (wrCooldown - 4'b0001);
                   end
                 end
-                if(when_Ddr3ControllerCore_l2042) begin
+                if(when_Ddr3ControllerCore_l1999) begin
                   busy <= 1'b0;
                   state <= Ddr3State_IDLE;
                 end
               end
             end
             default : begin
-              if(when_Ddr3ControllerCore_l2051) begin
+              if(when_Ddr3ControllerCore_l2008) begin
                 busy <= 1'b0;
                 state <= Ddr3State_IDLE;
               end
@@ -13310,11 +10645,6 @@ module Ddr3ControllerCore (
         cycle <= 7'h0;
         wlevel_cnt <= 4'b0000;
         wlevel_tries <= 9'h0;
-        wlMapR <= 256'h0;
-        wlFirstR <= 8'h0;
-        wlLastR <= 8'h0;
-        wlSeenR <= 1'b0;
-        wlMatchNR <= 8'h0;
         wlVoteN <= 3'b000;
         wlVoteCnt <= 3'b000;
         wlVoteCnt0 <= 3'b000;
@@ -13359,7 +10689,6 @@ module Ddr3ControllerCore (
         best0Sel <= 3'b000;
         best0Rot <= 3'b000;
         bestMode <= 2'b00;
-        bestLatch <= 128'h0;
         bestWCnt <= 4'b0000;
         bestWPos <= 2'b00;
         bestWSel <= 3'b000;
@@ -13375,9 +10704,6 @@ module Ddr3ControllerCore (
         rotScoresReg_7 <= 4'b0000;
         sweepScoreReg <= 4'b0000;
         sweepRotReg <= 3'b000;
-        wScores_0 <= 4'b0000;
-        wScores_1 <= 4'b0000;
-        wScores_2 <= 4'b0000;
         training <= 1'b1;
         trainDone <= 1'b0;
         needPoison <= 1'b0;
@@ -13414,7 +10740,7 @@ module Ddr3ControllerCore (
       dqPrevVec_5 <= io_phy_dq_in_5;
       dqPrevVec_6 <= io_phy_dq_in_6;
       dqPrevVec_7 <= io_phy_dq_in_7;
-      if(when_Ddr3ControllerCore_l2226) begin
+      if(when_Ddr3ControllerCore_l2176) begin
         init_done_latched <= 1'b1;
       end
     end
@@ -13422,7 +10748,7 @@ module Ddr3ControllerCore (
 
   always @(posedge io_pclk) begin
     if(io_phy_rst_lock_n) begin
-      if(when_Ddr3ControllerCore_l645) begin
+      if(when_Ddr3ControllerCore_l627) begin
         case(state)
           Ddr3State_RST_WAIT : begin
           end
@@ -13437,13 +10763,13 @@ module Ddr3ControllerCore (
           Ddr3State_READ_CALIB : begin
             case(cycle)
               7'h0e : begin
-                if(!when_Ddr3ControllerCore_l949) begin
+                if(!when_Ddr3ControllerCore_l911) begin
                   if(dllSweepOn) begin
-                    if(!when_Ddr3ControllerCore_l987) begin
-                      if(when_Ddr3ControllerCore_l1071) begin
-                        if(!when_Ddr3ControllerCore_l1087) begin
-                          if(!when_Ddr3ControllerCore_l1112) begin
-                            if(when_Ddr3ControllerCore_l1200) begin
+                    if(!when_Ddr3ControllerCore_l949) begin
+                      if(when_Ddr3ControllerCore_l1033) begin
+                        if(!when_Ddr3ControllerCore_l1048) begin
+                          if(!when_Ddr3ControllerCore_l1073) begin
+                            if(when_Ddr3ControllerCore_l1161) begin
                               reqReg_write <= 1'b1;
                               reqReg_addr <= 27'h0;
                               reqReg_wdata <= trainPat;
@@ -13454,16 +10780,16 @@ module Ddr3ControllerCore (
                       end
                     end
                   end else begin
-                    if(when_Ddr3ControllerCore_l1237) begin
-                      if(when_Ddr3ControllerCore_l1244) begin
-                        if(when_Ddr3ControllerCore_l1252) begin
-                          if(when_Ddr3ControllerCore_l1254) begin
+                    if(when_Ddr3ControllerCore_l1197) begin
+                      if(when_Ddr3ControllerCore_l1204) begin
+                        if(when_Ddr3ControllerCore_l1212) begin
+                          if(when_Ddr3ControllerCore_l1214) begin
                             reqReg_write <= 1'b1;
                             reqReg_addr <= 27'h0;
                             reqReg_wdata <= trainPat;
                             reqReg_wstrb <= 16'hffff;
                           end else begin
-                            if(when_Ddr3ControllerCore_l1267) begin
+                            if(when_Ddr3ControllerCore_l1227) begin
                               reqReg_write <= 1'b1;
                               reqReg_addr <= 27'h0;
                               reqReg_wdata <= trainPat;
@@ -13478,8 +10804,8 @@ module Ddr3ControllerCore (
                         end
                         if(!scanOn) begin
                           if(shiftCalDone) begin
-                            if(!when_Ddr3ControllerCore_l1350) begin
-                              if(when_Ddr3ControllerCore_l1387) begin
+                            if(!when_Ddr3ControllerCore_l1309) begin
+                              if(when_Ddr3ControllerCore_l1346) begin
                                 reqReg_write <= 1'b1;
                                 reqReg_addr <= 27'h0;
                                 reqReg_wdata <= trainPat;
@@ -13489,8 +10815,8 @@ module Ddr3ControllerCore (
                           end
                         end
                       end else begin
-                        if(when_Ddr3ControllerCore_l1432) begin
-                          if(when_Ddr3ControllerCore_l1435) begin
+                        if(when_Ddr3ControllerCore_l1391) begin
+                          if(when_Ddr3ControllerCore_l1393) begin
                             reqReg_write <= 1'b1;
                             reqReg_addr <= 27'h0;
                             reqReg_wdata <= trainPat;
@@ -13540,8 +10866,8 @@ module Ddr3ControllerCore (
           Ddr3State_PRECHARGE : begin
           end
           Ddr3State_READ : begin
-            if(when_Ddr3ControllerCore_l1666) begin
-              if(when_Ddr3ControllerCore_l1667) begin
+            if(when_Ddr3ControllerCore_l1623) begin
+              if(when_Ddr3ControllerCore_l1624) begin
                 reqReg_write <= io_req_payload_write;
                 reqReg_addr <= io_req_payload_addr;
                 reqReg_wdata <= io_req_payload_wdata;
@@ -13551,7 +10877,7 @@ module Ddr3ControllerCore (
           end
           Ddr3State_WRITE : begin
             if(!trainDone) begin
-              if(when_Ddr3ControllerCore_l1877) begin
+              if(when_Ddr3ControllerCore_l1834) begin
                 st1Req_write <= reqReg_write;
                 st1Req_addr <= reqReg_addr;
                 st1Req_wdata <= reqReg_wdata;
@@ -13565,7 +10891,7 @@ module Ddr3ControllerCore (
               st3Req_addr <= st2Req_addr;
               st3Req_wdata <= st2Req_wdata;
               st3Req_wstrb <= st2Req_wstrb;
-              if(when_Ddr3ControllerCore_l1889) begin
+              if(when_Ddr3ControllerCore_l1846) begin
                 reqReg_write <= io_req_payload_write;
                 reqReg_addr <= io_req_payload_addr;
                 reqReg_wdata <= io_req_payload_wdata;

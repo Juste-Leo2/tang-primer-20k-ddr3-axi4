@@ -33,13 +33,6 @@ class Ddr3Axi4(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Config())
     val best_rot         = out UInt(3 bits)
     val best_score       = out UInt(4 bits)
     val dbg_state        = out Bits(4 bits)
-    val wlMap            = out Bits(256 bits)
-    val wlFirst          = out Bits(8 bits)
-    val wlLast           = out Bits(8 bits)
-    val wlMatchN         = out Bits(8 bits)
-    val wr_adv           = out Bits(2 bits)
-    val w_scores         = out Bits(12 bits)
-    val train_latch      = out Bits(128 bits)
 
     // Physical DDR3 memory pads (tang20k.cst constraints)
     val pad     = master(Ddr3Pins(config.rowWidth, config.bankWidth))
@@ -82,12 +75,5 @@ class Ddr3Axi4(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Config())
     io.best_rot         := ctrl.io.best_rot
     io.best_score       := ctrl.io.best_score
     io.dbg_state        := ctrl.io.dbg_state
-    io.wlMap            := ctrl.io.wlMap
-    io.wlFirst          := ctrl.io.wlFirst
-    io.wlLast           := ctrl.io.wlLast
-    io.wlMatchN         := ctrl.io.wlMatchN
-    io.wr_adv           := ctrl.io.wr_adv
-    io.w_scores         := ctrl.io.w_scores
-    io.train_latch      := ctrl.io.train_latch
   }
 }

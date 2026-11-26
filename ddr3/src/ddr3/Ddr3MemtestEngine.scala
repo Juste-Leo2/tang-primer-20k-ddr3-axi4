@@ -35,13 +35,6 @@ class Ddr3MemtestEngine(
     val best_rot         = in UInt(3 bits)
     val best_score       = in UInt(4 bits)
     val dbg_state        = in Bits(4 bits)
-    val wlMap            = in Bits(256 bits)
-    val wlFirst          = in Bits(8 bits)
-    val wlLast           = in Bits(8 bits)
-    val wlMatchN         = in Bits(8 bits)
-    val wr_adv           = in Bits(2 bits) default(0)
-    val w_scores         = in Bits(12 bits) default(0)
-    val train_latch      = in Bits(128 bits) default(0)
 
     // User outputs
     val uart_tx          = out Bool()
@@ -62,14 +55,20 @@ class Ddr3MemtestEngine(
   val hexAsciiRom = Vec("0123456789ABCDEF".map(c => B(c.toInt, 8 bits)))
   def nibbleToAscii(n: Bits): Bits = hexAsciiRom(n.resize(4).asUInt)
 
-  // UART print queue / character generator (2-stage to keep printChar/CE trivial)
+  // UART print queue / character generator (2-stage to keep printChar/CE and hex decode short)
   val nextPrintValid = Bool()
   val nextPrintChar  = Bits(8 bits)
+  val nextUseNib     = Bool()
+  val nextPrintNib   = Bits(4 bits)
   nextPrintValid := False
   nextPrintChar  := 0
+  nextUseNib     := False
+  nextPrintNib   := 0
 
-  val stageValid = RegNext(nextPrintValid) init(False)
-  val stageChar  = RegNext(nextPrintChar) init(0)
+  val stageValid  = RegNext(nextPrintValid) init(False)
+  val stageChar   = RegNext(nextPrintChar) init(0)
+  val stageUseNib = RegNext(nextUseNib) init(False)
+  val stageNib    = RegNext(nextPrintNib) init(0)
 
   val printValid = RegInit(False)
   val printChar  = Reg(Bits(8 bits)) init(0)
@@ -81,7 +80,7 @@ class Ddr3MemtestEngine(
     printValid := False
   }
   when(stageValid) {
-    printChar  := stageChar
+    printChar  := stageUseNib ? nibbleToAscii(stageNib) | stageChar
     printValid := True
   }
   val canPrint = !printValid && !stageValid
@@ -162,11 +161,6 @@ class Ddr3MemtestEngine(
   }
 
   // --- 3. Main Memtest FSM ---
-  // WL match-map as 64 printable nibbles (MSB first), latched statically.
-  val wlMapNib = Vec(Bits(4 bits), 64)
-  for (i <- 0 until 64) wlMapNib(i) := io.wlMap(i * 4 + 3 downto i * 4)
-  val latchNib = Vec(Bits(4 bits), 32)
-  for (i <- 0 until 32) latchNib(i) := io.train_latch(i * 4 + 3 downto i * 4)
   val passPrefix = Vec(
     B(0x5B, 8 bits), B(0x50, 8 bits), B(0x41, 8 bits), B(0x53, 8 bits),
     B(0x53, 8 bits), B(0x5D, 8 bits), B(0x20, 8 bits)
@@ -182,8 +176,6 @@ class Ddr3MemtestEngine(
     val sWaitCalib: State     = new State
     val sPrintCalib: State    = new State
     val sPrintBanner: State   = new State
-    val sPrintWlmap: State    = new State
-    val sPrintLatch: State    = new State
     val sSingleWriteAW: State = new State
     val sSingleWriteW0: State = new State
     val sSingleWriteW1: State = new State
@@ -325,82 +317,7 @@ class Ddr3MemtestEngine(
           is(33) { nextPrintChar := 0x0A; nextPrintValid := True; msgIndex := msgIndex + 1 } // \n
           default {
             msgIndex := 0
-            goto(sPrintWlmap)
-          }
-        }
-      }
-    }
-
-    // WL match-map dump for HW debug: "\r\n[WLMAP f=HH l=HH n=HH
-    // m=<64 hex>]\r\n" (map bit k = echo match at wstep k, MSB first).
-    // Printed once after the banner, before the memtest starts.
-    sPrintWlmap.whenIsActive {
-      when(canPrint) {
-        switch(msgIndex) {
-          is(0)  { nextPrintChar := 0x0D; nextPrintValid := True; msgIndex := msgIndex + 1 } // \r
-          is(1)  { nextPrintChar := 0x0A; nextPrintValid := True; msgIndex := msgIndex + 1 } // \n
-          is(2)  { nextPrintChar := 0x5B; nextPrintValid := True; msgIndex := msgIndex + 1 } // [
-          is(3)  { nextPrintChar := 0x57; nextPrintValid := True; msgIndex := msgIndex + 1 } // W
-          is(4)  { nextPrintChar := 0x4C; nextPrintValid := True; msgIndex := msgIndex + 1 } // L
-          is(5)  { nextPrintChar := 0x4D; nextPrintValid := True; msgIndex := msgIndex + 1 } // M
-          is(6)  { nextPrintChar := 0x41; nextPrintValid := True; msgIndex := msgIndex + 1 } // A
-          is(7)  { nextPrintChar := 0x50; nextPrintValid := True; msgIndex := msgIndex + 1 } // P
-          is(8)  { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(9)  { nextPrintChar := 0x66; nextPrintValid := True; msgIndex := msgIndex + 1 } // f
-          is(10) { nextPrintChar := 0x3D; nextPrintValid := True; msgIndex := msgIndex + 1 } // =
-          is(11) { nextPrintChar := nibbleToAscii(io.wlFirst(7 downto 4)); nextPrintValid := True; msgIndex := msgIndex + 1 }
-          is(12) { nextPrintChar := nibbleToAscii(io.wlFirst(3 downto 0)); nextPrintValid := True; msgIndex := msgIndex + 1 }
-          is(13) { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(14) { nextPrintChar := 0x6C; nextPrintValid := True; msgIndex := msgIndex + 1 } // l
-          is(15) { nextPrintChar := 0x3D; nextPrintValid := True; msgIndex := msgIndex + 1 } // =
-          is(16) { nextPrintChar := nibbleToAscii(io.wlLast(7 downto 4)); nextPrintValid := True; msgIndex := msgIndex + 1 }
-          is(17) { nextPrintChar := nibbleToAscii(io.wlLast(3 downto 0)); nextPrintValid := True; msgIndex := msgIndex + 1 }
-          is(18) { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(19) { nextPrintChar := 0x6E; nextPrintValid := True; msgIndex := msgIndex + 1 } // n
-          is(20) { nextPrintChar := 0x3D; nextPrintValid := True; msgIndex := msgIndex + 1 } // =
-          is(21) { nextPrintChar := nibbleToAscii(io.wlMatchN(7 downto 4)); nextPrintValid := True; msgIndex := msgIndex + 1 }
-          is(22) { nextPrintChar := nibbleToAscii(io.wlMatchN(3 downto 0)); nextPrintValid := True; msgIndex := msgIndex + 1 }
-          is(23) { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(24) { nextPrintChar := 0x6D; nextPrintValid := True; msgIndex := msgIndex + 1 } // m
-          is(25) { nextPrintChar := 0x3D; nextPrintValid := True; msgIndex := msgIndex + 1 } // =
-          is(90) { nextPrintChar := 0x0D; nextPrintValid := True; msgIndex := msgIndex + 1 } // \r
-          is(91) { nextPrintChar := 0x0A; nextPrintValid := True; msgIndex := 0; goto(sPrintLatch) } // \n
-          default {
-            // Map nibbles MSB first: msgIndex 26 -> bits 255..252, ... 89 -> bits 3..0.
-            nextPrintChar := nibbleToAscii(wlMapNib(U(63, 6 bits) - (msgIndex - 26).resize(6))); nextPrintValid := True; msgIndex := msgIndex + 1
-          }
-        }
-      }
-    }
-
-    // Print "[LATCH] A=<0..3> S=<w0><w1><w2> L=<32 hex>\r\n"
-    sPrintLatch.whenIsActive {
-      when(canPrint) {
-        switch(msgIndex) {
-          is(0)  { nextPrintChar := 0x5B; nextPrintValid := True; msgIndex := msgIndex + 1 } // [
-          is(1)  { nextPrintChar := 0x4C; nextPrintValid := True; msgIndex := msgIndex + 1 } // L
-          is(2)  { nextPrintChar := 0x41; nextPrintValid := True; msgIndex := msgIndex + 1 } // A
-          is(3)  { nextPrintChar := 0x54; nextPrintValid := True; msgIndex := msgIndex + 1 } // T
-          is(4)  { nextPrintChar := 0x43; nextPrintValid := True; msgIndex := msgIndex + 1 } // C
-          is(5)  { nextPrintChar := 0x48; nextPrintValid := True; msgIndex := msgIndex + 1 } // H
-          is(6)  { nextPrintChar := 0x5D; nextPrintValid := True; msgIndex := msgIndex + 1 } // ]
-          is(7)  { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(8)  { nextPrintChar := 0x41; nextPrintValid := True; msgIndex := msgIndex + 1 } // A
-          is(9)  { nextPrintChar := 0x3D; nextPrintValid := True; msgIndex := msgIndex + 1 } // =
-          is(10) { nextPrintChar := nibbleToAscii(io.wr_adv.resized); nextPrintValid := True; msgIndex := msgIndex + 1 }
-          is(11) { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(12) { nextPrintChar := 0x53; nextPrintValid := True; msgIndex := msgIndex + 1 } // S
-          is(13) { nextPrintChar := 0x3D; nextPrintValid := True; msgIndex := msgIndex + 1 } // =
-          is(14) { nextPrintChar := nibbleToAscii(io.w_scores(3 downto 0)); nextPrintValid := True; msgIndex := msgIndex + 1 }
-          is(15) { nextPrintChar := nibbleToAscii(io.w_scores(7 downto 4)); nextPrintValid := True; msgIndex := msgIndex + 1 }
-          is(16) { nextPrintChar := nibbleToAscii(io.w_scores(11 downto 8)); nextPrintValid := True; msgIndex := msgIndex + 1 }
-          is(17) { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(18) { nextPrintChar := 0x4C; nextPrintValid := True; msgIndex := msgIndex + 1 } // L
-          is(19) { nextPrintChar := 0x3D; nextPrintValid := True; msgIndex := msgIndex + 1 } // =
-          is(52) { nextPrintChar := 0x0D; nextPrintValid := True; msgIndex := msgIndex + 1 } // \r
-          is(53) { nextPrintChar := 0x0A; nextPrintValid := True; msgIndex := 0; goto(sSingleWriteAW) } // \n
-          default {
-            nextPrintChar := nibbleToAscii(latchNib(U(31, 5 bits) - (msgIndex - 20).resize(5))); nextPrintValid := True; msgIndex := msgIndex + 1
+            goto(sSingleWriteAW)
           }
         }
       }
@@ -572,20 +489,35 @@ class Ddr3MemtestEngine(
     // Report Pass: "[PASS] " + passCount + " W=" + wrCycleCnt + " R=" + rdCycleCnt + "\r\n"
     sReportPass.whenIsActive {
       passReg := True
-      val passChars = Vec(
+      val passLits = Vec(
         passPrefix ++
-        (0 until 4).map(i => nibbleToAscii(passCount((3 - i) * 4 + 3 downto (3 - i) * 4).asBits)) ++
+        Seq.fill(4)(B(0, 8 bits)) ++
         Seq(B(0x20, 8 bits), B(0x57, 8 bits), B(0x3D, 8 bits)) ++
-        (0 until 8).map(i => nibbleToAscii(wrCycleCnt((7 - i) * 4 + 3 downto (7 - i) * 4).asBits)) ++
+        Seq.fill(8)(B(0, 8 bits)) ++
         Seq(B(0x20, 8 bits), B(0x52, 8 bits), B(0x3D, 8 bits)) ++
-        (0 until 8).map(i => nibbleToAscii(rdCycleCnt((7 - i) * 4 + 3 downto (7 - i) * 4).asBits)) ++
+        Seq.fill(8)(B(0, 8 bits)) ++
         Seq(B(0x0D, 8 bits), B(0x0A, 8 bits))
       )
+      val passNibs = Vec(
+        Seq.fill(7)(B(0, 4 bits)) ++
+        (0 until 4).map(i => passCount((3 - i) * 4 + 3 downto (3 - i) * 4).asBits) ++
+        Seq.fill(3)(B(0, 4 bits)) ++
+        (0 until 8).map(i => wrCycleCnt((7 - i) * 4 + 3 downto (7 - i) * 4).asBits) ++
+        Seq.fill(3)(B(0, 4 bits)) ++
+        (0 until 8).map(i => rdCycleCnt((7 - i) * 4 + 3 downto (7 - i) * 4).asBits) ++
+        Seq.fill(2)(B(0, 4 bits))
+      )
+      val passIsNib = Vec(
+        (0 until 35).map(i => Bool((i >= 7 && i < 11) || (i >= 14 && i < 22) || (i >= 25 && i < 33)))
+      )
+      val idx = msgIndex.resize(6)
       when(canPrint) {
         when(msgIndex < 35) {
-          nextPrintChar  := passChars(msgIndex.resize(6))
+          nextPrintChar  := passLits(idx)
+          nextPrintNib   := passNibs(idx)
+          nextUseNib     := passIsNib(idx)
           nextPrintValid := True
-          msgIndex   := msgIndex + 1
+          msgIndex       := msgIndex + 1
         } otherwise {
           passCount    := passCount + 1
           delayCounter := 0
@@ -596,22 +528,41 @@ class Ddr3MemtestEngine(
 
     // Report Fail: "[FAIL] A=" + errAddr + " E=" + errExpected + " G=" + errActual + " H=" + errActual1 + "\r\n"
     sReportFail.whenIsActive {
-      val failChars = Vec(
+      val failLits = Vec(
         failPrefix ++
-        (0 until 8).map(i => nibbleToAscii(errAddr((7 - i) * 4 + 3 downto (7 - i) * 4).asBits)) ++
+        Seq.fill(8)(B(0, 8 bits)) ++
         Seq(B(0x20, 8 bits), B(0x45, 8 bits), B(0x3D, 8 bits)) ++
-        (0 until 16).map(i => nibbleToAscii(errExpected((15 - i) * 4 + 3 downto (15 - i) * 4))) ++
+        Seq.fill(16)(B(0, 8 bits)) ++
         Seq(B(0x20, 8 bits), B(0x47, 8 bits), B(0x3D, 8 bits)) ++
-        (0 until 16).map(i => nibbleToAscii(errActual((15 - i) * 4 + 3 downto (15 - i) * 4))) ++
+        Seq.fill(16)(B(0, 8 bits)) ++
         Seq(B(0x20, 8 bits), B(0x48, 8 bits), B(0x3D, 8 bits)) ++
-        (0 until 16).map(i => nibbleToAscii(errActual1((15 - i) * 4 + 3 downto (15 - i) * 4))) ++
+        Seq.fill(16)(B(0, 8 bits)) ++
         Seq(B(0x0D, 8 bits), B(0x0A, 8 bits))
       )
+      val failNibs = Vec(
+        Seq.fill(9)(B(0, 4 bits)) ++
+        (0 until 8).map(i => errAddr((7 - i) * 4 + 3 downto (7 - i) * 4).asBits) ++
+        Seq.fill(3)(B(0, 4 bits)) ++
+        (0 until 16).map(i => errExpected((15 - i) * 4 + 3 downto (15 - i) * 4)) ++
+        Seq.fill(3)(B(0, 4 bits)) ++
+        (0 until 16).map(i => errActual((15 - i) * 4 + 3 downto (15 - i) * 4)) ++
+        Seq.fill(3)(B(0, 4 bits)) ++
+        (0 until 16).map(i => errActual1((15 - i) * 4 + 3 downto (15 - i) * 4)) ++
+        Seq.fill(2)(B(0, 4 bits))
+      )
+      val failIsNib = Vec(
+        (0 until 76).map(i => Bool(
+          (i >= 9 && i < 17) || (i >= 20 && i < 36) || (i >= 39 && i < 55) || (i >= 58 && i < 74)
+        ))
+      )
+      val idx = msgIndex.resize(7)
       when(canPrint) {
         when(msgIndex < 76) {
-          nextPrintChar  := failChars(msgIndex.resize(7))
+          nextPrintChar  := failLits(idx)
+          nextPrintNib   := failNibs(idx)
+          nextUseNib     := failIsNib(idx)
           nextPrintValid := True
-          msgIndex   := msgIndex + 1
+          msgIndex       := msgIndex + 1
         }
       }
     }
