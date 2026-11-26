@@ -24,8 +24,10 @@ object Ddr3Gen {
     val axi128Config = Axi4Config(addressWidth = 32, dataWidth = 128, idWidth = 4)
     spinalConfig.generateVerilog(new Ddr3Axi4(axi128Config, Ddr3Config(rowWidth = 14, bankWidth = 3)))
 
-    println("Generating Ddr3TesterTop (Hardware bitstream top for Tang Primer 20K)...")
-    spinalConfig.generateVerilog(new Ddr3TesterTop(axi64Config, Ddr3Config(rowWidth = 14, bankWidth = 3)))
+    val use128 = args.contains("--128") || sys.env.get("DDR3_AXI_WIDTH").contains("128")
+    val testerAxiConfig = if (use128) axi128Config else axi64Config
+    println(s"Generating Ddr3TesterTop (${testerAxiConfig.dataWidth}-bit AXI, Hardware bitstream top for Tang Primer 20K)...")
+    spinalConfig.generateVerilog(new Ddr3TesterTop(testerAxiConfig, Ddr3Config(rowWidth = 14, bankWidth = 3)))
 
     println("Generating Ddr3ControllerSim (iverilog sim vs Micron model, short timeouts)...")
     spinalConfig.generateVerilog(new Ddr3ControllerSim)

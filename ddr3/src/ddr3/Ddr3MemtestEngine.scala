@@ -106,11 +106,14 @@ class Ddr3MemtestEngine(
   }
   io.heartbeat := hbReg
 
+  val is128Bit = axiConfig.dataWidth == 128
+  require(axiConfig.dataWidth == 64 || axiConfig.dataWidth == 128, s"Unsupported AXI dataWidth: ${axiConfig.dataWidth}")
+
   // Default AXI Master outputs
   io.axi.aw.valid := False
   io.axi.aw.addr  := 0
-  io.axi.aw.len   := 1 // 2 beats of 64-bit = 128-bit DDR3 burst
-  io.axi.aw.size  := 3 // 8 bytes
+  io.axi.aw.len   := (if (is128Bit) 0 else 1) // 1 beat of 128-bit or 2 beats of 64-bit = 128-bit DDR3 burst
+  io.axi.aw.size  := (if (is128Bit) 4 else 3) // 16 bytes vs 8 bytes
   io.axi.aw.burst := 1 // INCR
   io.axi.aw.id    := 0
   // Tie off unused sidebands (was undriven -> 30+ synth warnings, float risk)
@@ -120,17 +123,18 @@ class Ddr3MemtestEngine(
   io.axi.aw.qos    := 0
   io.axi.aw.prot   := 0
 
+  val fullStrb    = B(axiConfig.bytePerWord bits, default -> True)
   io.axi.w.valid  := False
   io.axi.w.data   := 0
-  io.axi.w.strb   := 0xFF
+  io.axi.w.strb   := fullStrb
   io.axi.w.last   := False
 
   io.axi.b.ready  := True
 
   io.axi.ar.valid := False
   io.axi.ar.addr  := 0
-  io.axi.ar.len   := 1 // 2 beats
-  io.axi.ar.size  := 3 // 8 bytes
+  io.axi.ar.len   := (if (is128Bit) 0 else 1) // 1 or 2 beats
+  io.axi.ar.size  := (if (is128Bit) 4 else 3) // 16 bytes vs 8 bytes
   io.axi.ar.burst := 1 // INCR
   io.axi.ar.id    := 0
   io.axi.ar.region := 0
@@ -143,7 +147,7 @@ class Ddr3MemtestEngine(
 
   // Address and test pattern generators
   val axiBurstBlocks = if (testBursts >= 64) 64 else testBursts
-  val beatsPerBurst  = axiBurstBlocks * 2 // 64-bit AXI beats (16 bytes = 2 beats)
+  val beatsPerBurst  = if (is128Bit) axiBurstBlocks else axiBurstBlocks * 2
   require(testBursts >= 1 && (testBursts % axiBurstBlocks) == 0, s"testBursts ($testBursts) must be a multiple of axiBurstBlocks ($axiBurstBlocks)")
 
   val burstIndex = Reg(UInt(log2Up(testBursts + 1) bits)) init(0)
@@ -151,7 +155,7 @@ class Ddr3MemtestEngine(
   val wrCycleCnt = Reg(UInt(32 bits)) init(0)
   val rdCycleCnt = Reg(UInt(32 bits)) init(0)
   val currentByteAddr = (burstIndex << 4).resize(32) // 16 bytes per block
-  val beatBlockAddr   = currentByteAddr + ((beatIdx >> 1) << 4).resize(32)
+  val beatBlockAddr   = currentByteAddr + ((if (is128Bit) beatIdx else (beatIdx >> 1)) << 4).resize(32)
 
   def makePattern0(addr: UInt): Bits = {
     (addr.asBits ^ B(0x5AA55AA5, 32 bits)) ## (addr + 1).asBits
@@ -334,21 +338,31 @@ class Ddr3MemtestEngine(
 
     sSingleWriteW0.whenIsActive {
       io.axi.w.valid := True
-      io.axi.w.data  := B"64'h0123456789ABCDEF"
-      io.axi.w.strb  := 0xFF
-      io.axi.w.last  := False
-      when(io.axi.w.ready) {
-        goto(sSingleWriteW1)
+      io.axi.w.strb  := fullStrb
+      if (is128Bit) {
+        io.axi.w.data := (B"64'hFEDCBA9876543210" ## B"64'h0123456789ABCDEF")
+        io.axi.w.last := True
+        when(io.axi.w.ready) {
+          goto(sSingleWriteB)
+        }
+      } else {
+        io.axi.w.data := B"64'h0123456789ABCDEF"
+        io.axi.w.last := False
+        when(io.axi.w.ready) {
+          goto(sSingleWriteW1)
+        }
       }
     }
 
-    sSingleWriteW1.whenIsActive {
-      io.axi.w.valid := True
-      io.axi.w.data  := B"64'hFEDCBA9876543210"
-      io.axi.w.strb  := 0xFF
-      io.axi.w.last  := True
-      when(io.axi.w.ready) {
-        goto(sSingleWriteB)
+    if (!is128Bit) {
+      sSingleWriteW1.whenIsActive {
+        io.axi.w.valid := True
+        io.axi.w.data  := B"64'hFEDCBA9876543210"
+        io.axi.w.strb  := fullStrb
+        io.axi.w.last  := True
+        when(io.axi.w.ready) {
+          goto(sSingleWriteB)
+        }
       }
     }
 
@@ -369,36 +383,56 @@ class Ddr3MemtestEngine(
     sSingleReadR0.whenIsActive {
       io.axi.r.ready := True
       when(io.axi.r.valid) {
-        when(!errorReg && (io.axi.r.data =/= B"64'h0123456789ABCDEF")) {
-          errorReg    := True
-          errAddr     := 0
-          errExpected := B"64'h0123456789ABCDEF"
-          errActual   := io.axi.r.data
+        if (is128Bit) {
+          val exp128 = B"64'hFEDCBA9876543210" ## B"64'h0123456789ABCDEF"
+          when(io.axi.r.data =/= exp128) {
+            errorReg    := True
+            errAddr     := 0
+            errExpected := B"64'h0123456789ABCDEF"
+            errActual   := io.axi.r.data(63 downto 0)
+            errActual1  := io.axi.r.data(127 downto 64)
+            msgIndex    := 0
+            goto(sReportFail)
+          } otherwise {
+            burstIndex := 0
+            wrCycleCnt := 0
+            rdCycleCnt := 0
+            goto(sBulkWriteAW)
+          }
+        } else {
+          when(!errorReg && (io.axi.r.data =/= B"64'h0123456789ABCDEF")) {
+            errorReg    := True
+            errAddr     := 0
+            errExpected := B"64'h0123456789ABCDEF"
+            errActual   := io.axi.r.data
+          }
+          goto(sSingleReadR1)
         }
-        goto(sSingleReadR1)
       }
     }
 
-    sSingleReadR1.whenIsActive {
-      io.axi.r.ready := True
-      when(io.axi.r.valid) {
-        when(errorReg) {
-          errActual1 := io.axi.r.data // beat0 already failed: still record beat1 for debug
-        }
-        when(!errorReg && (io.axi.r.data =/= B"64'hFEDCBA9876543210")) {
-          errorReg    := True
-          errAddr     := 8
-          errExpected := B"64'hFEDCBA9876543210"
-          errActual   := io.axi.r.data
-        }
-        when(errorReg || (io.axi.r.data =/= B"64'hFEDCBA9876543210")) {
-          msgIndex := 0
-          goto(sReportFail)
-        } otherwise {
-          burstIndex := 0
-          wrCycleCnt := 0
-          rdCycleCnt := 0
-          goto(sBulkWriteAW)
+    if (!is128Bit) {
+      sSingleReadR1.whenIsActive {
+        io.axi.r.ready := True
+        when(io.axi.r.valid) {
+          when(errorReg) {
+            errActual1 := io.axi.r.data // beat0 already failed: still record beat1 for debug
+          }
+          when(!errorReg && (io.axi.r.data =/= B"64'hFEDCBA9876543210")) {
+            errorReg    := True
+            errAddr     := 8
+            errExpected := B"64'hFEDCBA9876543210"
+            errActual   := io.axi.r.data
+          }
+          when(errorReg || (io.axi.r.data =/= B"64'hFEDCBA9876543210")) {
+            msgIndex := 0
+            goto(sReportFail)
+          } otherwise {
+            burstIndex := 0
+            wrCycleCnt := 0
+            rdCycleCnt := 0
+            goto(sBulkWriteAW)
+          }
         }
       }
     }
@@ -418,8 +452,8 @@ class Ddr3MemtestEngine(
     sBulkWriteW.whenIsActive {
       wrCycleCnt     := wrCycleCnt + 1
       io.axi.w.valid := True
-      io.axi.w.data  := beatIdx(0) ? makePattern1(beatBlockAddr) | makePattern0(beatBlockAddr)
-      io.axi.w.strb  := 0xFF
+      io.axi.w.data  := (if (is128Bit) (makePattern1(beatBlockAddr) ## makePattern0(beatBlockAddr)) else (beatIdx(0) ? makePattern1(beatBlockAddr) | makePattern0(beatBlockAddr)))
+      io.axi.w.strb  := fullStrb
       io.axi.w.last  := (beatIdx === beatsPerBurst - 1)
       when(io.axi.w.ready) {
         when(beatIdx === beatsPerBurst - 1) {
@@ -459,13 +493,20 @@ class Ddr3MemtestEngine(
       rdCycleCnt     := rdCycleCnt + 1
       io.axi.r.ready := True
       when(io.axi.r.valid) {
-        val exp = beatIdx(0) ? makePattern1(beatBlockAddr) | makePattern0(beatBlockAddr)
+        val exp = if (is128Bit) (makePattern1(beatBlockAddr) ## makePattern0(beatBlockAddr)) else (beatIdx(0) ? makePattern1(beatBlockAddr) | makePattern0(beatBlockAddr))
         val mismatch = (io.axi.r.data =/= exp)
         when(!errorReg && mismatch) {
           errorReg    := True
-          errAddr     := beatBlockAddr + (beatIdx(0) ? U(8, 32 bits) | U(0, 32 bits))
-          errExpected := exp
-          errActual   := io.axi.r.data
+          if (is128Bit) {
+            errAddr     := beatBlockAddr
+            errExpected := exp(63 downto 0)
+            errActual   := io.axi.r.data(63 downto 0)
+            errActual1  := io.axi.r.data(127 downto 64)
+          } else {
+            errAddr     := beatBlockAddr + (beatIdx(0) ? U(8, 32 bits) | U(0, 32 bits))
+            errExpected := exp
+            errActual   := io.axi.r.data
+          }
         }
         when(errorReg || mismatch) {
           msgIndex := 0

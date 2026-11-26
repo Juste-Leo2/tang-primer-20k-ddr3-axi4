@@ -74,26 +74,24 @@ class Ddr3TesterSimHarness(val axiConfig: Axi4Config, val config: Ddr3Config, va
 }
 
 class Ddr3TesterTopTest extends AnyFunSuite {
-  test("Autonomous Ddr3MemtestEngine & UART Streaming Verification") {
-    val axi64Config = Axi4Config(addressWidth = 32, dataWidth = 64, idWidth = 4)
-    val testBursts  = 4
-    val simConfig   = SimConfig.withWave
+  private def runTesterSim(dataWidth: Int): Unit = {
+    val axiConfig  = Axi4Config(addressWidth = 32, dataWidth = dataWidth, idWidth = 4)
+    val testBursts = 4
+    val simConfig  = SimConfig.withWave
 
-    simConfig.compile(new Ddr3TesterSimHarness(axi64Config, Ddr3Config(isSimulation = true), testBursts)).doSim { dut =>
+    simConfig.compile(new Ddr3TesterSimHarness(axiConfig, Ddr3Config(isSimulation = true), testBursts)).doSim { dut =>
       dut.clockDomain.forkStimulus(period = 10)
 
-      println("[SIM] Waiting for DDR3 controller auto-initialization & calibration...")
+      println(s"[SIM ${dataWidth}b] Waiting for DDR3 controller auto-initialization & calibration...")
 
       // UART receiver thread
       val receivedChars = new StringBuilder
       val uartBaudPeriod = 4 // clkFreqHz / baudRate = 40000 / 10000 = 4 cycles
       fork {
         while (true) {
-          // Wait for start bit (txd falling from 1 to 0)
           while (dut.io.uart_tx.toBoolean) {
             dut.clockDomain.waitSampling()
           }
-          // Middle of start bit: wait 2 cycles
           dut.clockDomain.waitSampling(2)
           if (!dut.io.uart_tx.toBoolean) {
             var charCode = 0
@@ -103,7 +101,6 @@ class Ddr3TesterTopTest extends AnyFunSuite {
                 charCode |= (1 << bit)
               }
             }
-            // Stop bit
             dut.clockDomain.waitSampling(uartBaudPeriod)
             val c = charCode.toChar
             receivedChars.append(c)
@@ -113,21 +110,23 @@ class Ddr3TesterTopTest extends AnyFunSuite {
         }
       }
 
-      // Wait for test_pass or test_err. Full boot (WL + 3 surveys + the
-      // ~516-pair relative RMOVE sweep, which cannot early-exit in this
-      // delay-insensitive mock) takes ~10-11k cycles, then the engine proper
-      // plus slow UART streaming (4 cycles/bit). 12000 starves the engine
-      // even when everything works; 60000 still catches real hangs fast
-      // (a hang never asserts either flag).
       dut.clockDomain.waitSamplingWhere(120000)(dut.io.test_pass.toBoolean || dut.io.test_err.toBoolean)
       if (dut.io.test_err.toBoolean) {
-        dut.clockDomain.waitSampling(4000) // flush [FAIL] UART diagnostic line
+        dut.clockDomain.waitSampling(4000)
       }
 
-      println(s"\n[SIM] Console output received:\n${receivedChars.toString.trim}")
-      assert(!dut.io.test_err.toBoolean, "Ddr3MemtestEngine reported an error!")
-      assert(dut.io.test_pass.toBoolean, "Ddr3MemtestEngine did not assert test_pass!")
-      println("[SIM] TesterTop autonomous verification PASSED with 100% SUCCESS!")
+      println(s"\n[SIM ${dataWidth}b] Console output received:\n${receivedChars.toString.trim}")
+      assert(!dut.io.test_err.toBoolean, s"Ddr3MemtestEngine (${dataWidth}b) reported an error!")
+      assert(dut.io.test_pass.toBoolean, s"Ddr3MemtestEngine (${dataWidth}b) did not assert test_pass!")
+      println(s"[SIM ${dataWidth}b] TesterTop autonomous verification PASSED with 100% SUCCESS!")
     }
+  }
+
+  test("Autonomous Ddr3MemtestEngine & UART Streaming Verification (64-bit)") {
+    runTesterSim(64)
+  }
+
+  test("Autonomous Ddr3MemtestEngine & UART Streaming Verification (128-bit)") {
+    runTesterSim(128)
   }
 }

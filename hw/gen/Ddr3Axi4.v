@@ -1,7 +1,7 @@
 // Generator : SpinalHDL v1.15.0    git head : 05a01af3d3345aa0afcaad8e0186dde13a359db2
 // Component : Ddr3Axi4
-// Git hash  : 0dd8d13f52178a6a79757a3ecab9f01ebd3ff458
-// Date      : 26/11/2026, 22:22:56
+// Git hash  : a47c2e3f695a97ae4473121079653752e0eb1cd2
+// Date      : 26/11/2026, 22:57:41
 
 `timescale 1ns/1ps
 
@@ -612,15 +612,13 @@ module Ddr3Axi4Bridge (
   wire                rFifo_io_pop_valid;
   wire       [127:0]  rFifo_io_pop_payload;
   wire       [4:0]    rFifo_io_occupancy;
-  wire       [4:0]    rFifo_io_availability;
   wire                wFifo_io_push_ready;
   wire                wFifo_io_pop_valid;
   wire       [127:0]  wFifo_io_pop_payload_data;
   wire       [15:0]   wFifo_io_pop_payload_strb;
   wire       [4:0]    wFifo_io_occupancy;
-  wire       [4:0]    wFifo_io_availability;
-  wire       [8:0]    _zz_when_Ddr3Axi4Bridge_l102;
-  wire       [4:0]    _zz_when_Ddr3Axi4Bridge_l102_1;
+  wire       [8:0]    _zz_when_Ddr3Axi4Bridge_l145;
+  wire       [4:0]    _zz_when_Ddr3Axi4Bridge_l145_1;
   wire       [27:0]   _zz_outReq_payload_addr;
   wire       [27:0]   _zz_outReq_payload_addr_1;
   wire       [27:0]   _zz_outReq_payload_addr_2;
@@ -677,13 +675,13 @@ module Ddr3Axi4Bridge (
   reg        [127:0]  rOutData;
   reg                 rLastReg;
   wire                rConsume;
-  wire                when_Ddr3Axi4Bridge_l68;
-  wire                when_Ddr3Axi4Bridge_l73;
+  wire                when_Ddr3Axi4Bridge_l111;
+  wire                when_Ddr3Axi4Bridge_l116;
   wire       [8:0]    _zz_rBeatsLeft;
-  wire                when_Ddr3Axi4Bridge_l100;
-  wire                when_Ddr3Axi4Bridge_l101;
-  wire                when_Ddr3Axi4Bridge_l102;
-  wire                when_Ddr3Axi4Bridge_l106;
+  wire                when_Ddr3Axi4Bridge_l143;
+  wire                when_Ddr3Axi4Bridge_l144;
+  wire                when_Ddr3Axi4Bridge_l145;
+  wire                when_Ddr3Axi4Bridge_l149;
   wire                rdReqValid;
   reg        [31:0]   wReqAddr;
   reg                 wIncr;
@@ -695,31 +693,31 @@ module Ddr3Axi4Bridge (
   reg                 wBValidReg;
   reg                 wDraining;
   reg        [8:0]    wPendingBlks;
-  wire                when_Ddr3Axi4Bridge_l143;
-  wire                when_Ddr3Axi4Bridge_l178;
-  wire                when_Ddr3Axi4Bridge_l179;
-  wire                when_Ddr3Axi4Bridge_l180;
-  wire                when_Ddr3Axi4Bridge_l184;
+  wire                when_Ddr3Axi4Bridge_l186;
+  wire                when_Ddr3Axi4Bridge_l221;
+  wire                when_Ddr3Axi4Bridge_l222;
+  wire                when_Ddr3Axi4Bridge_l223;
+  wire                when_Ddr3Axi4Bridge_l227;
   wire                wrReqValid;
   wire                rdSlotInc;
   wire                rdSlotDec;
   wire                wBlkInc;
   wire                wBlkDec;
-  wire                when_Ddr3Axi4Bridge_l226;
-  wire                when_Ddr3Axi4Bridge_l233;
-  wire                when_Ddr3Axi4Bridge_l242;
+  wire                when_Ddr3Axi4Bridge_l269;
+  wire                when_Ddr3Axi4Bridge_l276;
+  wire                when_Ddr3Axi4Bridge_l285;
   wire       [8:0]    _zz_rCmdLeft;
-  wire                when_Ddr3Axi4Bridge_l253;
-  wire                when_Ddr3Axi4Bridge_l272;
-  wire                when_Ddr3Axi4Bridge_l278;
-  wire                when_Ddr3Axi4Bridge_l281;
+  wire                when_Ddr3Axi4Bridge_l296;
+  wire                when_Ddr3Axi4Bridge_l315;
+  wire                when_Ddr3Axi4Bridge_l321;
+  wire                when_Ddr3Axi4Bridge_l324;
   `ifndef SYNTHESIS
   reg [39:0] mode_string;
   `endif
 
 
-  assign _zz_when_Ddr3Axi4Bridge_l102_1 = (5'h10 - rSlotsUsed);
-  assign _zz_when_Ddr3Axi4Bridge_l102 = {4'd0, _zz_when_Ddr3Axi4Bridge_l102_1};
+  assign _zz_when_Ddr3Axi4Bridge_l145_1 = (5'h10 - rSlotsUsed);
+  assign _zz_when_Ddr3Axi4Bridge_l145 = {4'd0, _zz_when_Ddr3Axi4Bridge_l145_1};
   assign _zz_outReq_payload_addr = ((mode == BridgeMode_WRITE) ? _zz_outReq_payload_addr_1 : _zz_outReq_payload_addr_2);
   assign _zz_outReq_payload_addr_1 = (wReqAddr >>> 3'd4);
   assign _zz_outReq_payload_addr_2 = (rReqAddr >>> 3'd4);
@@ -734,20 +732,18 @@ module Ddr3Axi4Bridge (
   assign _zz_wPendingBlks_4 = wBlkDec;
   assign _zz_wPendingBlks_3 = {8'd0, _zz_wPendingBlks_4};
   assign _zz__zz_rCmdLeft = {1'd0, io_axi_ar_payload_len};
-  StreamFifoLowLatency rFifo (
+  DistLowLatencyFifo rFifo (
     .io_push_valid   (rFifo_io_push_valid        ), //i
     .io_push_ready   (rFifo_io_push_ready        ), //o
     .io_push_payload (io_rsp_payload_rdata[127:0]), //i
     .io_pop_valid    (rFifo_io_pop_valid         ), //o
     .io_pop_ready    (rFifo_io_pop_ready         ), //i
     .io_pop_payload  (rFifo_io_pop_payload[127:0]), //o
-    .io_flush        (1'b0                       ), //i
     .io_occupancy    (rFifo_io_occupancy[4:0]    ), //o
-    .io_availability (rFifo_io_availability[4:0] ), //o
     .io_pclk         (io_pclk                    ), //i
-    ._zz_1           (_zz_1                      )  //i
+    ._zz_4           (_zz_1                      )  //i
   );
-  StreamFifoLowLatency_1 wFifo (
+  DistLowLatencyFifo_1 wFifo (
     .io_push_valid        (wFifo_io_push_valid              ), //i
     .io_push_ready        (wFifo_io_push_ready              ), //o
     .io_push_payload_data (wFifo_io_push_payload_data[127:0]), //i
@@ -756,11 +752,9 @@ module Ddr3Axi4Bridge (
     .io_pop_ready         (wFifo_io_pop_ready               ), //i
     .io_pop_payload_data  (wFifo_io_pop_payload_data[127:0] ), //o
     .io_pop_payload_strb  (wFifo_io_pop_payload_strb[15:0]  ), //o
-    .io_flush             (1'b0                             ), //i
     .io_occupancy         (wFifo_io_occupancy[4:0]          ), //o
-    .io_availability      (wFifo_io_availability[4:0]       ), //o
     .io_pclk              (io_pclk                          ), //i
-    ._zz_1                (_zz_1                            )  //i
+    ._zz_4                (_zz_1                            )  //i
   );
   `ifndef SYNTHESIS
   always @(*) begin
@@ -802,46 +796,46 @@ module Ddr3Axi4Bridge (
   assign rConsume = ((! rValidReg) || io_axi_r_ready);
   always @(*) begin
     rFifo_io_pop_ready = 1'b0;
-    if(when_Ddr3Axi4Bridge_l73) begin
+    if(when_Ddr3Axi4Bridge_l116) begin
       rFifo_io_pop_ready = 1'b1;
     end
   end
 
-  assign when_Ddr3Axi4Bridge_l68 = (io_axi_r_ready && rValidReg);
-  assign when_Ddr3Axi4Bridge_l73 = ((((mode == BridgeMode_READ) && (rBeatsLeft != 9'h0)) && rConsume) && rFifo_io_pop_valid);
+  assign when_Ddr3Axi4Bridge_l111 = (io_axi_r_ready && rValidReg);
+  assign when_Ddr3Axi4Bridge_l116 = ((((mode == BridgeMode_READ) && (rBeatsLeft != 9'h0)) && rConsume) && rFifo_io_pop_valid);
   assign _zz_rBeatsLeft = (rBeatsLeft - 9'h001);
-  assign when_Ddr3Axi4Bridge_l100 = (mode == BridgeMode_READ);
-  assign when_Ddr3Axi4Bridge_l101 = (! rIssuingChunk);
-  assign when_Ddr3Axi4Bridge_l102 = ((rCmdLeft != 9'h0) && ((rSlotsUsed <= 5'h08) || (rCmdLeft <= _zz_when_Ddr3Axi4Bridge_l102)));
-  assign when_Ddr3Axi4Bridge_l106 = ((rCmdLeft == 9'h0) || (5'h0f <= rSlotsUsed));
+  assign when_Ddr3Axi4Bridge_l143 = (mode == BridgeMode_READ);
+  assign when_Ddr3Axi4Bridge_l144 = (! rIssuingChunk);
+  assign when_Ddr3Axi4Bridge_l145 = ((rCmdLeft != 9'h0) && ((rSlotsUsed <= 5'h08) || (rCmdLeft <= _zz_when_Ddr3Axi4Bridge_l145)));
+  assign when_Ddr3Axi4Bridge_l149 = ((rCmdLeft == 9'h0) || (5'h0f <= rSlotsUsed));
   assign rdReqValid = ((((mode == BridgeMode_READ) && rIssuingChunk) && (rCmdLeft != 9'h0)) && (rSlotsUsed < 5'h10));
   assign io_axi_w_ready = (((mode == BridgeMode_WRITE) && (! wLastSeen)) && wFifo_io_push_ready);
   always @(*) begin
     wFifo_io_push_valid = 1'b0;
-    if(when_Ddr3Axi4Bridge_l143) begin
+    if(when_Ddr3Axi4Bridge_l186) begin
       wFifo_io_push_valid = 1'b1;
     end
   end
 
   always @(*) begin
     wFifo_io_push_payload_data = 128'h0;
-    if(when_Ddr3Axi4Bridge_l143) begin
+    if(when_Ddr3Axi4Bridge_l186) begin
       wFifo_io_push_payload_data = io_axi_w_payload_data;
     end
   end
 
   always @(*) begin
     wFifo_io_push_payload_strb = 16'h0;
-    if(when_Ddr3Axi4Bridge_l143) begin
+    if(when_Ddr3Axi4Bridge_l186) begin
       wFifo_io_push_payload_strb = io_axi_w_payload_strb;
     end
   end
 
-  assign when_Ddr3Axi4Bridge_l143 = ((((mode == BridgeMode_WRITE) && (! wLastSeen)) && io_axi_w_valid) && wFifo_io_push_ready);
-  assign when_Ddr3Axi4Bridge_l178 = ((mode == BridgeMode_WRITE) && (! wBValidReg));
-  assign when_Ddr3Axi4Bridge_l179 = (! wDraining);
-  assign when_Ddr3Axi4Bridge_l180 = (wFifo_io_pop_valid && (wLastSeen || (5'h03 <= wFifo_io_occupancy)));
-  assign when_Ddr3Axi4Bridge_l184 = (! wFifo_io_pop_valid);
+  assign when_Ddr3Axi4Bridge_l186 = ((((mode == BridgeMode_WRITE) && (! wLastSeen)) && io_axi_w_valid) && wFifo_io_push_ready);
+  assign when_Ddr3Axi4Bridge_l221 = ((mode == BridgeMode_WRITE) && (! wBValidReg));
+  assign when_Ddr3Axi4Bridge_l222 = (! wDraining);
+  assign when_Ddr3Axi4Bridge_l223 = (wFifo_io_pop_valid && (wLastSeen || (5'h03 <= wFifo_io_occupancy)));
+  assign when_Ddr3Axi4Bridge_l227 = (! wFifo_io_pop_valid);
   assign wrReqValid = (((mode == BridgeMode_WRITE) && wDraining) && wFifo_io_pop_valid);
   assign wFifo_io_pop_ready = (((mode == BridgeMode_WRITE) && wDraining) && outReq_ready);
   assign outReq_valid = (rdReqValid || wrReqValid);
@@ -863,14 +857,14 @@ module Ddr3Axi4Bridge (
   assign rdSlotDec = (rFifo_io_pop_valid && rFifo_io_pop_ready);
   assign wBlkInc = (wFifo_io_push_valid && wFifo_io_push_ready);
   assign wBlkDec = (wrReqValid && outReq_ready);
-  assign when_Ddr3Axi4Bridge_l226 = (rdReqValid && outReq_ready);
-  assign when_Ddr3Axi4Bridge_l233 = (wrReqValid && outReq_ready);
-  assign when_Ddr3Axi4Bridge_l242 = (io_axi_aw_valid && io_axi_aw_ready);
+  assign when_Ddr3Axi4Bridge_l269 = (rdReqValid && outReq_ready);
+  assign when_Ddr3Axi4Bridge_l276 = (wrReqValid && outReq_ready);
+  assign when_Ddr3Axi4Bridge_l285 = (io_axi_aw_valid && io_axi_aw_ready);
   assign _zz_rCmdLeft = (_zz__zz_rCmdLeft + 9'h001);
-  assign when_Ddr3Axi4Bridge_l253 = (io_axi_ar_valid && io_axi_ar_ready);
-  assign when_Ddr3Axi4Bridge_l272 = ((((rBeatsLeft == 9'h0) && (! rValidReg)) && (rCmdLeft == 9'h0)) && (rSlotsUsed == 5'h0));
-  assign when_Ddr3Axi4Bridge_l278 = ((wLastSeen && (wPendingBlks == 9'h0)) && (! wBValidReg));
-  assign when_Ddr3Axi4Bridge_l281 = (wBValidReg && io_axi_b_ready);
+  assign when_Ddr3Axi4Bridge_l296 = (io_axi_ar_valid && io_axi_ar_ready);
+  assign when_Ddr3Axi4Bridge_l315 = ((((rBeatsLeft == 9'h0) && (! rValidReg)) && (rCmdLeft == 9'h0)) && (rSlotsUsed == 5'h0));
+  assign when_Ddr3Axi4Bridge_l321 = ((wLastSeen && (wPendingBlks == 9'h0)) && (! wBValidReg));
+  assign when_Ddr3Axi4Bridge_l324 = (wBValidReg && io_axi_b_ready);
   always @(posedge io_pclk or posedge _zz_1) begin
     if(_zz_1) begin
       outReq_rValidN <= 1'b1;
@@ -907,41 +901,41 @@ module Ddr3Axi4Bridge (
       if(outReq_s2mPipe_ready) begin
         outReq_s2mPipe_rValid <= outReq_s2mPipe_valid;
       end
-      if(when_Ddr3Axi4Bridge_l68) begin
+      if(when_Ddr3Axi4Bridge_l111) begin
         rValidReg <= 1'b0;
         rLastReg <= 1'b0;
       end
-      if(when_Ddr3Axi4Bridge_l73) begin
+      if(when_Ddr3Axi4Bridge_l116) begin
         rBeatsLeft <= _zz_rBeatsLeft;
         rValidReg <= 1'b1;
         rLastReg <= (_zz_rBeatsLeft == 9'h0);
         rOutData <= rFifo_io_pop_payload;
       end
-      if(when_Ddr3Axi4Bridge_l100) begin
-        if(when_Ddr3Axi4Bridge_l101) begin
-          if(when_Ddr3Axi4Bridge_l102) begin
+      if(when_Ddr3Axi4Bridge_l143) begin
+        if(when_Ddr3Axi4Bridge_l144) begin
+          if(when_Ddr3Axi4Bridge_l145) begin
             rIssuingChunk <= 1'b1;
           end
         end else begin
-          if(when_Ddr3Axi4Bridge_l106) begin
+          if(when_Ddr3Axi4Bridge_l149) begin
             rIssuingChunk <= 1'b0;
           end
         end
       end else begin
         rIssuingChunk <= 1'b0;
       end
-      if(when_Ddr3Axi4Bridge_l143) begin
+      if(when_Ddr3Axi4Bridge_l186) begin
         if(io_axi_w_payload_last) begin
           wLastSeen <= 1'b1;
         end
       end
-      if(when_Ddr3Axi4Bridge_l178) begin
-        if(when_Ddr3Axi4Bridge_l179) begin
-          if(when_Ddr3Axi4Bridge_l180) begin
+      if(when_Ddr3Axi4Bridge_l221) begin
+        if(when_Ddr3Axi4Bridge_l222) begin
+          if(when_Ddr3Axi4Bridge_l223) begin
             wDraining <= 1'b1;
           end
         end else begin
-          if(when_Ddr3Axi4Bridge_l184) begin
+          if(when_Ddr3Axi4Bridge_l227) begin
             wDraining <= 1'b0;
           end
         end
@@ -950,20 +944,20 @@ module Ddr3Axi4Bridge (
       end
       rSlotsUsed <= (_zz_rSlotsUsed - _zz_rSlotsUsed_3);
       wPendingBlks <= (_zz_wPendingBlks - _zz_wPendingBlks_3);
-      if(when_Ddr3Axi4Bridge_l226) begin
+      if(when_Ddr3Axi4Bridge_l269) begin
         rCmdLeft <= (rCmdLeft - 9'h001);
         if(rIncr) begin
           rReqAddr <= (rReqAddr + 32'h00000010);
         end
       end
-      if(when_Ddr3Axi4Bridge_l233) begin
+      if(when_Ddr3Axi4Bridge_l276) begin
         if(wIncr) begin
           wReqAddr <= (wReqAddr + 32'h00000010);
         end
       end
       case(mode)
         BridgeMode_IDLE : begin
-          if(when_Ddr3Axi4Bridge_l242) begin
+          if(when_Ddr3Axi4Bridge_l285) begin
             wReqAddr <= io_axi_aw_payload_addr;
             wIncr <= (io_axi_aw_payload_burst != 2'b00);
             wId <= io_axi_aw_payload_id;
@@ -975,7 +969,7 @@ module Ddr3Axi4Bridge (
             wDraining <= 1'b0;
             mode <= BridgeMode_WRITE;
           end else begin
-            if(when_Ddr3Axi4Bridge_l253) begin
+            if(when_Ddr3Axi4Bridge_l296) begin
               rReqAddr <= io_axi_ar_payload_addr;
               rIncr <= (io_axi_ar_payload_burst != 2'b00);
               rId <= io_axi_ar_payload_id;
@@ -988,15 +982,15 @@ module Ddr3Axi4Bridge (
           end
         end
         BridgeMode_READ : begin
-          if(when_Ddr3Axi4Bridge_l272) begin
+          if(when_Ddr3Axi4Bridge_l315) begin
             mode <= BridgeMode_IDLE;
           end
         end
         default : begin
-          if(when_Ddr3Axi4Bridge_l278) begin
+          if(when_Ddr3Axi4Bridge_l321) begin
             wBValidReg <= 1'b1;
           end
-          if(when_Ddr3Axi4Bridge_l281) begin
+          if(when_Ddr3Axi4Bridge_l324) begin
             wBValidReg <= 1'b0;
             mode <= BridgeMode_IDLE;
           end
@@ -7366,7 +7360,7 @@ module Ddr3ControllerCore (
 
 endmodule
 
-module StreamFifoLowLatency_1 (
+module DistLowLatencyFifo_1 (
   input  wire          io_push_valid,
   output wire          io_push_ready,
   input  wire [127:0]  io_push_payload_data,
@@ -7375,349 +7369,145 @@ module StreamFifoLowLatency_1 (
   input  wire          io_pop_ready,
   output wire [127:0]  io_pop_payload_data,
   output wire [15:0]   io_pop_payload_strb,
-  input  wire          io_flush,
   output wire [4:0]    io_occupancy,
-  output wire [4:0]    io_availability,
   input  wire          io_pclk,
-  input  wire          _zz_1
+  input  wire          _zz_4
 );
 
-  wire                fifo_io_push_ready;
-  wire                fifo_io_pop_valid;
-  wire       [127:0]  fifo_io_pop_payload_data;
-  wire       [15:0]   fifo_io_pop_payload_strb;
-  wire       [4:0]    fifo_io_occupancy;
-  wire       [4:0]    fifo_io_availability;
+  wire       [143:0]  ram_spinal_port0;
+  wire       [143:0]  _zz_ram_port;
+  wire       [3:0]    _zz_ptrDiff;
+  reg                 _zz_1;
+  reg        [3:0]    pushPtr;
+  reg        [3:0]    popPtr;
+  reg                 risingOccupancy;
+  wire                ptrMatch;
+  wire                empty;
+  wire                full;
+  wire       [143:0]  _zz_io_pop_payload_data;
+  wire                io_push_fire;
+  wire                io_pop_fire;
+  wire                when_Ddr3Axi4Bridge_l42;
+  wire       [4:0]    ptrDiff;
+  (* syn_ramstyle = "distributed" , ram_style = "distributed" *) reg [143:0] ram [0:15];
 
-  StreamFifo_1 fifo (
-    .io_push_valid        (io_push_valid                  ), //i
-    .io_push_ready        (fifo_io_push_ready             ), //o
-    .io_push_payload_data (io_push_payload_data[127:0]    ), //i
-    .io_push_payload_strb (io_push_payload_strb[15:0]     ), //i
-    .io_pop_valid         (fifo_io_pop_valid              ), //o
-    .io_pop_ready         (io_pop_ready                   ), //i
-    .io_pop_payload_data  (fifo_io_pop_payload_data[127:0]), //o
-    .io_pop_payload_strb  (fifo_io_pop_payload_strb[15:0] ), //o
-    .io_flush             (io_flush                       ), //i
-    .io_occupancy         (fifo_io_occupancy[4:0]         ), //o
-    .io_availability      (fifo_io_availability[4:0]      ), //o
-    .io_pclk              (io_pclk                        ), //i
-    ._zz_4                (_zz_1                          )  //i
-  );
-  assign io_push_ready = fifo_io_push_ready;
-  assign io_pop_valid = fifo_io_pop_valid;
-  assign io_pop_payload_data = fifo_io_pop_payload_data;
-  assign io_pop_payload_strb = fifo_io_pop_payload_strb;
-  assign io_occupancy = fifo_io_occupancy;
-  assign io_availability = fifo_io_availability;
+  assign _zz_ptrDiff = (pushPtr - popPtr);
+  assign _zz_ram_port = {io_push_payload_strb,io_push_payload_data};
+  assign ram_spinal_port0 = ram[popPtr];
+  always @(posedge io_pclk) begin
+    if(_zz_1) begin
+      ram[pushPtr] <= _zz_ram_port;
+    end
+  end
+
+  always @(*) begin
+    _zz_1 = 1'b0;
+    if(io_push_fire) begin
+      _zz_1 = 1'b1;
+    end
+  end
+
+  assign ptrMatch = (pushPtr == popPtr);
+  assign empty = (ptrMatch && (! risingOccupancy));
+  assign full = (ptrMatch && risingOccupancy);
+  assign io_push_ready = (! full);
+  assign io_pop_valid = (! empty);
+  assign _zz_io_pop_payload_data = ram_spinal_port0;
+  assign io_pop_payload_data = _zz_io_pop_payload_data[127 : 0];
+  assign io_pop_payload_strb = _zz_io_pop_payload_data[143 : 128];
+  assign io_push_fire = (io_push_valid && io_push_ready);
+  assign io_pop_fire = (io_pop_valid && io_pop_ready);
+  assign when_Ddr3Axi4Bridge_l42 = (io_push_fire != io_pop_fire);
+  assign ptrDiff = {1'd0, _zz_ptrDiff};
+  assign io_occupancy = (empty ? 5'h0 : (full ? 5'h10 : ptrDiff));
+  always @(posedge io_pclk or posedge _zz_4) begin
+    if(_zz_4) begin
+      pushPtr <= 4'b0000;
+      popPtr <= 4'b0000;
+      risingOccupancy <= 1'b0;
+    end else begin
+      if(io_push_fire) begin
+        pushPtr <= (pushPtr + 4'b0001);
+      end
+      if(io_pop_fire) begin
+        popPtr <= (popPtr + 4'b0001);
+      end
+      if(when_Ddr3Axi4Bridge_l42) begin
+        risingOccupancy <= io_push_fire;
+      end
+    end
+  end
+
 
 endmodule
 
-module StreamFifoLowLatency (
+module DistLowLatencyFifo (
   input  wire          io_push_valid,
   output wire          io_push_ready,
   input  wire [127:0]  io_push_payload,
   output wire          io_pop_valid,
   input  wire          io_pop_ready,
   output wire [127:0]  io_pop_payload,
-  input  wire          io_flush,
   output wire [4:0]    io_occupancy,
-  output wire [4:0]    io_availability,
-  input  wire          io_pclk,
-  input  wire          _zz_1
-);
-
-  wire                fifo_io_push_ready;
-  wire                fifo_io_pop_valid;
-  wire       [127:0]  fifo_io_pop_payload;
-  wire       [4:0]    fifo_io_occupancy;
-  wire       [4:0]    fifo_io_availability;
-
-  StreamFifo fifo (
-    .io_push_valid   (io_push_valid             ), //i
-    .io_push_ready   (fifo_io_push_ready        ), //o
-    .io_push_payload (io_push_payload[127:0]    ), //i
-    .io_pop_valid    (fifo_io_pop_valid         ), //o
-    .io_pop_ready    (io_pop_ready              ), //i
-    .io_pop_payload  (fifo_io_pop_payload[127:0]), //o
-    .io_flush        (io_flush                  ), //i
-    .io_occupancy    (fifo_io_occupancy[4:0]    ), //o
-    .io_availability (fifo_io_availability[4:0] ), //o
-    .io_pclk         (io_pclk                   ), //i
-    ._zz_4           (_zz_1                     )  //i
-  );
-  assign io_push_ready = fifo_io_push_ready;
-  assign io_pop_valid = fifo_io_pop_valid;
-  assign io_pop_payload = fifo_io_pop_payload;
-  assign io_occupancy = fifo_io_occupancy;
-  assign io_availability = fifo_io_availability;
-
-endmodule
-
-module StreamFifo_1 (
-  input  wire          io_push_valid,
-  output wire          io_push_ready,
-  input  wire [127:0]  io_push_payload_data,
-  input  wire [15:0]   io_push_payload_strb,
-  output reg           io_pop_valid,
-  input  wire          io_pop_ready,
-  output reg  [127:0]  io_pop_payload_data,
-  output reg  [15:0]   io_pop_payload_strb,
-  input  wire          io_flush,
-  output wire [4:0]    io_occupancy,
-  output wire [4:0]    io_availability,
   input  wire          io_pclk,
   input  wire          _zz_4
 );
 
-  wire       [143:0]  logic_ram_spinal_port1;
-  wire       [143:0]  _zz_logic_ram_port;
+  wire       [127:0]  ram_spinal_port0;
+  wire       [3:0]    _zz_ptrDiff;
   reg                 _zz_1;
-  reg                 logic_ptr_doPush;
-  wire                logic_ptr_doPop;
-  wire                logic_ptr_full;
-  wire                logic_ptr_empty;
-  reg        [4:0]    logic_ptr_push;
-  reg        [4:0]    logic_ptr_pop;
-  wire       [4:0]    logic_ptr_occupancy;
-  wire       [4:0]    logic_ptr_popOnIo;
-  wire                when_Stream_l1557;
-  reg                 logic_ptr_wentUp;
+  reg        [3:0]    pushPtr;
+  reg        [3:0]    popPtr;
+  reg                 risingOccupancy;
+  wire                ptrMatch;
+  wire                empty;
+  wire                full;
   wire                io_push_fire;
-  wire                logic_push_onRam_write_valid;
-  wire       [3:0]    logic_push_onRam_write_payload_address;
-  wire       [127:0]  logic_push_onRam_write_payload_data_data;
-  wire       [15:0]   logic_push_onRam_write_payload_data_strb;
-  wire                logic_pop_addressGen_valid;
-  wire                logic_pop_addressGen_ready;
-  wire       [3:0]    logic_pop_addressGen_payload;
-  wire                logic_pop_addressGen_fire;
-  wire       [127:0]  logic_pop_async_readed_data;
-  wire       [15:0]   logic_pop_async_readed_strb;
-  wire       [143:0]  _zz_logic_pop_async_readed_data;
-  wire                logic_pop_addressGen_translated_valid;
-  wire                logic_pop_addressGen_translated_ready;
-  wire       [127:0]  logic_pop_addressGen_translated_payload_data;
-  wire       [15:0]   logic_pop_addressGen_translated_payload_strb;
-  (* ram_style = "distributed" *) reg [143:0] logic_ram [0:15];
+  wire                io_pop_fire;
+  wire                when_Ddr3Axi4Bridge_l42;
+  wire       [4:0]    ptrDiff;
+  (* syn_ramstyle = "distributed" , ram_style = "distributed" *) reg [127:0] ram [0:15];
 
-  assign _zz_logic_ram_port = {logic_push_onRam_write_payload_data_strb,logic_push_onRam_write_payload_data_data};
+  assign _zz_ptrDiff = (pushPtr - popPtr);
+  assign ram_spinal_port0 = ram[popPtr];
   always @(posedge io_pclk) begin
     if(_zz_1) begin
-      logic_ram[logic_push_onRam_write_payload_address] <= _zz_logic_ram_port;
+      ram[pushPtr] <= io_push_payload;
     end
   end
 
-  assign logic_ram_spinal_port1 = logic_ram[logic_pop_addressGen_payload];
   always @(*) begin
     _zz_1 = 1'b0;
-    if(logic_push_onRam_write_valid) begin
+    if(io_push_fire) begin
       _zz_1 = 1'b1;
     end
   end
 
-  assign when_Stream_l1557 = (logic_ptr_doPush != logic_ptr_doPop);
-  assign logic_ptr_full = (((logic_ptr_push ^ logic_ptr_popOnIo) ^ 5'h10) == 5'h0);
-  assign logic_ptr_empty = (logic_ptr_push == logic_ptr_pop);
-  assign logic_ptr_occupancy = (logic_ptr_push - logic_ptr_popOnIo);
-  assign io_push_ready = (! logic_ptr_full);
+  assign ptrMatch = (pushPtr == popPtr);
+  assign empty = (ptrMatch && (! risingOccupancy));
+  assign full = (ptrMatch && risingOccupancy);
+  assign io_push_ready = (! full);
+  assign io_pop_valid = (! empty);
+  assign io_pop_payload = ram_spinal_port0;
   assign io_push_fire = (io_push_valid && io_push_ready);
-  always @(*) begin
-    logic_ptr_doPush = io_push_fire;
-    if(logic_ptr_empty) begin
-      if(io_pop_ready) begin
-        logic_ptr_doPush = 1'b0;
-      end
-    end
-  end
-
-  assign logic_push_onRam_write_valid = io_push_fire;
-  assign logic_push_onRam_write_payload_address = logic_ptr_push[3:0];
-  assign logic_push_onRam_write_payload_data_data = io_push_payload_data;
-  assign logic_push_onRam_write_payload_data_strb = io_push_payload_strb;
-  assign logic_pop_addressGen_valid = (! logic_ptr_empty);
-  assign logic_pop_addressGen_payload = logic_ptr_pop[3:0];
-  assign logic_pop_addressGen_fire = (logic_pop_addressGen_valid && logic_pop_addressGen_ready);
-  assign logic_ptr_doPop = logic_pop_addressGen_fire;
-  assign _zz_logic_pop_async_readed_data = logic_ram_spinal_port1;
-  assign logic_pop_async_readed_data = _zz_logic_pop_async_readed_data[127 : 0];
-  assign logic_pop_async_readed_strb = _zz_logic_pop_async_readed_data[143 : 128];
-  assign logic_pop_addressGen_translated_valid = logic_pop_addressGen_valid;
-  assign logic_pop_addressGen_ready = logic_pop_addressGen_translated_ready;
-  assign logic_pop_addressGen_translated_payload_data = logic_pop_async_readed_data;
-  assign logic_pop_addressGen_translated_payload_strb = logic_pop_async_readed_strb;
-  always @(*) begin
-    io_pop_valid = logic_pop_addressGen_translated_valid;
-    if(logic_ptr_empty) begin
-      io_pop_valid = io_push_valid;
-    end
-  end
-
-  assign logic_pop_addressGen_translated_ready = io_pop_ready;
-  always @(*) begin
-    io_pop_payload_data = logic_pop_addressGen_translated_payload_data;
-    if(logic_ptr_empty) begin
-      io_pop_payload_data = io_push_payload_data;
-    end
-  end
-
-  always @(*) begin
-    io_pop_payload_strb = logic_pop_addressGen_translated_payload_strb;
-    if(logic_ptr_empty) begin
-      io_pop_payload_strb = io_push_payload_strb;
-    end
-  end
-
-  assign logic_ptr_popOnIo = logic_ptr_pop;
-  assign io_occupancy = logic_ptr_occupancy;
-  assign io_availability = (5'h10 - logic_ptr_occupancy);
+  assign io_pop_fire = (io_pop_valid && io_pop_ready);
+  assign when_Ddr3Axi4Bridge_l42 = (io_push_fire != io_pop_fire);
+  assign ptrDiff = {1'd0, _zz_ptrDiff};
+  assign io_occupancy = (empty ? 5'h0 : (full ? 5'h10 : ptrDiff));
   always @(posedge io_pclk or posedge _zz_4) begin
     if(_zz_4) begin
-      logic_ptr_push <= 5'h0;
-      logic_ptr_pop <= 5'h0;
-      logic_ptr_wentUp <= 1'b0;
+      pushPtr <= 4'b0000;
+      popPtr <= 4'b0000;
+      risingOccupancy <= 1'b0;
     end else begin
-      if(when_Stream_l1557) begin
-        logic_ptr_wentUp <= logic_ptr_doPush;
+      if(io_push_fire) begin
+        pushPtr <= (pushPtr + 4'b0001);
       end
-      if(io_flush) begin
-        logic_ptr_wentUp <= 1'b0;
+      if(io_pop_fire) begin
+        popPtr <= (popPtr + 4'b0001);
       end
-      if(logic_ptr_doPush) begin
-        logic_ptr_push <= (logic_ptr_push + 5'h01);
-      end
-      if(logic_ptr_doPop) begin
-        logic_ptr_pop <= (logic_ptr_pop + 5'h01);
-      end
-      if(io_flush) begin
-        logic_ptr_push <= 5'h0;
-        logic_ptr_pop <= 5'h0;
-      end
-    end
-  end
-
-
-endmodule
-
-module StreamFifo (
-  input  wire          io_push_valid,
-  output wire          io_push_ready,
-  input  wire [127:0]  io_push_payload,
-  output reg           io_pop_valid,
-  input  wire          io_pop_ready,
-  output reg  [127:0]  io_pop_payload,
-  input  wire          io_flush,
-  output wire [4:0]    io_occupancy,
-  output wire [4:0]    io_availability,
-  input  wire          io_pclk,
-  input  wire          _zz_4
-);
-
-  wire       [127:0]  logic_ram_spinal_port1;
-  reg                 _zz_1;
-  reg                 logic_ptr_doPush;
-  wire                logic_ptr_doPop;
-  wire                logic_ptr_full;
-  wire                logic_ptr_empty;
-  reg        [4:0]    logic_ptr_push;
-  reg        [4:0]    logic_ptr_pop;
-  wire       [4:0]    logic_ptr_occupancy;
-  wire       [4:0]    logic_ptr_popOnIo;
-  wire                when_Stream_l1557;
-  reg                 logic_ptr_wentUp;
-  wire                io_push_fire;
-  wire                logic_push_onRam_write_valid;
-  wire       [3:0]    logic_push_onRam_write_payload_address;
-  wire       [127:0]  logic_push_onRam_write_payload_data;
-  wire                logic_pop_addressGen_valid;
-  wire                logic_pop_addressGen_ready;
-  wire       [3:0]    logic_pop_addressGen_payload;
-  wire                logic_pop_addressGen_fire;
-  wire       [127:0]  logic_pop_async_readed;
-  wire                logic_pop_addressGen_translated_valid;
-  wire                logic_pop_addressGen_translated_ready;
-  wire       [127:0]  logic_pop_addressGen_translated_payload;
-  (* ram_style = "distributed" *) reg [127:0] logic_ram [0:15];
-
-  always @(posedge io_pclk) begin
-    if(_zz_1) begin
-      logic_ram[logic_push_onRam_write_payload_address] <= logic_push_onRam_write_payload_data;
-    end
-  end
-
-  assign logic_ram_spinal_port1 = logic_ram[logic_pop_addressGen_payload];
-  always @(*) begin
-    _zz_1 = 1'b0;
-    if(logic_push_onRam_write_valid) begin
-      _zz_1 = 1'b1;
-    end
-  end
-
-  assign when_Stream_l1557 = (logic_ptr_doPush != logic_ptr_doPop);
-  assign logic_ptr_full = (((logic_ptr_push ^ logic_ptr_popOnIo) ^ 5'h10) == 5'h0);
-  assign logic_ptr_empty = (logic_ptr_push == logic_ptr_pop);
-  assign logic_ptr_occupancy = (logic_ptr_push - logic_ptr_popOnIo);
-  assign io_push_ready = (! logic_ptr_full);
-  assign io_push_fire = (io_push_valid && io_push_ready);
-  always @(*) begin
-    logic_ptr_doPush = io_push_fire;
-    if(logic_ptr_empty) begin
-      if(io_pop_ready) begin
-        logic_ptr_doPush = 1'b0;
-      end
-    end
-  end
-
-  assign logic_push_onRam_write_valid = io_push_fire;
-  assign logic_push_onRam_write_payload_address = logic_ptr_push[3:0];
-  assign logic_push_onRam_write_payload_data = io_push_payload;
-  assign logic_pop_addressGen_valid = (! logic_ptr_empty);
-  assign logic_pop_addressGen_payload = logic_ptr_pop[3:0];
-  assign logic_pop_addressGen_fire = (logic_pop_addressGen_valid && logic_pop_addressGen_ready);
-  assign logic_ptr_doPop = logic_pop_addressGen_fire;
-  assign logic_pop_async_readed = logic_ram_spinal_port1;
-  assign logic_pop_addressGen_translated_valid = logic_pop_addressGen_valid;
-  assign logic_pop_addressGen_ready = logic_pop_addressGen_translated_ready;
-  assign logic_pop_addressGen_translated_payload = logic_pop_async_readed;
-  always @(*) begin
-    io_pop_valid = logic_pop_addressGen_translated_valid;
-    if(logic_ptr_empty) begin
-      io_pop_valid = io_push_valid;
-    end
-  end
-
-  assign logic_pop_addressGen_translated_ready = io_pop_ready;
-  always @(*) begin
-    io_pop_payload = logic_pop_addressGen_translated_payload;
-    if(logic_ptr_empty) begin
-      io_pop_payload = io_push_payload;
-    end
-  end
-
-  assign logic_ptr_popOnIo = logic_ptr_pop;
-  assign io_occupancy = logic_ptr_occupancy;
-  assign io_availability = (5'h10 - logic_ptr_occupancy);
-  always @(posedge io_pclk or posedge _zz_4) begin
-    if(_zz_4) begin
-      logic_ptr_push <= 5'h0;
-      logic_ptr_pop <= 5'h0;
-      logic_ptr_wentUp <= 1'b0;
-    end else begin
-      if(when_Stream_l1557) begin
-        logic_ptr_wentUp <= logic_ptr_doPush;
-      end
-      if(io_flush) begin
-        logic_ptr_wentUp <= 1'b0;
-      end
-      if(logic_ptr_doPush) begin
-        logic_ptr_push <= (logic_ptr_push + 5'h01);
-      end
-      if(logic_ptr_doPop) begin
-        logic_ptr_pop <= (logic_ptr_pop + 5'h01);
-      end
-      if(io_flush) begin
-        logic_ptr_push <= 5'h0;
-        logic_ptr_pop <= 5'h0;
+      if(when_Ddr3Axi4Bridge_l42) begin
+        risingOccupancy <= io_push_fire;
       end
     end
   end
