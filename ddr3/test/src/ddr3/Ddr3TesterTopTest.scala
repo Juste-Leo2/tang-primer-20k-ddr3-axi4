@@ -61,15 +61,16 @@ class Ddr3TesterSimHarness(val axiConfig: Axi4Config, val config: Ddr3Config, va
   // Read calibration response: DQS read window lock
   core.io.phy.rburst := (core.io.phy.dqs_read === 0x0F) ? B"2'b11" | B"2'b00"
 
-  // 128-bit memory loopback storage
+  // 128-bit memory loopback storage (FIFO decouples streamed reads cleanly)
   val mem = Mem(Bits(128 bits), 64)
   when(core.io.req.fire && core.io.req.payload.write) {
     mem.write(core.io.req.payload.addr(5 downto 0), core.io.req.payload.wdata)
   }
-  val readData = Reg(Bits(128 bits)) init(0)
-  when(core.io.req.fire && !core.io.req.payload.write) {
-    readData := mem.readAsync(core.io.req.payload.addr(5 downto 0))
-  }
+  val simRdFifo = new StreamFifo(Bits(128 bits), 64)
+  simRdFifo.io.push.valid   := core.io.req.fire && !core.io.req.payload.write
+  simRdFifo.io.push.payload := mem.readAsync(core.io.req.payload.addr(5 downto 0))
+  simRdFifo.io.pop.ready    := core.io.rsp.valid
+  val readData = simRdFifo.io.pop.valid ? simRdFifo.io.pop.payload | B(0, 128 bits)
 
   for (i <- 0 until 8) {
     core.io.phy.dq_in(i) := readData(i * 16 + 15 downto i * 16)
@@ -123,6 +124,9 @@ class Ddr3TesterTopTest extends AnyFunSuite {
       // even when everything works; 60000 still catches real hangs fast
       // (a hang never asserts either flag).
       dut.clockDomain.waitSamplingWhere(120000)(dut.io.test_pass.toBoolean || dut.io.test_err.toBoolean)
+      if (dut.io.test_err.toBoolean) {
+        dut.clockDomain.waitSampling(4000) // flush [FAIL] UART diagnostic line
+      }
 
       println(s"\n[SIM] Console output received:\n${receivedChars.toString.trim}")
       assert(!dut.io.test_err.toBoolean, "Ddr3MemtestEngine reported an error!")

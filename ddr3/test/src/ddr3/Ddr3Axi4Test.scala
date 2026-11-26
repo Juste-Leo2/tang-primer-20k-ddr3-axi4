@@ -215,4 +215,111 @@ class Ddr3Axi4Test extends AnyFunSuite {
       println("[SIM] AXI4 64-bit Read and Write tests PASSED with 100% SUCCESS!")
     }
   }
+
+  test("DDR3 AXI4 64-bit and 128-bit Burst Streaming Throughput") {
+    for (dataW <- Seq(64, 128)) {
+      val axiCfg = Axi4Config(addressWidth = 32, dataWidth = dataW, idWidth = 4)
+      SimConfig.compile(new Ddr3Axi4SimHarness(axiCfg, Ddr3Config(isSimulation = true))).doSim { dut =>
+        dut.clockDomain.forkStimulus(period = 10)
+        dut.io.axi.ar.valid #= false
+        dut.io.axi.aw.valid #= false
+        dut.io.axi.w.valid  #= false
+        dut.io.axi.b.ready  #= true
+        dut.io.axi.r.ready  #= true
+        dut.io.corePhy.dlllock    #= false
+        dut.io.corePhy.rst_lock_n #= false
+        dut.io.corePhy.rburst     #= 0
+        dut.io.corePhy.dq_raw     #= 0
+        for (i <- 0 until 8) dut.io.corePhy.dq_in(i) #= 0
+        dut.clockDomain.waitSampling(5)
+        dut.io.corePhy.dlllock    #= true
+        dut.io.corePhy.rst_lock_n #= true
+
+        fork {
+          var wlTimer = 0
+          while (!dut.io.init_done.toBoolean) {
+            if (dut.io.corePhy.dqs_out.toBigInt == 0xAA || dut.io.corePhy.dqs_out.toBigInt == 0x55) wlTimer = 12
+            dut.io.corePhy.dq_raw #= (if (wlTimer > 0) { wlTimer -= 1; (1 | (1 << 8)) } else 0)
+            dut.io.corePhy.rburst #= (if (dut.io.corePhy.dqs_read.toBigInt == 0x0F) 3 else 0)
+            dut.clockDomain.waitSampling()
+          }
+        }
+        dut.clockDomain.waitSamplingWhere(120000)(dut.io.init_done.toBoolean)
+        assert(dut.io.init_done.toBoolean)
+        dut.clockDomain.waitSampling(5)
+
+        // Feed distinct beat words on dq_in (rot=0 in this mock)
+        for (i <- 0 until 8) dut.io.corePhy.dq_in(i) #= (0xA000 + i)
+
+        // 512 bytes per burst (64 beats @ 64b, 32 beats @ 128b)
+        val totalBytes = 512
+        val beats = totalBytes / (dataW / 8)
+        var cycles = 0L
+        fork {
+          while (true) {
+            dut.clockDomain.waitSampling()
+            cycles += 1
+          }
+        }
+
+        // Write burst
+        val wStart = cycles
+        dut.io.axi.aw.valid #= true
+        dut.io.axi.aw.payload.addr  #= 0x4000
+        dut.io.axi.aw.payload.len   #= beats - 1
+        dut.io.axi.aw.payload.size  #= (if (dataW == 128) 4 else 3)
+        dut.io.axi.aw.payload.burst #= 1
+        dut.io.axi.aw.payload.id    #= 1
+        dut.clockDomain.waitSamplingWhere(50)(dut.io.axi.aw.ready.toBoolean)
+        dut.clockDomain.waitSampling()
+        dut.io.axi.aw.valid #= false
+
+        dut.io.axi.w.valid #= true
+        for (b <- 0 until beats) {
+          dut.io.axi.w.payload.data #= BigInt(b + 1)
+          dut.io.axi.w.payload.strb #= (if (dataW == 128) BigInt("FFFF", 16) else BigInt("FF", 16))
+          dut.io.axi.w.payload.last #= (b == beats - 1)
+          dut.clockDomain.waitSamplingWhere(50)(dut.io.axi.w.ready.toBoolean)
+          dut.clockDomain.waitSampling()
+        }
+        dut.io.axi.w.valid #= false
+        dut.clockDomain.waitSamplingWhere(200)(dut.io.axi.b.valid.toBoolean)
+        assert(dut.io.axi.b.valid.toBoolean, s"${dataW}b bulk write B timeout")
+        val wCycles = cycles - wStart
+
+        dut.clockDomain.waitSampling(5)
+
+        // Read burst
+        var rCount = 0
+        fork {
+          while (rCount < beats) {
+            if (dut.io.axi.r.valid.toBoolean && dut.io.axi.r.ready.toBoolean) {
+              val last = dut.io.axi.r.payload.last.toBoolean
+              assert(last == (rCount == beats - 1), s"${dataW}b RLAST mismatch at beat $rCount")
+              rCount += 1
+            }
+            dut.clockDomain.waitSampling()
+          }
+        }
+
+        val rStart = cycles
+        dut.io.axi.ar.valid #= true
+        dut.io.axi.ar.payload.addr  #= 0x4000
+        dut.io.axi.ar.payload.len   #= beats - 1
+        dut.io.axi.ar.payload.size  #= (if (dataW == 128) 4 else 3)
+        dut.io.axi.ar.payload.burst #= 1
+        dut.io.axi.ar.payload.id    #= 2
+        dut.clockDomain.waitSamplingWhere(50)(dut.io.axi.ar.ready.toBoolean)
+        dut.clockDomain.waitSampling()
+        dut.io.axi.ar.valid #= false
+
+        dut.clockDomain.waitSamplingWhere(200)(rCount == beats)
+        assert(rCount == beats, s"${dataW}b bulk read incomplete: $rCount/$beats")
+        val rCycles = cycles - rStart
+        val wBw = (totalBytes * 75.9375) / wCycles
+        val rBw = (totalBytes * 75.9375) / rCycles
+        println(f"[BENCH ${dataW}b] 512B Write=$wCycles cyc (${wBw}%.1f MB/s @75.94MHz), Read=$rCycles cyc (${rBw}%.1f MB/s @75.94MHz)")
+      }
+    }
+  }
 }

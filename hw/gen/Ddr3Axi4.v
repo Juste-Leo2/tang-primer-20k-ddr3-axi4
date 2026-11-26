@@ -1,7 +1,7 @@
 // Generator : SpinalHDL v1.15.0    git head : 05a01af3d3345aa0afcaad8e0186dde13a359db2
 // Component : Ddr3Axi4
-// Git hash  : 4f2b9d9b2e3630cd724d92875e0480b071137942
-// Date      : 26/11/2026, 18:43:51
+// Git hash  : 938d91df56096189ad7e0892f29e13a736de1626
+// Date      : 26/11/2026, 21:40:23
 
 `timescale 1ns/1ps
 
@@ -399,7 +399,7 @@ module Ddr3Controller (
   wire                phy_io_pad_DDR3_CKE;
   wire                phy_io_pad_DDR3_nRESET;
   wire                phy_io_pad_DDR3_ODT;
-  wire                _zz_when_Ddr3ControllerCore_l1907;
+  wire                _zz_when_Ddr3ControllerCore_l2226;
 
   Ddr3ControllerCore coreArea_core (
     .io_req_valid                      (io_req_valid                             ), //i
@@ -486,7 +486,7 @@ module Ddr3Controller (
     .io_phy_CKE                        (coreArea_core_io_phy_CKE                 ), //o
     .io_phy_resetn_delay               (coreArea_core_io_phy_resetn_delay        ), //o
     .io_phy_wser_rst                   (coreArea_core_io_phy_wser_rst            ), //o
-    ._zz_when_Ddr3ControllerCore_l1907 (_zz_when_Ddr3ControllerCore_l1907        ), //i
+    ._zz_when_Ddr3ControllerCore_l2226 (_zz_when_Ddr3ControllerCore_l2226        ), //i
     .io_pclk                           (io_pclk                                  )  //i
   );
   GowinDdr3Phy phy (
@@ -568,7 +568,7 @@ module Ddr3Controller (
     .io_pad_DDR3_nRESET (phy_io_pad_DDR3_nRESET             ), //o
     .io_pad_DDR3_ODT    (phy_io_pad_DDR3_ODT                )  //o
   );
-  assign _zz_when_Ddr3ControllerCore_l1907 = (! io_resetn);
+  assign _zz_when_Ddr3ControllerCore_l2226 = (! io_resetn);
   assign io_pad_DDR3_DM = phy_io_pad_DDR3_DM;
   assign io_pad_DDR3_A = phy_io_pad_DDR3_A;
   assign io_pad_DDR3_BA = phy_io_pad_DDR3_BA;
@@ -616,11 +616,11 @@ module Ddr3Axi4Bridge (
   input  wire [3:0]    io_axi_aw_payload_qos,
   input  wire [2:0]    io_axi_aw_payload_prot,
   input  wire          io_axi_w_valid,
-  output reg           io_axi_w_ready,
+  output wire          io_axi_w_ready,
   input  wire [127:0]  io_axi_w_payload_data,
   input  wire [15:0]   io_axi_w_payload_strb,
   input  wire          io_axi_w_payload_last,
-  output reg           io_axi_b_valid,
+  output wire          io_axi_b_valid,
   input  wire          io_axi_b_ready,
   output wire [3:0]    io_axi_b_payload_id,
   output wire [1:0]    io_axi_b_payload_resp,
@@ -643,340 +643,406 @@ module Ddr3Axi4Bridge (
   output wire [1:0]    io_axi_r_payload_resp,
   output wire          io_axi_r_payload_last,
   input  wire          io_init_done,
-  output reg           io_req_valid,
+  output wire          io_req_valid,
   input  wire          io_req_ready,
-  output reg           io_req_payload_write,
-  output reg  [26:0]   io_req_payload_addr,
-  output reg  [127:0]  io_req_payload_wdata,
-  output reg  [15:0]   io_req_payload_wstrb,
+  output wire          io_req_payload_write,
+  output wire [26:0]   io_req_payload_addr,
+  output wire [127:0]  io_req_payload_wdata,
+  output wire [15:0]   io_req_payload_wstrb,
   input  wire          io_rsp_valid,
   input  wire [127:0]  io_rsp_payload_rdata,
   input  wire          io_pclk,
   input  wire          _zz_1
 );
-  localparam ReadState_IDLE = 3'd0;
-  localparam ReadState_ISSUE_REQ = 3'd1;
-  localparam ReadState_WAIT_DATA = 3'd2;
-  localparam ReadState_SEND_BEAT1 = 3'd3;
-  localparam ReadState_SEND_BEAT2 = 3'd4;
-  localparam WriteState_IDLE = 2'd0;
-  localparam WriteState_RECV_W = 2'd1;
-  localparam WriteState_ISSUE_REQ = 2'd2;
-  localparam WriteState_SEND_RESP = 2'd3;
+  localparam BridgeMode_IDLE = 2'd0;
+  localparam BridgeMode_READ = 2'd1;
+  localparam BridgeMode_WRITE = 2'd2;
 
-  wire       [7:0]    _zz_rRemaining_2;
-  wire       [27:0]   _zz_io_req_payload_addr;
-  wire       [27:0]   _zz_io_req_payload_addr_1;
-  reg        [2:0]    rState;
-  reg        [31:0]   rAddr;
-  reg        [7:0]    rLen;
+  wire                rFifo_io_push_valid;
+  reg                 rFifo_io_pop_ready;
+  reg                 wFifo_io_push_valid;
+  reg        [127:0]  wFifo_io_push_payload_data;
+  reg        [15:0]   wFifo_io_push_payload_strb;
+  wire                wFifo_io_pop_ready;
+  wire                rFifo_io_push_ready;
+  wire                rFifo_io_pop_valid;
+  wire       [127:0]  rFifo_io_pop_payload;
+  wire       [4:0]    rFifo_io_occupancy;
+  wire       [4:0]    rFifo_io_availability;
+  wire                wFifo_io_push_ready;
+  wire                wFifo_io_pop_valid;
+  wire       [127:0]  wFifo_io_pop_payload_data;
+  wire       [15:0]   wFifo_io_pop_payload_strb;
+  wire       [4:0]    wFifo_io_occupancy;
+  wire       [4:0]    wFifo_io_availability;
+  wire       [8:0]    _zz_when_Ddr3Axi4Bridge_l102;
+  wire       [4:0]    _zz_when_Ddr3Axi4Bridge_l102_1;
+  wire       [27:0]   _zz_outReq_payload_addr;
+  wire       [27:0]   _zz_outReq_payload_addr_1;
+  wire       [27:0]   _zz_outReq_payload_addr_2;
+  wire       [4:0]    _zz_rSlotsUsed;
+  wire       [4:0]    _zz_rSlotsUsed_1;
+  wire       [0:0]    _zz_rSlotsUsed_2;
+  wire       [4:0]    _zz_rSlotsUsed_3;
+  wire       [0:0]    _zz_rSlotsUsed_4;
+  wire       [8:0]    _zz_wPendingBlks;
+  wire       [8:0]    _zz_wPendingBlks_1;
+  wire       [0:0]    _zz_wPendingBlks_2;
+  wire       [8:0]    _zz_wPendingBlks_3;
+  wire       [0:0]    _zz_wPendingBlks_4;
+  wire       [8:0]    _zz__zz_rCmdLeft;
+  wire                outReq_valid;
+  reg                 outReq_ready;
+  wire                outReq_payload_write;
+  wire       [26:0]   outReq_payload_addr;
+  wire       [127:0]  outReq_payload_wdata;
+  wire       [15:0]   outReq_payload_wstrb;
+  wire                outReq_stage_valid;
+  wire                outReq_stage_ready;
+  wire                outReq_stage_payload_write;
+  wire       [26:0]   outReq_stage_payload_addr;
+  wire       [127:0]  outReq_stage_payload_wdata;
+  wire       [15:0]   outReq_stage_payload_wstrb;
+  reg                 outReq_rValid;
+  reg                 outReq_rData_write;
+  reg        [26:0]   outReq_rData_addr;
+  reg        [127:0]  outReq_rData_wdata;
+  reg        [15:0]   outReq_rData_wstrb;
+  wire                when_Stream_l477;
+  reg        [1:0]    mode;
+  reg        [31:0]   rReqAddr;
+  reg                 rIncr;
+  reg        [8:0]    rCmdLeft;
+  reg        [4:0]    rSlotsUsed;
+  reg                 rIssuingChunk;
   reg        [3:0]    rId;
-  reg        [127:0]  rBuf128;
-  reg        [8:0]    rRemaining;
-  reg        [127:0]  rOutData;
+  reg        [8:0]    rBeatsLeft;
+  reg                 rPhase64;
   reg                 rValidReg;
+  reg        [127:0]  rOutData;
   reg                 rLastReg;
-  reg        [1:0]    wState;
-  reg        [31:0]   wAddr;
-  reg        [7:0]    wLen;
+  wire                rConsume;
+  wire                when_Ddr3Axi4Bridge_l68;
+  wire                when_Ddr3Axi4Bridge_l73;
+  wire       [8:0]    _zz_rBeatsLeft;
+  wire                when_Ddr3Axi4Bridge_l100;
+  wire                when_Ddr3Axi4Bridge_l101;
+  wire                when_Ddr3Axi4Bridge_l102;
+  wire                when_Ddr3Axi4Bridge_l106;
+  wire                rdReqValid;
+  reg        [31:0]   wReqAddr;
+  reg                 wIncr;
   reg        [3:0]    wId;
-  reg        [127:0]  wBuf128;
-  reg        [15:0]   wStrb128;
+  reg        [127:0]  wAsmData;
+  reg        [15:0]   wAsmStrb;
   reg                 wPhase64;
-  wire                when_Ddr3Axi4Bridge_l75;
-  wire       [8:0]    _zz_rRemaining;
-  wire                when_Ddr3Axi4Bridge_l112;
-  wire       [8:0]    _zz_rRemaining_1;
-  wire                when_Ddr3Axi4Bridge_l139;
-  wire                when_Ddr3Axi4Bridge_l151;
+  reg                 wLastSeen;
+  reg                 wBValidReg;
+  reg                 wDraining;
+  reg        [8:0]    wPendingBlks;
+  wire                when_Ddr3Axi4Bridge_l143;
+  wire                when_Ddr3Axi4Bridge_l178;
+  wire                when_Ddr3Axi4Bridge_l179;
+  wire                when_Ddr3Axi4Bridge_l180;
+  wire                when_Ddr3Axi4Bridge_l184;
+  wire                wrReqValid;
+  wire                rdSlotInc;
+  wire                rdSlotDec;
+  wire                wBlkInc;
+  wire                wBlkDec;
+  wire                when_Ddr3Axi4Bridge_l226;
+  wire                when_Ddr3Axi4Bridge_l233;
+  wire                when_Ddr3Axi4Bridge_l242;
+  wire       [8:0]    _zz_rCmdLeft;
+  wire                when_Ddr3Axi4Bridge_l253;
+  wire                when_Ddr3Axi4Bridge_l272;
+  wire                when_Ddr3Axi4Bridge_l278;
+  wire                when_Ddr3Axi4Bridge_l281;
   `ifndef SYNTHESIS
-  reg [79:0] rState_string;
-  reg [71:0] wState_string;
+  reg [39:0] mode_string;
   `endif
 
 
-  assign _zz_rRemaining_2 = (io_axi_ar_payload_len + 8'h01);
-  assign _zz_io_req_payload_addr = (rAddr >>> 3'd4);
-  assign _zz_io_req_payload_addr_1 = (wAddr >>> 3'd4);
+  assign _zz_when_Ddr3Axi4Bridge_l102_1 = (5'h10 - rSlotsUsed);
+  assign _zz_when_Ddr3Axi4Bridge_l102 = {4'd0, _zz_when_Ddr3Axi4Bridge_l102_1};
+  assign _zz_outReq_payload_addr = ((mode == BridgeMode_WRITE) ? _zz_outReq_payload_addr_1 : _zz_outReq_payload_addr_2);
+  assign _zz_outReq_payload_addr_1 = (wReqAddr >>> 3'd4);
+  assign _zz_outReq_payload_addr_2 = (rReqAddr >>> 3'd4);
+  assign _zz_rSlotsUsed = (rSlotsUsed + _zz_rSlotsUsed_1);
+  assign _zz_rSlotsUsed_2 = rdSlotInc;
+  assign _zz_rSlotsUsed_1 = {4'd0, _zz_rSlotsUsed_2};
+  assign _zz_rSlotsUsed_4 = rdSlotDec;
+  assign _zz_rSlotsUsed_3 = {4'd0, _zz_rSlotsUsed_4};
+  assign _zz_wPendingBlks = (wPendingBlks + _zz_wPendingBlks_1);
+  assign _zz_wPendingBlks_2 = wBlkInc;
+  assign _zz_wPendingBlks_1 = {8'd0, _zz_wPendingBlks_2};
+  assign _zz_wPendingBlks_4 = wBlkDec;
+  assign _zz_wPendingBlks_3 = {8'd0, _zz_wPendingBlks_4};
+  assign _zz__zz_rCmdLeft = {1'd0, io_axi_ar_payload_len};
+  StreamFifoLowLatency rFifo (
+    .io_push_valid   (rFifo_io_push_valid        ), //i
+    .io_push_ready   (rFifo_io_push_ready        ), //o
+    .io_push_payload (io_rsp_payload_rdata[127:0]), //i
+    .io_pop_valid    (rFifo_io_pop_valid         ), //o
+    .io_pop_ready    (rFifo_io_pop_ready         ), //i
+    .io_pop_payload  (rFifo_io_pop_payload[127:0]), //o
+    .io_flush        (1'b0                       ), //i
+    .io_occupancy    (rFifo_io_occupancy[4:0]    ), //o
+    .io_availability (rFifo_io_availability[4:0] ), //o
+    .io_pclk         (io_pclk                    ), //i
+    ._zz_1           (_zz_1                      )  //i
+  );
+  StreamFifoLowLatency_1 wFifo (
+    .io_push_valid        (wFifo_io_push_valid              ), //i
+    .io_push_ready        (wFifo_io_push_ready              ), //o
+    .io_push_payload_data (wFifo_io_push_payload_data[127:0]), //i
+    .io_push_payload_strb (wFifo_io_push_payload_strb[15:0] ), //i
+    .io_pop_valid         (wFifo_io_pop_valid               ), //o
+    .io_pop_ready         (wFifo_io_pop_ready               ), //i
+    .io_pop_payload_data  (wFifo_io_pop_payload_data[127:0] ), //o
+    .io_pop_payload_strb  (wFifo_io_pop_payload_strb[15:0]  ), //o
+    .io_flush             (1'b0                             ), //i
+    .io_occupancy         (wFifo_io_occupancy[4:0]          ), //o
+    .io_availability      (wFifo_io_availability[4:0]       ), //o
+    .io_pclk              (io_pclk                          ), //i
+    ._zz_1                (_zz_1                            )  //i
+  );
   `ifndef SYNTHESIS
   always @(*) begin
-    case(rState)
-      ReadState_IDLE : rState_string = "IDLE      ";
-      ReadState_ISSUE_REQ : rState_string = "ISSUE_REQ ";
-      ReadState_WAIT_DATA : rState_string = "WAIT_DATA ";
-      ReadState_SEND_BEAT1 : rState_string = "SEND_BEAT1";
-      ReadState_SEND_BEAT2 : rState_string = "SEND_BEAT2";
-      default : rState_string = "??????????";
-    endcase
-  end
-  always @(*) begin
-    case(wState)
-      WriteState_IDLE : wState_string = "IDLE     ";
-      WriteState_RECV_W : wState_string = "RECV_W   ";
-      WriteState_ISSUE_REQ : wState_string = "ISSUE_REQ";
-      WriteState_SEND_RESP : wState_string = "SEND_RESP";
-      default : wState_string = "?????????";
+    case(mode)
+      BridgeMode_IDLE : mode_string = "IDLE ";
+      BridgeMode_READ : mode_string = "READ ";
+      BridgeMode_WRITE : mode_string = "WRITE";
+      default : mode_string = "?????";
     endcase
   end
   `endif
 
   always @(*) begin
-    io_req_valid = 1'b0;
-    case(rState)
-      ReadState_IDLE : begin
-      end
-      ReadState_ISSUE_REQ : begin
-        io_req_valid = 1'b1;
-      end
-      ReadState_WAIT_DATA : begin
-      end
-      ReadState_SEND_BEAT1 : begin
-      end
-      default : begin
-      end
-    endcase
-    case(wState)
-      WriteState_IDLE : begin
-      end
-      WriteState_RECV_W : begin
-      end
-      WriteState_ISSUE_REQ : begin
-        io_req_valid = 1'b1;
-      end
-      default : begin
-      end
-    endcase
+    outReq_ready = outReq_stage_ready;
+    if(when_Stream_l477) begin
+      outReq_ready = 1'b1;
+    end
+  end
+
+  assign when_Stream_l477 = (! outReq_stage_valid);
+  assign outReq_stage_valid = outReq_rValid;
+  assign outReq_stage_payload_write = outReq_rData_write;
+  assign outReq_stage_payload_addr = outReq_rData_addr;
+  assign outReq_stage_payload_wdata = outReq_rData_wdata;
+  assign outReq_stage_payload_wstrb = outReq_rData_wstrb;
+  assign io_req_valid = outReq_stage_valid;
+  assign outReq_stage_ready = io_req_ready;
+  assign io_req_payload_write = outReq_stage_payload_write;
+  assign io_req_payload_addr = outReq_stage_payload_addr;
+  assign io_req_payload_wdata = outReq_stage_payload_wdata;
+  assign io_req_payload_wstrb = outReq_stage_payload_wstrb;
+  assign rFifo_io_push_valid = ((mode == BridgeMode_READ) && io_rsp_valid);
+  assign rConsume = ((! rValidReg) || io_axi_r_ready);
+  always @(*) begin
+    rFifo_io_pop_ready = 1'b0;
+    if(when_Ddr3Axi4Bridge_l73) begin
+      rFifo_io_pop_ready = 1'b1;
+    end
+  end
+
+  assign when_Ddr3Axi4Bridge_l68 = (io_axi_r_ready && rValidReg);
+  assign when_Ddr3Axi4Bridge_l73 = ((((mode == BridgeMode_READ) && (rBeatsLeft != 9'h0)) && rConsume) && rFifo_io_pop_valid);
+  assign _zz_rBeatsLeft = (rBeatsLeft - 9'h001);
+  assign when_Ddr3Axi4Bridge_l100 = (mode == BridgeMode_READ);
+  assign when_Ddr3Axi4Bridge_l101 = (! rIssuingChunk);
+  assign when_Ddr3Axi4Bridge_l102 = ((rCmdLeft != 9'h0) && ((rSlotsUsed <= 5'h08) || (rCmdLeft <= _zz_when_Ddr3Axi4Bridge_l102)));
+  assign when_Ddr3Axi4Bridge_l106 = ((rCmdLeft == 9'h0) || (5'h0f <= rSlotsUsed));
+  assign rdReqValid = ((((mode == BridgeMode_READ) && rIssuingChunk) && (rCmdLeft != 9'h0)) && (rSlotsUsed < 5'h10));
+  assign io_axi_w_ready = (((mode == BridgeMode_WRITE) && (! wLastSeen)) && wFifo_io_push_ready);
+  always @(*) begin
+    wFifo_io_push_valid = 1'b0;
+    if(when_Ddr3Axi4Bridge_l143) begin
+      wFifo_io_push_valid = 1'b1;
+    end
   end
 
   always @(*) begin
-    io_req_payload_write = 1'b0;
-    case(rState)
-      ReadState_IDLE : begin
-      end
-      ReadState_ISSUE_REQ : begin
-        io_req_payload_write = 1'b0;
-      end
-      ReadState_WAIT_DATA : begin
-      end
-      ReadState_SEND_BEAT1 : begin
-      end
-      default : begin
-      end
-    endcase
-    case(wState)
-      WriteState_IDLE : begin
-      end
-      WriteState_RECV_W : begin
-      end
-      WriteState_ISSUE_REQ : begin
-        io_req_payload_write = 1'b1;
-      end
-      default : begin
-      end
-    endcase
+    wFifo_io_push_payload_data = 128'h0;
+    if(when_Ddr3Axi4Bridge_l143) begin
+      wFifo_io_push_payload_data = io_axi_w_payload_data;
+    end
   end
 
   always @(*) begin
-    io_req_payload_addr = 27'h0;
-    case(rState)
-      ReadState_IDLE : begin
-      end
-      ReadState_ISSUE_REQ : begin
-        io_req_payload_addr = _zz_io_req_payload_addr[26:0];
-      end
-      ReadState_WAIT_DATA : begin
-      end
-      ReadState_SEND_BEAT1 : begin
-      end
-      default : begin
-      end
-    endcase
-    case(wState)
-      WriteState_IDLE : begin
-      end
-      WriteState_RECV_W : begin
-      end
-      WriteState_ISSUE_REQ : begin
-        io_req_payload_addr = _zz_io_req_payload_addr_1[26:0];
-      end
-      default : begin
-      end
-    endcase
+    wFifo_io_push_payload_strb = 16'h0;
+    if(when_Ddr3Axi4Bridge_l143) begin
+      wFifo_io_push_payload_strb = io_axi_w_payload_strb;
+    end
   end
 
-  always @(*) begin
-    io_req_payload_wdata = 128'h0;
-    case(wState)
-      WriteState_IDLE : begin
-      end
-      WriteState_RECV_W : begin
-      end
-      WriteState_ISSUE_REQ : begin
-        io_req_payload_wdata = wBuf128;
-      end
-      default : begin
-      end
-    endcase
-  end
-
-  always @(*) begin
-    io_req_payload_wstrb = 16'hffff;
-    case(wState)
-      WriteState_IDLE : begin
-      end
-      WriteState_RECV_W : begin
-      end
-      WriteState_ISSUE_REQ : begin
-        io_req_payload_wstrb = wStrb128;
-      end
-      default : begin
-      end
-    endcase
-  end
-
-  assign io_axi_ar_ready = (((rState == ReadState_IDLE) && io_init_done) && (wState == WriteState_IDLE));
-  assign io_axi_aw_ready = (((wState == WriteState_IDLE) && io_init_done) && (rState == ReadState_IDLE));
-  always @(*) begin
-    io_axi_w_ready = 1'b0;
-    case(wState)
-      WriteState_IDLE : begin
-      end
-      WriteState_RECV_W : begin
-        io_axi_w_ready = 1'b1;
-      end
-      WriteState_ISSUE_REQ : begin
-      end
-      default : begin
-      end
-    endcase
-  end
-
+  assign when_Ddr3Axi4Bridge_l143 = ((((mode == BridgeMode_WRITE) && (! wLastSeen)) && io_axi_w_valid) && wFifo_io_push_ready);
+  assign when_Ddr3Axi4Bridge_l178 = ((mode == BridgeMode_WRITE) && (! wBValidReg));
+  assign when_Ddr3Axi4Bridge_l179 = (! wDraining);
+  assign when_Ddr3Axi4Bridge_l180 = (wFifo_io_pop_valid && (wLastSeen || (5'h03 <= wFifo_io_occupancy)));
+  assign when_Ddr3Axi4Bridge_l184 = (! wFifo_io_pop_valid);
+  assign wrReqValid = (((mode == BridgeMode_WRITE) && wDraining) && wFifo_io_pop_valid);
+  assign wFifo_io_pop_ready = (((mode == BridgeMode_WRITE) && wDraining) && outReq_ready);
+  assign outReq_valid = (rdReqValid || wrReqValid);
+  assign outReq_payload_write = (mode == BridgeMode_WRITE);
+  assign outReq_payload_addr = _zz_outReq_payload_addr[26:0];
+  assign outReq_payload_wdata = wFifo_io_pop_payload_data;
+  assign outReq_payload_wstrb = wFifo_io_pop_payload_strb;
+  assign io_axi_ar_ready = (((mode == BridgeMode_IDLE) && io_init_done) && (! io_axi_aw_valid));
+  assign io_axi_aw_ready = ((mode == BridgeMode_IDLE) && io_init_done);
   assign io_axi_r_valid = rValidReg;
   assign io_axi_r_payload_data = rOutData;
   assign io_axi_r_payload_id = rId;
   assign io_axi_r_payload_resp = 2'b00;
   assign io_axi_r_payload_last = rLastReg;
-  always @(*) begin
-    io_axi_b_valid = 1'b0;
-    case(wState)
-      WriteState_IDLE : begin
-      end
-      WriteState_RECV_W : begin
-      end
-      WriteState_ISSUE_REQ : begin
-      end
-      default : begin
-        io_axi_b_valid = 1'b1;
-      end
-    endcase
-  end
-
+  assign io_axi_b_valid = wBValidReg;
   assign io_axi_b_payload_id = wId;
   assign io_axi_b_payload_resp = 2'b00;
-  assign when_Ddr3Axi4Bridge_l75 = (io_axi_ar_valid && io_axi_ar_ready);
-  assign _zz_rRemaining = (rRemaining - 9'h001);
-  assign when_Ddr3Axi4Bridge_l112 = (_zz_rRemaining == 9'h0);
-  assign _zz_rRemaining_1 = (rRemaining - 9'h001);
-  assign when_Ddr3Axi4Bridge_l139 = (_zz_rRemaining_1 == 9'h0);
-  assign when_Ddr3Axi4Bridge_l151 = (io_axi_aw_valid && io_axi_aw_ready);
+  assign rdSlotInc = (rdReqValid && outReq_ready);
+  assign rdSlotDec = (rFifo_io_pop_valid && rFifo_io_pop_ready);
+  assign wBlkInc = (wFifo_io_push_valid && wFifo_io_push_ready);
+  assign wBlkDec = (wrReqValid && outReq_ready);
+  assign when_Ddr3Axi4Bridge_l226 = (rdReqValid && outReq_ready);
+  assign when_Ddr3Axi4Bridge_l233 = (wrReqValid && outReq_ready);
+  assign when_Ddr3Axi4Bridge_l242 = (io_axi_aw_valid && io_axi_aw_ready);
+  assign _zz_rCmdLeft = (_zz__zz_rCmdLeft + 9'h001);
+  assign when_Ddr3Axi4Bridge_l253 = (io_axi_ar_valid && io_axi_ar_ready);
+  assign when_Ddr3Axi4Bridge_l272 = ((((rBeatsLeft == 9'h0) && (! rValidReg)) && (rCmdLeft == 9'h0)) && (rSlotsUsed == 5'h0));
+  assign when_Ddr3Axi4Bridge_l278 = ((wLastSeen && (wPendingBlks == 9'h0)) && (! wBValidReg));
+  assign when_Ddr3Axi4Bridge_l281 = (wBValidReg && io_axi_b_ready);
   always @(posedge io_pclk or posedge _zz_1) begin
     if(_zz_1) begin
-      rState <= ReadState_IDLE;
-      rAddr <= 32'h0;
-      rLen <= 8'h0;
+      outReq_rValid <= 1'b0;
+      mode <= BridgeMode_IDLE;
+      rReqAddr <= 32'h0;
+      rIncr <= 1'b1;
+      rCmdLeft <= 9'h0;
+      rSlotsUsed <= 5'h0;
+      rIssuingChunk <= 1'b0;
       rId <= 4'b0000;
-      rBuf128 <= 128'h0;
-      rRemaining <= 9'h0;
-      rOutData <= 128'h0;
+      rBeatsLeft <= 9'h0;
+      rPhase64 <= 1'b0;
       rValidReg <= 1'b0;
+      rOutData <= 128'h0;
       rLastReg <= 1'b0;
-      wState <= WriteState_IDLE;
-      wAddr <= 32'h0;
-      wLen <= 8'h0;
+      wReqAddr <= 32'h0;
+      wIncr <= 1'b1;
       wId <= 4'b0000;
-      wBuf128 <= 128'h0;
-      wStrb128 <= 16'h0;
+      wAsmData <= 128'h0;
+      wAsmStrb <= 16'h0;
       wPhase64 <= 1'b0;
+      wLastSeen <= 1'b0;
+      wBValidReg <= 1'b0;
+      wDraining <= 1'b0;
+      wPendingBlks <= 9'h0;
     end else begin
-      case(rState)
-        ReadState_IDLE : begin
-          if(when_Ddr3Axi4Bridge_l75) begin
-            rAddr <= io_axi_ar_payload_addr;
-            rLen <= io_axi_ar_payload_len;
-            rId <= io_axi_ar_payload_id;
-            rRemaining <= {1'd0, _zz_rRemaining_2};
-            rState <= ReadState_ISSUE_REQ;
+      if(outReq_ready) begin
+        outReq_rValid <= outReq_valid;
+      end
+      if(when_Ddr3Axi4Bridge_l68) begin
+        rValidReg <= 1'b0;
+        rLastReg <= 1'b0;
+      end
+      if(when_Ddr3Axi4Bridge_l73) begin
+        rBeatsLeft <= _zz_rBeatsLeft;
+        rValidReg <= 1'b1;
+        rLastReg <= (_zz_rBeatsLeft == 9'h0);
+        rOutData <= rFifo_io_pop_payload;
+      end
+      if(when_Ddr3Axi4Bridge_l100) begin
+        if(when_Ddr3Axi4Bridge_l101) begin
+          if(when_Ddr3Axi4Bridge_l102) begin
+            rIssuingChunk <= 1'b1;
+          end
+        end else begin
+          if(when_Ddr3Axi4Bridge_l106) begin
+            rIssuingChunk <= 1'b0;
           end
         end
-        ReadState_ISSUE_REQ : begin
-          if(io_req_ready) begin
-            rState <= ReadState_WAIT_DATA;
+      end else begin
+        rIssuingChunk <= 1'b0;
+      end
+      if(when_Ddr3Axi4Bridge_l143) begin
+        if(io_axi_w_payload_last) begin
+          wLastSeen <= 1'b1;
+        end
+      end
+      if(when_Ddr3Axi4Bridge_l178) begin
+        if(when_Ddr3Axi4Bridge_l179) begin
+          if(when_Ddr3Axi4Bridge_l180) begin
+            wDraining <= 1'b1;
+          end
+        end else begin
+          if(when_Ddr3Axi4Bridge_l184) begin
+            wDraining <= 1'b0;
           end
         end
-        ReadState_WAIT_DATA : begin
-          if(io_rsp_valid) begin
-            rBuf128 <= io_rsp_payload_rdata;
-            rOutData <= io_rsp_payload_rdata[127 : 0];
-            rValidReg <= 1'b1;
-            rLastReg <= (rRemaining == 9'h001);
-            rState <= ReadState_SEND_BEAT1;
-          end
+      end else begin
+        wDraining <= 1'b0;
+      end
+      rSlotsUsed <= (_zz_rSlotsUsed - _zz_rSlotsUsed_3);
+      wPendingBlks <= (_zz_wPendingBlks - _zz_wPendingBlks_3);
+      if(when_Ddr3Axi4Bridge_l226) begin
+        rCmdLeft <= (rCmdLeft - 9'h001);
+        if(rIncr) begin
+          rReqAddr <= (rReqAddr + 32'h00000010);
         end
-        ReadState_SEND_BEAT1 : begin
-          if(io_axi_r_ready) begin
-            rRemaining <= _zz_rRemaining;
-            rAddr <= (rAddr + 32'h00000010);
-            rValidReg <= 1'b0;
-            rLastReg <= 1'b0;
-            if(when_Ddr3Axi4Bridge_l112) begin
-              rState <= ReadState_IDLE;
-            end else begin
-              rState <= ReadState_ISSUE_REQ;
-            end
-          end
+      end
+      if(when_Ddr3Axi4Bridge_l233) begin
+        if(wIncr) begin
+          wReqAddr <= (wReqAddr + 32'h00000010);
         end
-        default : begin
-          if(io_axi_r_ready) begin
-            rRemaining <= _zz_rRemaining_1;
-            rAddr <= (rAddr + 32'h00000008);
-            rValidReg <= 1'b0;
-            rLastReg <= 1'b0;
-            if(when_Ddr3Axi4Bridge_l139) begin
-              rState <= ReadState_IDLE;
-            end else begin
-              rState <= ReadState_ISSUE_REQ;
-            end
-          end
-        end
-      endcase
-      case(wState)
-        WriteState_IDLE : begin
-          if(when_Ddr3Axi4Bridge_l151) begin
-            wAddr <= io_axi_aw_payload_addr;
-            wLen <= io_axi_aw_payload_len;
+      end
+      case(mode)
+        BridgeMode_IDLE : begin
+          if(when_Ddr3Axi4Bridge_l242) begin
+            wReqAddr <= io_axi_aw_payload_addr;
+            wIncr <= (io_axi_aw_payload_burst != 2'b00);
             wId <= io_axi_aw_payload_id;
-            wPhase64 <= 1'b0;
-            wState <= WriteState_RECV_W;
+            wPhase64 <= (io_axi_aw_payload_addr[3] && 1'b0);
+            wAsmData <= 128'h0;
+            wAsmStrb <= 16'h0;
+            wLastSeen <= 1'b0;
+            wBValidReg <= 1'b0;
+            wDraining <= 1'b0;
+            mode <= BridgeMode_WRITE;
+          end else begin
+            if(when_Ddr3Axi4Bridge_l253) begin
+              rReqAddr <= io_axi_ar_payload_addr;
+              rIncr <= (io_axi_ar_payload_burst != 2'b00);
+              rId <= io_axi_ar_payload_id;
+              rBeatsLeft <= _zz_rCmdLeft;
+              rCmdLeft <= _zz_rCmdLeft;
+              rPhase64 <= (io_axi_ar_payload_addr[3] && 1'b0);
+              rIssuingChunk <= 1'b0;
+              mode <= BridgeMode_READ;
+            end
           end
         end
-        WriteState_RECV_W : begin
-          if(io_axi_w_valid) begin
-            wBuf128 <= io_axi_w_payload_data;
-            wStrb128 <= io_axi_w_payload_strb;
-            wState <= WriteState_ISSUE_REQ;
-          end
-        end
-        WriteState_ISSUE_REQ : begin
-          if(io_req_ready) begin
-            wState <= WriteState_SEND_RESP;
+        BridgeMode_READ : begin
+          if(when_Ddr3Axi4Bridge_l272) begin
+            mode <= BridgeMode_IDLE;
           end
         end
         default : begin
-          if(io_axi_b_ready) begin
-            wState <= WriteState_IDLE;
+          if(when_Ddr3Axi4Bridge_l278) begin
+            wBValidReg <= 1'b1;
+          end
+          if(when_Ddr3Axi4Bridge_l281) begin
+            wBValidReg <= 1'b0;
+            mode <= BridgeMode_IDLE;
           end
         end
       endcase
+    end
+  end
+
+  always @(posedge io_pclk) begin
+    if(outReq_ready) begin
+      outReq_rData_write <= outReq_payload_write;
+      outReq_rData_addr <= outReq_payload_addr;
+      outReq_rData_wdata <= outReq_payload_wdata;
+      outReq_rData_wstrb <= outReq_payload_wstrb;
     end
   end
 
@@ -3908,7 +3974,7 @@ module Ddr3ControllerCore (
   output wire          io_phy_CKE,
   output wire          io_phy_resetn_delay,
   output wire          io_phy_wser_rst,
-  input  wire          _zz_when_Ddr3ControllerCore_l1907,
+  input  wire          _zz_when_Ddr3ControllerCore_l2226,
   input  wire          io_pclk
 );
   localparam Ddr3State_RST_WAIT = 4'd0;
@@ -3920,7 +3986,8 @@ module Ddr3ControllerCore (
   localparam Ddr3State_IDLE = 4'd6;
   localparam Ddr3State_READ = 4'd7;
   localparam Ddr3State_WRITE = 4'd8;
-  localparam Ddr3State_REFRESH = 4'd9;
+  localparam Ddr3State_PRECHARGE = 4'd9;
+  localparam Ddr3State_REFRESH = 4'd10;
 
   wire       [3:0]    _zz_rotScores_0;
   wire       [3:0]    _zz_rotScores_0_1;
@@ -4106,10 +4173,18 @@ module Ddr3ControllerCore (
   wire       [0:0]    _zz_rotScores_7_20;
   wire       [3:0]    _zz_rotScores_7_21;
   wire       [0:0]    _zz_rotScores_7_22;
-  wire       [4:0]    _zz_rdCyc;
+  wire       [6:0]    _zz_rdCyc;
   wire       [1:0]    _zz_rdCyc_1;
-  wire       [4:0]    _zz_when_Ddr3ControllerCore_l570;
-  wire       [4:0]    _zz_cycle;
+  wire       [0:0]    _zz_rotSplit;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l597;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l601;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l601_1;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l601_2;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l601_3;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l601_4;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l601_5;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l601_6;
+  wire       [6:0]    _zz_cycle_1;
   wire       [16:0]   _zz_tick_counter;
   wire       [12:0]   _zz_A_0_1;
   wire       [12:0]   _zz_A_0_2;
@@ -4118,9 +4193,9 @@ module Ddr3ControllerCore (
   wire       [13:0]   _zz_A_0_5;
   wire       [0:0]    _zz_A_0_6;
   wire       [12:0]   _zz_A_0_7;
-  wire       [2:0]    _zz_when_Ddr3ControllerCore_l702;
-  wire       [2:0]    _zz_when_Ddr3ControllerCore_l702_1;
-  wire       [0:0]    _zz_when_Ddr3ControllerCore_l702_2;
+  wire       [2:0]    _zz_when_Ddr3ControllerCore_l744;
+  wire       [2:0]    _zz_when_Ddr3ControllerCore_l744_1;
+  wire       [0:0]    _zz_when_Ddr3ControllerCore_l744_2;
   wire       [12:0]   _zz_A_0_8;
   wire       [7:0]    _zz_wstep;
   wire       [7:0]    _zz_wstep_1;
@@ -4131,64 +4206,71 @@ module Ddr3ControllerCore (
   wire       [12:0]   _zz_A_0_9;
   wire       [12:0]   _zz_A_0_10;
   wire       [0:0]    _zz_A_0_11;
-  wire       [13:0]   _zz_A_2_1;
-  wire       [0:0]    _zz_A_2_2;
-  wire       [13:0]   _zz_A_2_3;
-  wire       [0:0]    _zz_A_2_4;
+  wire       [13:0]   _zz_A_2_2;
+  wire       [0:0]    _zz_A_2_3;
+  wire       [13:0]   _zz_A_2_4;
+  wire       [0:0]    _zz_A_2_5;
   wire       [0:0]    _zz_A_0_12;
   wire       [1:0]    _zz_rclkpos;
   wire       [0:0]    _zz_A_0_13;
   wire       [2:0]    _zz_rclksel;
   wire       [1:0]    _zz_rclkpos_1;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1267;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1279;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1309;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1321;
   wire       [7:0]    _zz_wstep_6;
   wire       [7:0]    _zz_wstep_7;
   wire       [0:0]    _zz_A_0_14;
   wire       [0:0]    _zz_A_0_15;
   wire       [0:0]    _zz_A_0_16;
   wire       [0:0]    _zz_A_0_17;
-  wire       [0:0]    _zz_A_0_18;
-  wire       [15:0]   _zz_A_2_5;
+  wire       [15:0]   _zz_A_0_18;
+  wire       [0:0]    _zz_A_0_19;
+  wire       [15:0]   _zz_A_0_20;
+  wire       [0:0]    _zz_A_0_21;
+  wire       [15:0]   _zz__zz_A_2;
+  wire       [9:0]    _zz__zz_A_2_1;
+  wire       [5:0]    _zz_rdRspLeft;
+  wire       [5:0]    _zz_rdRspLeft_1;
+  wire       [0:0]    _zz_rdRspLeft_2;
+  wire       [5:0]    _zz_rdRspLeft_3;
+  wire       [0:0]    _zz_rdRspLeft_4;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1685_1;
   wire       [15:0]   _zz_A_2_6;
   wire       [15:0]   _zz_A_2_7;
   wire       [15:0]   _zz_A_2_8;
-  wire       [0:0]    _zz_A_0_19;
   wire       [15:0]   _zz_A_2_9;
-  wire       [15:0]   _zz_A_2_10;
-  wire       [9:0]    _zz_A_2_11;
-  reg        [15:0]   _zz_rdataVec_0;
-  wire       [2:0]    _zz_rdataVec_0_1;
-  wire       [3:0]    _zz_rdataVec_0_2;
-  wire       [3:0]    _zz_rdataVec_0_3;
-  reg        [15:0]   _zz_rdataVec_1;
-  wire       [2:0]    _zz_rdataVec_1_1;
-  wire       [3:0]    _zz_rdataVec_1_2;
-  wire       [3:0]    _zz_rdataVec_1_3;
-  reg        [15:0]   _zz_rdataVec_2;
-  wire       [2:0]    _zz_rdataVec_2_1;
-  wire       [3:0]    _zz_rdataVec_2_2;
-  wire       [3:0]    _zz_rdataVec_2_3;
-  reg        [15:0]   _zz_rdataVec_3;
-  wire       [2:0]    _zz_rdataVec_3_1;
-  wire       [3:0]    _zz_rdataVec_3_2;
-  wire       [3:0]    _zz_rdataVec_3_3;
-  reg        [15:0]   _zz_rdataVec_4;
-  wire       [2:0]    _zz_rdataVec_4_1;
-  wire       [3:0]    _zz_rdataVec_4_2;
-  wire       [3:0]    _zz_rdataVec_4_3;
-  reg        [15:0]   _zz_rdataVec_5;
-  wire       [2:0]    _zz_rdataVec_5_1;
-  wire       [3:0]    _zz_rdataVec_5_2;
-  wire       [3:0]    _zz_rdataVec_5_3;
-  reg        [15:0]   _zz_rdataVec_6;
-  wire       [2:0]    _zz_rdataVec_6_1;
-  wire       [3:0]    _zz_rdataVec_6_2;
-  wire       [3:0]    _zz_rdataVec_6_3;
-  reg        [15:0]   _zz_rdataVec_7;
-  wire       [2:0]    _zz_rdataVec_7_1;
-  wire       [3:0]    _zz_rdataVec_7_2;
-  wire       [3:0]    _zz_rdataVec_7_3;
+  wire       [3:0]    _zz__zz_rdataVec_0;
+  wire       [3:0]    _zz__zz_rdataVec_0_1;
+  reg        [15:0]   _zz_rdataVec_0_1;
+  reg        [15:0]   _zz_rdataVec_0_2;
+  wire       [3:0]    _zz__zz_rdataVec_1;
+  wire       [3:0]    _zz__zz_rdataVec_1_1;
+  reg        [15:0]   _zz_rdataVec_1_1;
+  reg        [15:0]   _zz_rdataVec_1_2;
+  wire       [3:0]    _zz__zz_rdataVec_2;
+  wire       [3:0]    _zz__zz_rdataVec_2_1;
+  reg        [15:0]   _zz_rdataVec_2_1;
+  reg        [15:0]   _zz_rdataVec_2_2;
+  wire       [3:0]    _zz__zz_rdataVec_3;
+  wire       [3:0]    _zz__zz_rdataVec_3_1;
+  reg        [15:0]   _zz_rdataVec_3_1;
+  reg        [15:0]   _zz_rdataVec_3_2;
+  wire       [3:0]    _zz__zz_rdataVec_4;
+  wire       [3:0]    _zz__zz_rdataVec_4_1;
+  reg        [15:0]   _zz_rdataVec_4_1;
+  reg        [15:0]   _zz_rdataVec_4_2;
+  wire       [3:0]    _zz__zz_rdataVec_5;
+  wire       [3:0]    _zz__zz_rdataVec_5_1;
+  reg        [15:0]   _zz_rdataVec_5_1;
+  reg        [15:0]   _zz_rdataVec_5_2;
+  wire       [3:0]    _zz__zz_rdataVec_6;
+  wire       [3:0]    _zz__zz_rdataVec_6_1;
+  reg        [15:0]   _zz_rdataVec_6_1;
+  reg        [15:0]   _zz_rdataVec_6_2;
+  wire       [3:0]    _zz__zz_rdataVec_7;
+  wire       [3:0]    _zz__zz_rdataVec_7_1;
+  reg        [15:0]   _zz_rdataVec_7_1;
+  reg        [15:0]   _zz_rdataVec_7_2;
   wire       [2:0]    CMD_SetModeReg;
   wire       [2:0]    CMD_AutoRefresh;
   wire       [2:0]    CMD_PreCharge;
@@ -4212,7 +4294,7 @@ module Ddr3ControllerCore (
   wire       [15:0]   MR2_RTT_WR;
   wire       [15:0]   MR3;
   reg        [3:0]    state;
-  reg        [4:0]    cycle;
+  reg        [6:0]    cycle;
   reg        [16:0]   tick_counter;
   reg                 tick;
   reg                 resetn_delay;
@@ -4220,6 +4302,33 @@ module Ddr3ControllerCore (
   reg                 busy;
   reg                 data_ready;
   reg                 init_done_latched;
+  reg                 rowOpen;
+  reg        [2:0]    openBank;
+  reg        [13:0]   openRow;
+  reg                 prechForReq;
+  reg                 wrStreamOpen;
+  reg                 wrHavePending;
+  reg        [5:0]    wrExtraCnt;
+  reg        [3:0]    wrCooldown;
+  reg                 st1Valid;
+  reg                 st2Valid;
+  reg                 st3Valid;
+  reg                 st1Req_write;
+  reg        [26:0]   st1Req_addr;
+  reg        [127:0]  st1Req_wdata;
+  reg        [15:0]   st1Req_wstrb;
+  reg                 st2Req_write;
+  reg        [26:0]   st2Req_addr;
+  reg        [127:0]  st2Req_wdata;
+  reg        [15:0]   st2Req_wstrb;
+  reg                 st3Req_write;
+  reg        [26:0]   st3Req_addr;
+  reg        [127:0]  st3Req_wdata;
+  reg        [15:0]   st3Req_wstrb;
+  reg                 rdStreamOpen;
+  reg                 rdHavePending;
+  reg        [5:0]    rdExtraCnt;
+  reg        [5:0]    rdRspLeft;
   reg                 wlevel_done;
   reg        [3:0]    wlevel_cnt;
   reg        [8:0]    wlevel_tries;
@@ -4378,8 +4487,8 @@ module Ddr3ControllerCore (
   reg                 rdir;
   reg        [10:0]   refresh_timer;
   reg                 refresh_due;
-  wire                when_Ddr3ControllerCore_l449;
-  wire                when_Ddr3ControllerCore_l450;
+  wire                when_Ddr3ControllerCore_l471;
+  wire                when_Ddr3ControllerCore_l472;
   reg                 reqReg_write;
   reg        [26:0]   reqReg_addr;
   reg        [127:0]  reqReg_wdata;
@@ -4416,84 +4525,120 @@ module Ddr3ControllerCore (
   reg        [7:0]    dqs_out;
   reg        [3:0]    dqs_oen;
   reg        [7:0]    dm_out;
-  wire                when_Ddr3ControllerCore_l533;
-  wire                when_Ddr3ControllerCore_l534;
-  wire       [4:0]    rdCyc;
+  wire                when_Ddr3ControllerCore_l555;
+  wire                when_Ddr3ControllerCore_l556;
+  wire       [6:0]    rdCyc;
+  wire       [6:0]    rotSplit;
   reg        [3:0]    dqs_read;
-  wire                when_Ddr3ControllerCore_l570;
+  wire                when_Ddr3ControllerCore_l597;
+  wire                when_Ddr3ControllerCore_l601;
+  wire       [13:0]   inRow;
+  wire       [2:0]    inBank;
+  wire                inSameRow;
+  wire                canAcceptWrStream;
+  wire                canAcceptRdStream;
   wire                acceptReq;
-  wire                when_Ddr3ControllerCore_l598;
-  wire                when_Ddr3ControllerCore_l603;
-  wire                when_Ddr3ControllerCore_l618;
+  wire                when_Ddr3ControllerCore_l640;
+  wire                when_Ddr3ControllerCore_l645;
+  wire                when_Ddr3ControllerCore_l660;
   wire       [15:0]   _zz_A_0;
-  wire                when_Ddr3ControllerCore_l743;
-  wire                when_Ddr3ControllerCore_l702;
-  wire                when_Ddr3ControllerCore_l695;
-  wire                when_Ddr3ControllerCore_l703;
-  wire                when_Ddr3ControllerCore_l708;
-  wire                when_Ddr3ControllerCore_l717;
-  wire                when_Ddr3ControllerCore_l732;
-  wire                when_Ddr3ControllerCore_l721;
-  wire                when_Ddr3ControllerCore_l882;
-  wire                when_Ddr3ControllerCore_l887;
-  wire                when_Ddr3ControllerCore_l907;
-  wire                when_Ddr3ControllerCore_l909;
-  wire                when_Ddr3ControllerCore_l921;
-  wire                when_Ddr3ControllerCore_l945;
-  wire                when_Ddr3ControllerCore_l946;
-  wire                when_Ddr3ControllerCore_l961;
-  wire                when_Ddr3ControllerCore_l986;
-  wire                when_Ddr3ControllerCore_l1004;
-  wire                when_Ddr3ControllerCore_l1029;
-  wire                when_Ddr3ControllerCore_l1034;
-  wire                when_Ddr3ControllerCore_l1045;
-  wire                when_Ddr3ControllerCore_l1070;
-  wire                when_Ddr3ControllerCore_l1106;
+  wire                when_Ddr3ControllerCore_l785;
+  wire                when_Ddr3ControllerCore_l744;
+  wire                when_Ddr3ControllerCore_l737;
+  wire                when_Ddr3ControllerCore_l745;
+  wire                when_Ddr3ControllerCore_l750;
+  wire                when_Ddr3ControllerCore_l759;
+  wire                when_Ddr3ControllerCore_l774;
+  wire                when_Ddr3ControllerCore_l763;
+  wire                when_Ddr3ControllerCore_l924;
+  wire                when_Ddr3ControllerCore_l929;
+  wire                when_Ddr3ControllerCore_l949;
+  wire                when_Ddr3ControllerCore_l951;
+  wire                when_Ddr3ControllerCore_l963;
+  wire                when_Ddr3ControllerCore_l987;
+  wire                when_Ddr3ControllerCore_l988;
+  wire                when_Ddr3ControllerCore_l1003;
+  wire                when_Ddr3ControllerCore_l1028;
+  wire                when_Ddr3ControllerCore_l1046;
+  wire                when_Ddr3ControllerCore_l1071;
+  wire                when_Ddr3ControllerCore_l1076;
+  wire                when_Ddr3ControllerCore_l1087;
   wire                when_Ddr3ControllerCore_l1112;
-  wire                when_Ddr3ControllerCore_l1134;
-  wire                when_Ddr3ControllerCore_l1153;
-  wire                when_Ddr3ControllerCore_l1158;
-  wire                when_Ddr3ControllerCore_l1183;
-  wire                when_Ddr3ControllerCore_l1191;
+  wire                when_Ddr3ControllerCore_l1148;
+  wire                when_Ddr3ControllerCore_l1154;
+  wire                when_Ddr3ControllerCore_l1176;
   wire                when_Ddr3ControllerCore_l1195;
-  wire                when_Ddr3ControllerCore_l1202;
-  wire                when_Ddr3ControllerCore_l1210;
-  wire                when_Ddr3ControllerCore_l1212;
-  wire                when_Ddr3ControllerCore_l1218;
+  wire                when_Ddr3ControllerCore_l1200;
   wire                when_Ddr3ControllerCore_l1225;
-  wire       [1:0]    _zz_wrMode;
-  wire                when_Ddr3ControllerCore_l1234;
-  wire                when_Ddr3ControllerCore_l1251;
-  wire                when_Ddr3ControllerCore_l1258;
+  wire                when_Ddr3ControllerCore_l1233;
+  wire                when_Ddr3ControllerCore_l1237;
+  wire                when_Ddr3ControllerCore_l1244;
+  wire                when_Ddr3ControllerCore_l1252;
+  wire                when_Ddr3ControllerCore_l1254;
+  wire                when_Ddr3ControllerCore_l1260;
   wire                when_Ddr3ControllerCore_l1267;
+  wire       [1:0]    _zz_wrMode;
+  wire                when_Ddr3ControllerCore_l1276;
+  wire                when_Ddr3ControllerCore_l1293;
+  wire                when_Ddr3ControllerCore_l1300;
+  wire                when_Ddr3ControllerCore_l1309;
   wire       [6:0]    _zz_s0Mag;
-  wire                when_Ddr3ControllerCore_l1279;
+  wire                when_Ddr3ControllerCore_l1321;
   wire       [6:0]    _zz_s0Mag_1;
-  wire                when_Ddr3ControllerCore_l1272;
-  wire                when_Ddr3ControllerCore_l1308;
-  wire                when_Ddr3ControllerCore_l1345;
-  wire                when_Ddr3ControllerCore_l1390;
+  wire                when_Ddr3ControllerCore_l1314;
+  wire                when_Ddr3ControllerCore_l1350;
+  wire                when_Ddr3ControllerCore_l1387;
+  wire                when_Ddr3ControllerCore_l1432;
   wire       [3:0]    _zz_1;
-  wire                when_Ddr3ControllerCore_l1393;
-  wire                when_Ddr3ControllerCore_l1394;
-  wire                when_Ddr3ControllerCore_l1402;
-  wire                when_Ddr3ControllerCore_l1424;
-  wire       [3:0]    _zz_state;
-  wire                when_Ddr3ControllerCore_l1523;
-  wire       [9:0]    _zz_A_2;
+  wire                when_Ddr3ControllerCore_l1435;
+  wire                when_Ddr3ControllerCore_l1436;
+  wire                when_Ddr3ControllerCore_l1444;
+  wire                when_Ddr3ControllerCore_l1466;
+  wire       [13:0]   _zz_openRow;
+  wire       [2:0]    _zz_openBank;
+  wire                _zz_cycle;
+  wire                when_Ddr3ControllerCore_l1570;
+  wire                when_Ddr3ControllerCore_l1579;
+  wire                when_Ddr3ControllerCore_l1611;
+  wire       [13:0]   _zz_openRow_1;
+  wire       [2:0]    _zz_openBank_1;
   wire       [2:0]    _zz_BA_2;
-  wire                when_Ddr3ControllerCore_l1538;
-  wire                when_Ddr3ControllerCore_l1543;
-  wire                when_Ddr3ControllerCore_l1549;
-  wire                when_Ddr3ControllerCore_l1553;
-  wire                when_Ddr3ControllerCore_l1557;
-  wire                when_Ddr3ControllerCore_l1561;
-  wire                when_Ddr3ControllerCore_l1572;
-  wire                when_Ddr3ControllerCore_l1578;
-  wire                when_Ddr3ControllerCore_l1613;
-  wire                when_Ddr3ControllerCore_l1699;
-  wire                when_Ddr3ControllerCore_l1731;
-  wire                when_Ddr3ControllerCore_l1752;
+  wire       [15:0]   _zz_A_2;
+  wire                when_Ddr3ControllerCore_l1657;
+  wire                when_Ddr3ControllerCore_l1661;
+  wire                when_Ddr3ControllerCore_l1667;
+  wire                when_Ddr3ControllerCore_l1666;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1685;
+  wire                _zz_data_ready;
+  wire                when_Ddr3ControllerCore_l1685;
+  wire       [9:0]    _zz_A_2_1;
+  wire       [2:0]    _zz_BA_2_1;
+  wire                when_Ddr3ControllerCore_l1700;
+  wire                when_Ddr3ControllerCore_l1706;
+  wire                when_Ddr3ControllerCore_l1741;
+  wire                when_Ddr3ControllerCore_l1827;
+  wire                when_Ddr3ControllerCore_l1859;
+  wire                when_Ddr3ControllerCore_l1877;
+  wire                when_Ddr3ControllerCore_l1889;
+  wire                when_Ddr3ControllerCore_l1900;
+  wire                when_Ddr3ControllerCore_l1930;
+  wire                when_Ddr3ControllerCore_l1966;
+  wire                when_Ddr3ControllerCore_l1969;
+  wire                when_Ddr3ControllerCore_l1979;
+  wire                when_Ddr3ControllerCore_l2000;
+  wire                when_Ddr3ControllerCore_l2010;
+  wire                when_Ddr3ControllerCore_l2038;
+  wire                when_Ddr3ControllerCore_l2042;
+  wire                when_Ddr3ControllerCore_l2051;
+  reg        [15:0]   dqPrevVec_0;
+  reg        [15:0]   dqPrevVec_1;
+  reg        [15:0]   dqPrevVec_2;
+  reg        [15:0]   dqPrevVec_3;
+  reg        [15:0]   dqPrevVec_4;
+  reg        [15:0]   dqPrevVec_5;
+  reg        [15:0]   dqPrevVec_6;
+  reg        [15:0]   dqPrevVec_7;
+  wire                needRotSplit;
   wire       [15:0]   rdataVec_0;
   wire       [15:0]   rdataVec_1;
   wire       [15:0]   rdataVec_2;
@@ -4502,10 +4647,17 @@ module Ddr3ControllerCore (
   wire       [15:0]   rdataVec_5;
   wire       [15:0]   rdataVec_6;
   wire       [15:0]   rdataVec_7;
-  wire                when_Ddr3ControllerCore_l1907;
+  wire       [2:0]    _zz_rdataVec_0;
+  wire       [2:0]    _zz_rdataVec_1;
+  wire       [2:0]    _zz_rdataVec_2;
+  wire       [2:0]    _zz_rdataVec_3;
+  wire       [2:0]    _zz_rdataVec_4;
+  wire       [2:0]    _zz_rdataVec_5;
+  wire       [2:0]    _zz_rdataVec_6;
+  wire       [2:0]    _zz_rdataVec_7;
+  wire                when_Ddr3ControllerCore_l2226;
   `ifndef SYNTHESIS
   reg [111:0] state_string;
-  reg [111:0] _zz_state_string;
   `endif
 
 
@@ -4694,9 +4846,17 @@ module Ddr3ControllerCore (
   assign _zz_rotScores_7_22 = (latchBeats_7 == patBeats_6);
   assign _zz_rotScores_7_21 = {3'd0, _zz_rotScores_7_22};
   assign _zz_rdCyc_1 = rclkpos;
-  assign _zz_rdCyc = {3'd0, _zz_rdCyc_1};
-  assign _zz_when_Ddr3ControllerCore_l570 = (rdCyc + 5'h07);
-  assign _zz_cycle = (cycle + 5'h01);
+  assign _zz_rdCyc = {5'd0, _zz_rdCyc_1};
+  assign _zz_rotSplit = (bestRot != 3'b000);
+  assign _zz_when_Ddr3ControllerCore_l597 = (rdCyc + 7'h07);
+  assign _zz_when_Ddr3ControllerCore_l601 = (_zz_when_Ddr3ControllerCore_l601_1 + _zz_when_Ddr3ControllerCore_l601_3);
+  assign _zz_when_Ddr3ControllerCore_l601_1 = (_zz_when_Ddr3ControllerCore_l601_2 + rotSplit);
+  assign _zz_when_Ddr3ControllerCore_l601_2 = (rdCyc + 7'h07);
+  assign _zz_when_Ddr3ControllerCore_l601_3 = {1'd0, rdExtraCnt};
+  assign _zz_when_Ddr3ControllerCore_l601_4 = (_zz_when_Ddr3ControllerCore_l601_5 + _zz_when_Ddr3ControllerCore_l601_6);
+  assign _zz_when_Ddr3ControllerCore_l601_5 = (7'h0a + rotSplit);
+  assign _zz_when_Ddr3ControllerCore_l601_6 = {1'd0, rdExtraCnt};
+  assign _zz_cycle_1 = (cycle + 7'h01);
   assign _zz_tick_counter = (tick_counter - 17'h00001);
   assign _zz_A_0_1 = MR2[12 : 0];
   assign _zz_A_0_2 = MR3[12 : 0];
@@ -4705,9 +4865,9 @@ module Ddr3ControllerCore (
   assign _zz_A_0_6 = 1'b1;
   assign _zz_A_0_5 = {13'd0, _zz_A_0_6};
   assign _zz_A_0_7 = _zz_A_0[12 : 0];
-  assign _zz_when_Ddr3ControllerCore_l702 = (wlVoteCnt + _zz_when_Ddr3ControllerCore_l702_1);
-  assign _zz_when_Ddr3ControllerCore_l702_2 = when_Ddr3ControllerCore_l743;
-  assign _zz_when_Ddr3ControllerCore_l702_1 = {2'd0, _zz_when_Ddr3ControllerCore_l702_2};
+  assign _zz_when_Ddr3ControllerCore_l744 = (wlVoteCnt + _zz_when_Ddr3ControllerCore_l744_1);
+  assign _zz_when_Ddr3ControllerCore_l744_2 = when_Ddr3ControllerCore_l785;
+  assign _zz_when_Ddr3ControllerCore_l744_1 = {2'd0, _zz_when_Ddr3ControllerCore_l744_2};
   assign _zz_A_0_8 = MR1[12 : 0];
   assign _zz_wstep = (wstep + 8'h01);
   assign _zz_wstep_2 = ($signed(_zz_wstep_3) + $signed(9'h0));
@@ -4718,157 +4878,348 @@ module Ddr3ControllerCore (
   assign _zz_A_0_9 = MR1[12 : 0];
   assign _zz_A_0_10 = MR2_RTT_WR[12 : 0];
   assign _zz_A_0_11 = 1'b0;
-  assign _zz_A_2_2 = 1'b1;
-  assign _zz_A_2_1 = {13'd0, _zz_A_2_2};
-  assign _zz_A_2_4 = 1'b1;
-  assign _zz_A_2_3 = {13'd0, _zz_A_2_4};
+  assign _zz_A_2_3 = 1'b1;
+  assign _zz_A_2_2 = {13'd0, _zz_A_2_3};
+  assign _zz_A_2_5 = 1'b1;
+  assign _zz_A_2_4 = {13'd0, _zz_A_2_5};
   assign _zz_A_0_12 = 1'b0;
   assign _zz_rclkpos = (rclkpos + 2'b01);
   assign _zz_A_0_13 = 1'b0;
   assign _zz_rclksel = (rclksel + 3'b001);
   assign _zz_rclkpos_1 = (rclkpos + 2'b01);
-  assign _zz_when_Ddr3ControllerCore_l1267 = (scMag + 7'h02);
-  assign _zz_when_Ddr3ControllerCore_l1279 = (scMag + 7'h02);
+  assign _zz_when_Ddr3ControllerCore_l1309 = (scMag + 7'h02);
+  assign _zz_when_Ddr3ControllerCore_l1321 = (scMag + 7'h02);
   assign _zz_wstep_6 = (wstep - 8'h06);
   assign _zz_wstep_7 = (wBase + 8'h06);
   assign _zz_A_0_14 = 1'b0;
   assign _zz_A_0_15 = 1'b0;
   assign _zz_A_0_16 = 1'b0;
   assign _zz_A_0_17 = 1'b0;
-  assign _zz_A_0_18 = 1'b0;
-  assign _zz_A_2_5 = (_zz_A_2_6 | 16'h1000);
-  assign _zz_A_2_6 = {6'd0, _zz_A_2};
-  assign _zz_A_2_7 = (_zz_A_2_8 | 16'h1000);
-  assign _zz_A_2_8 = {6'd0, _zz_A_2};
+  assign _zz_A_0_18 = 16'h0400;
   assign _zz_A_0_19 = 1'b0;
-  assign _zz_A_2_9 = (_zz_A_2_10 | 16'h1400);
-  assign _zz_A_2_11 = {reqReg_addr[6 : 0],3'b000};
-  assign _zz_A_2_10 = {6'd0, _zz_A_2_11};
-  assign _zz_rdataVec_0_2 = (4'b0000 - _zz_rdataVec_0_3);
-  assign _zz_rdataVec_0_3 = {1'd0, bestRot};
-  assign _zz_rdataVec_1_2 = (4'b0001 - _zz_rdataVec_1_3);
-  assign _zz_rdataVec_1_3 = {1'd0, bestRot};
-  assign _zz_rdataVec_2_2 = (4'b0010 - _zz_rdataVec_2_3);
-  assign _zz_rdataVec_2_3 = {1'd0, bestRot};
-  assign _zz_rdataVec_3_2 = (4'b0011 - _zz_rdataVec_3_3);
-  assign _zz_rdataVec_3_3 = {1'd0, bestRot};
-  assign _zz_rdataVec_4_2 = (4'b0100 - _zz_rdataVec_4_3);
-  assign _zz_rdataVec_4_3 = {1'd0, bestRot};
-  assign _zz_rdataVec_5_2 = (4'b0101 - _zz_rdataVec_5_3);
-  assign _zz_rdataVec_5_3 = {1'd0, bestRot};
-  assign _zz_rdataVec_6_2 = (4'b0110 - _zz_rdataVec_6_3);
-  assign _zz_rdataVec_6_3 = {1'd0, bestRot};
-  assign _zz_rdataVec_7_2 = (4'b0111 - _zz_rdataVec_7_3);
-  assign _zz_rdataVec_7_3 = {1'd0, bestRot};
-  assign _zz_rdataVec_0_1 = _zz_rdataVec_0_2[2 : 0];
-  assign _zz_rdataVec_1_1 = _zz_rdataVec_1_2[2 : 0];
-  assign _zz_rdataVec_2_1 = _zz_rdataVec_2_2[2 : 0];
-  assign _zz_rdataVec_3_1 = _zz_rdataVec_3_2[2 : 0];
-  assign _zz_rdataVec_4_1 = _zz_rdataVec_4_2[2 : 0];
-  assign _zz_rdataVec_5_1 = _zz_rdataVec_5_2[2 : 0];
-  assign _zz_rdataVec_6_1 = _zz_rdataVec_6_2[2 : 0];
-  assign _zz_rdataVec_7_1 = _zz_rdataVec_7_2[2 : 0];
+  assign _zz_A_0_20 = 16'h0400;
+  assign _zz_A_0_21 = 1'b0;
+  assign _zz__zz_A_2_1 = {reqReg_addr[6 : 0],3'b000};
+  assign _zz__zz_A_2 = {6'd0, _zz__zz_A_2_1};
+  assign _zz_rdRspLeft = (rdRspLeft + _zz_rdRspLeft_1);
+  assign _zz_rdRspLeft_2 = when_Ddr3ControllerCore_l1667;
+  assign _zz_rdRspLeft_1 = {5'd0, _zz_rdRspLeft_2};
+  assign _zz_rdRspLeft_4 = _zz_data_ready;
+  assign _zz_rdRspLeft_3 = {5'd0, _zz_rdRspLeft_4};
+  assign _zz_when_Ddr3ControllerCore_l1685_1 = (_zz_when_Ddr3ControllerCore_l1685 + 7'h02);
+  assign _zz_A_2_6 = (_zz_A_2_7 | 16'h1400);
+  assign _zz_A_2_7 = {6'd0, _zz_A_2_1};
+  assign _zz_A_2_8 = (_zz_A_2_9 | 16'h1000);
+  assign _zz_A_2_9 = {6'd0, _zz_A_2_1};
+  assign _zz__zz_rdataVec_0 = (4'b0000 - _zz__zz_rdataVec_0_1);
+  assign _zz__zz_rdataVec_0_1 = {1'd0, bestRot};
+  assign _zz__zz_rdataVec_1 = (4'b0001 - _zz__zz_rdataVec_1_1);
+  assign _zz__zz_rdataVec_1_1 = {1'd0, bestRot};
+  assign _zz__zz_rdataVec_2 = (4'b0010 - _zz__zz_rdataVec_2_1);
+  assign _zz__zz_rdataVec_2_1 = {1'd0, bestRot};
+  assign _zz__zz_rdataVec_3 = (4'b0011 - _zz__zz_rdataVec_3_1);
+  assign _zz__zz_rdataVec_3_1 = {1'd0, bestRot};
+  assign _zz__zz_rdataVec_4 = (4'b0100 - _zz__zz_rdataVec_4_1);
+  assign _zz__zz_rdataVec_4_1 = {1'd0, bestRot};
+  assign _zz__zz_rdataVec_5 = (4'b0101 - _zz__zz_rdataVec_5_1);
+  assign _zz__zz_rdataVec_5_1 = {1'd0, bestRot};
+  assign _zz__zz_rdataVec_6 = (4'b0110 - _zz__zz_rdataVec_6_1);
+  assign _zz__zz_rdataVec_6_1 = {1'd0, bestRot};
+  assign _zz__zz_rdataVec_7 = (4'b0111 - _zz__zz_rdataVec_7_1);
+  assign _zz__zz_rdataVec_7_1 = {1'd0, bestRot};
   always @(*) begin
-    case(_zz_rdataVec_0_1)
-      3'b000 : _zz_rdataVec_0 = io_phy_dq_in_0;
-      3'b001 : _zz_rdataVec_0 = io_phy_dq_in_1;
-      3'b010 : _zz_rdataVec_0 = io_phy_dq_in_2;
-      3'b011 : _zz_rdataVec_0 = io_phy_dq_in_3;
-      3'b100 : _zz_rdataVec_0 = io_phy_dq_in_4;
-      3'b101 : _zz_rdataVec_0 = io_phy_dq_in_5;
-      3'b110 : _zz_rdataVec_0 = io_phy_dq_in_6;
-      default : _zz_rdataVec_0 = io_phy_dq_in_7;
+    case(_zz_rdataVec_0)
+      3'b000 : begin
+        _zz_rdataVec_0_1 = dqPrevVec_0;
+        _zz_rdataVec_0_2 = io_phy_dq_in_0;
+      end
+      3'b001 : begin
+        _zz_rdataVec_0_1 = dqPrevVec_1;
+        _zz_rdataVec_0_2 = io_phy_dq_in_1;
+      end
+      3'b010 : begin
+        _zz_rdataVec_0_1 = dqPrevVec_2;
+        _zz_rdataVec_0_2 = io_phy_dq_in_2;
+      end
+      3'b011 : begin
+        _zz_rdataVec_0_1 = dqPrevVec_3;
+        _zz_rdataVec_0_2 = io_phy_dq_in_3;
+      end
+      3'b100 : begin
+        _zz_rdataVec_0_1 = dqPrevVec_4;
+        _zz_rdataVec_0_2 = io_phy_dq_in_4;
+      end
+      3'b101 : begin
+        _zz_rdataVec_0_1 = dqPrevVec_5;
+        _zz_rdataVec_0_2 = io_phy_dq_in_5;
+      end
+      3'b110 : begin
+        _zz_rdataVec_0_1 = dqPrevVec_6;
+        _zz_rdataVec_0_2 = io_phy_dq_in_6;
+      end
+      default : begin
+        _zz_rdataVec_0_1 = dqPrevVec_7;
+        _zz_rdataVec_0_2 = io_phy_dq_in_7;
+      end
     endcase
   end
 
   always @(*) begin
-    case(_zz_rdataVec_1_1)
-      3'b000 : _zz_rdataVec_1 = io_phy_dq_in_0;
-      3'b001 : _zz_rdataVec_1 = io_phy_dq_in_1;
-      3'b010 : _zz_rdataVec_1 = io_phy_dq_in_2;
-      3'b011 : _zz_rdataVec_1 = io_phy_dq_in_3;
-      3'b100 : _zz_rdataVec_1 = io_phy_dq_in_4;
-      3'b101 : _zz_rdataVec_1 = io_phy_dq_in_5;
-      3'b110 : _zz_rdataVec_1 = io_phy_dq_in_6;
-      default : _zz_rdataVec_1 = io_phy_dq_in_7;
+    case(_zz_rdataVec_1)
+      3'b000 : begin
+        _zz_rdataVec_1_1 = dqPrevVec_0;
+        _zz_rdataVec_1_2 = io_phy_dq_in_0;
+      end
+      3'b001 : begin
+        _zz_rdataVec_1_1 = dqPrevVec_1;
+        _zz_rdataVec_1_2 = io_phy_dq_in_1;
+      end
+      3'b010 : begin
+        _zz_rdataVec_1_1 = dqPrevVec_2;
+        _zz_rdataVec_1_2 = io_phy_dq_in_2;
+      end
+      3'b011 : begin
+        _zz_rdataVec_1_1 = dqPrevVec_3;
+        _zz_rdataVec_1_2 = io_phy_dq_in_3;
+      end
+      3'b100 : begin
+        _zz_rdataVec_1_1 = dqPrevVec_4;
+        _zz_rdataVec_1_2 = io_phy_dq_in_4;
+      end
+      3'b101 : begin
+        _zz_rdataVec_1_1 = dqPrevVec_5;
+        _zz_rdataVec_1_2 = io_phy_dq_in_5;
+      end
+      3'b110 : begin
+        _zz_rdataVec_1_1 = dqPrevVec_6;
+        _zz_rdataVec_1_2 = io_phy_dq_in_6;
+      end
+      default : begin
+        _zz_rdataVec_1_1 = dqPrevVec_7;
+        _zz_rdataVec_1_2 = io_phy_dq_in_7;
+      end
     endcase
   end
 
   always @(*) begin
-    case(_zz_rdataVec_2_1)
-      3'b000 : _zz_rdataVec_2 = io_phy_dq_in_0;
-      3'b001 : _zz_rdataVec_2 = io_phy_dq_in_1;
-      3'b010 : _zz_rdataVec_2 = io_phy_dq_in_2;
-      3'b011 : _zz_rdataVec_2 = io_phy_dq_in_3;
-      3'b100 : _zz_rdataVec_2 = io_phy_dq_in_4;
-      3'b101 : _zz_rdataVec_2 = io_phy_dq_in_5;
-      3'b110 : _zz_rdataVec_2 = io_phy_dq_in_6;
-      default : _zz_rdataVec_2 = io_phy_dq_in_7;
+    case(_zz_rdataVec_2)
+      3'b000 : begin
+        _zz_rdataVec_2_1 = dqPrevVec_0;
+        _zz_rdataVec_2_2 = io_phy_dq_in_0;
+      end
+      3'b001 : begin
+        _zz_rdataVec_2_1 = dqPrevVec_1;
+        _zz_rdataVec_2_2 = io_phy_dq_in_1;
+      end
+      3'b010 : begin
+        _zz_rdataVec_2_1 = dqPrevVec_2;
+        _zz_rdataVec_2_2 = io_phy_dq_in_2;
+      end
+      3'b011 : begin
+        _zz_rdataVec_2_1 = dqPrevVec_3;
+        _zz_rdataVec_2_2 = io_phy_dq_in_3;
+      end
+      3'b100 : begin
+        _zz_rdataVec_2_1 = dqPrevVec_4;
+        _zz_rdataVec_2_2 = io_phy_dq_in_4;
+      end
+      3'b101 : begin
+        _zz_rdataVec_2_1 = dqPrevVec_5;
+        _zz_rdataVec_2_2 = io_phy_dq_in_5;
+      end
+      3'b110 : begin
+        _zz_rdataVec_2_1 = dqPrevVec_6;
+        _zz_rdataVec_2_2 = io_phy_dq_in_6;
+      end
+      default : begin
+        _zz_rdataVec_2_1 = dqPrevVec_7;
+        _zz_rdataVec_2_2 = io_phy_dq_in_7;
+      end
     endcase
   end
 
   always @(*) begin
-    case(_zz_rdataVec_3_1)
-      3'b000 : _zz_rdataVec_3 = io_phy_dq_in_0;
-      3'b001 : _zz_rdataVec_3 = io_phy_dq_in_1;
-      3'b010 : _zz_rdataVec_3 = io_phy_dq_in_2;
-      3'b011 : _zz_rdataVec_3 = io_phy_dq_in_3;
-      3'b100 : _zz_rdataVec_3 = io_phy_dq_in_4;
-      3'b101 : _zz_rdataVec_3 = io_phy_dq_in_5;
-      3'b110 : _zz_rdataVec_3 = io_phy_dq_in_6;
-      default : _zz_rdataVec_3 = io_phy_dq_in_7;
+    case(_zz_rdataVec_3)
+      3'b000 : begin
+        _zz_rdataVec_3_1 = dqPrevVec_0;
+        _zz_rdataVec_3_2 = io_phy_dq_in_0;
+      end
+      3'b001 : begin
+        _zz_rdataVec_3_1 = dqPrevVec_1;
+        _zz_rdataVec_3_2 = io_phy_dq_in_1;
+      end
+      3'b010 : begin
+        _zz_rdataVec_3_1 = dqPrevVec_2;
+        _zz_rdataVec_3_2 = io_phy_dq_in_2;
+      end
+      3'b011 : begin
+        _zz_rdataVec_3_1 = dqPrevVec_3;
+        _zz_rdataVec_3_2 = io_phy_dq_in_3;
+      end
+      3'b100 : begin
+        _zz_rdataVec_3_1 = dqPrevVec_4;
+        _zz_rdataVec_3_2 = io_phy_dq_in_4;
+      end
+      3'b101 : begin
+        _zz_rdataVec_3_1 = dqPrevVec_5;
+        _zz_rdataVec_3_2 = io_phy_dq_in_5;
+      end
+      3'b110 : begin
+        _zz_rdataVec_3_1 = dqPrevVec_6;
+        _zz_rdataVec_3_2 = io_phy_dq_in_6;
+      end
+      default : begin
+        _zz_rdataVec_3_1 = dqPrevVec_7;
+        _zz_rdataVec_3_2 = io_phy_dq_in_7;
+      end
     endcase
   end
 
   always @(*) begin
-    case(_zz_rdataVec_4_1)
-      3'b000 : _zz_rdataVec_4 = io_phy_dq_in_0;
-      3'b001 : _zz_rdataVec_4 = io_phy_dq_in_1;
-      3'b010 : _zz_rdataVec_4 = io_phy_dq_in_2;
-      3'b011 : _zz_rdataVec_4 = io_phy_dq_in_3;
-      3'b100 : _zz_rdataVec_4 = io_phy_dq_in_4;
-      3'b101 : _zz_rdataVec_4 = io_phy_dq_in_5;
-      3'b110 : _zz_rdataVec_4 = io_phy_dq_in_6;
-      default : _zz_rdataVec_4 = io_phy_dq_in_7;
+    case(_zz_rdataVec_4)
+      3'b000 : begin
+        _zz_rdataVec_4_1 = dqPrevVec_0;
+        _zz_rdataVec_4_2 = io_phy_dq_in_0;
+      end
+      3'b001 : begin
+        _zz_rdataVec_4_1 = dqPrevVec_1;
+        _zz_rdataVec_4_2 = io_phy_dq_in_1;
+      end
+      3'b010 : begin
+        _zz_rdataVec_4_1 = dqPrevVec_2;
+        _zz_rdataVec_4_2 = io_phy_dq_in_2;
+      end
+      3'b011 : begin
+        _zz_rdataVec_4_1 = dqPrevVec_3;
+        _zz_rdataVec_4_2 = io_phy_dq_in_3;
+      end
+      3'b100 : begin
+        _zz_rdataVec_4_1 = dqPrevVec_4;
+        _zz_rdataVec_4_2 = io_phy_dq_in_4;
+      end
+      3'b101 : begin
+        _zz_rdataVec_4_1 = dqPrevVec_5;
+        _zz_rdataVec_4_2 = io_phy_dq_in_5;
+      end
+      3'b110 : begin
+        _zz_rdataVec_4_1 = dqPrevVec_6;
+        _zz_rdataVec_4_2 = io_phy_dq_in_6;
+      end
+      default : begin
+        _zz_rdataVec_4_1 = dqPrevVec_7;
+        _zz_rdataVec_4_2 = io_phy_dq_in_7;
+      end
     endcase
   end
 
   always @(*) begin
-    case(_zz_rdataVec_5_1)
-      3'b000 : _zz_rdataVec_5 = io_phy_dq_in_0;
-      3'b001 : _zz_rdataVec_5 = io_phy_dq_in_1;
-      3'b010 : _zz_rdataVec_5 = io_phy_dq_in_2;
-      3'b011 : _zz_rdataVec_5 = io_phy_dq_in_3;
-      3'b100 : _zz_rdataVec_5 = io_phy_dq_in_4;
-      3'b101 : _zz_rdataVec_5 = io_phy_dq_in_5;
-      3'b110 : _zz_rdataVec_5 = io_phy_dq_in_6;
-      default : _zz_rdataVec_5 = io_phy_dq_in_7;
+    case(_zz_rdataVec_5)
+      3'b000 : begin
+        _zz_rdataVec_5_1 = dqPrevVec_0;
+        _zz_rdataVec_5_2 = io_phy_dq_in_0;
+      end
+      3'b001 : begin
+        _zz_rdataVec_5_1 = dqPrevVec_1;
+        _zz_rdataVec_5_2 = io_phy_dq_in_1;
+      end
+      3'b010 : begin
+        _zz_rdataVec_5_1 = dqPrevVec_2;
+        _zz_rdataVec_5_2 = io_phy_dq_in_2;
+      end
+      3'b011 : begin
+        _zz_rdataVec_5_1 = dqPrevVec_3;
+        _zz_rdataVec_5_2 = io_phy_dq_in_3;
+      end
+      3'b100 : begin
+        _zz_rdataVec_5_1 = dqPrevVec_4;
+        _zz_rdataVec_5_2 = io_phy_dq_in_4;
+      end
+      3'b101 : begin
+        _zz_rdataVec_5_1 = dqPrevVec_5;
+        _zz_rdataVec_5_2 = io_phy_dq_in_5;
+      end
+      3'b110 : begin
+        _zz_rdataVec_5_1 = dqPrevVec_6;
+        _zz_rdataVec_5_2 = io_phy_dq_in_6;
+      end
+      default : begin
+        _zz_rdataVec_5_1 = dqPrevVec_7;
+        _zz_rdataVec_5_2 = io_phy_dq_in_7;
+      end
     endcase
   end
 
   always @(*) begin
-    case(_zz_rdataVec_6_1)
-      3'b000 : _zz_rdataVec_6 = io_phy_dq_in_0;
-      3'b001 : _zz_rdataVec_6 = io_phy_dq_in_1;
-      3'b010 : _zz_rdataVec_6 = io_phy_dq_in_2;
-      3'b011 : _zz_rdataVec_6 = io_phy_dq_in_3;
-      3'b100 : _zz_rdataVec_6 = io_phy_dq_in_4;
-      3'b101 : _zz_rdataVec_6 = io_phy_dq_in_5;
-      3'b110 : _zz_rdataVec_6 = io_phy_dq_in_6;
-      default : _zz_rdataVec_6 = io_phy_dq_in_7;
+    case(_zz_rdataVec_6)
+      3'b000 : begin
+        _zz_rdataVec_6_1 = dqPrevVec_0;
+        _zz_rdataVec_6_2 = io_phy_dq_in_0;
+      end
+      3'b001 : begin
+        _zz_rdataVec_6_1 = dqPrevVec_1;
+        _zz_rdataVec_6_2 = io_phy_dq_in_1;
+      end
+      3'b010 : begin
+        _zz_rdataVec_6_1 = dqPrevVec_2;
+        _zz_rdataVec_6_2 = io_phy_dq_in_2;
+      end
+      3'b011 : begin
+        _zz_rdataVec_6_1 = dqPrevVec_3;
+        _zz_rdataVec_6_2 = io_phy_dq_in_3;
+      end
+      3'b100 : begin
+        _zz_rdataVec_6_1 = dqPrevVec_4;
+        _zz_rdataVec_6_2 = io_phy_dq_in_4;
+      end
+      3'b101 : begin
+        _zz_rdataVec_6_1 = dqPrevVec_5;
+        _zz_rdataVec_6_2 = io_phy_dq_in_5;
+      end
+      3'b110 : begin
+        _zz_rdataVec_6_1 = dqPrevVec_6;
+        _zz_rdataVec_6_2 = io_phy_dq_in_6;
+      end
+      default : begin
+        _zz_rdataVec_6_1 = dqPrevVec_7;
+        _zz_rdataVec_6_2 = io_phy_dq_in_7;
+      end
     endcase
   end
 
   always @(*) begin
-    case(_zz_rdataVec_7_1)
-      3'b000 : _zz_rdataVec_7 = io_phy_dq_in_0;
-      3'b001 : _zz_rdataVec_7 = io_phy_dq_in_1;
-      3'b010 : _zz_rdataVec_7 = io_phy_dq_in_2;
-      3'b011 : _zz_rdataVec_7 = io_phy_dq_in_3;
-      3'b100 : _zz_rdataVec_7 = io_phy_dq_in_4;
-      3'b101 : _zz_rdataVec_7 = io_phy_dq_in_5;
-      3'b110 : _zz_rdataVec_7 = io_phy_dq_in_6;
-      default : _zz_rdataVec_7 = io_phy_dq_in_7;
+    case(_zz_rdataVec_7)
+      3'b000 : begin
+        _zz_rdataVec_7_1 = dqPrevVec_0;
+        _zz_rdataVec_7_2 = io_phy_dq_in_0;
+      end
+      3'b001 : begin
+        _zz_rdataVec_7_1 = dqPrevVec_1;
+        _zz_rdataVec_7_2 = io_phy_dq_in_1;
+      end
+      3'b010 : begin
+        _zz_rdataVec_7_1 = dqPrevVec_2;
+        _zz_rdataVec_7_2 = io_phy_dq_in_2;
+      end
+      3'b011 : begin
+        _zz_rdataVec_7_1 = dqPrevVec_3;
+        _zz_rdataVec_7_2 = io_phy_dq_in_3;
+      end
+      3'b100 : begin
+        _zz_rdataVec_7_1 = dqPrevVec_4;
+        _zz_rdataVec_7_2 = io_phy_dq_in_4;
+      end
+      3'b101 : begin
+        _zz_rdataVec_7_1 = dqPrevVec_5;
+        _zz_rdataVec_7_2 = io_phy_dq_in_5;
+      end
+      3'b110 : begin
+        _zz_rdataVec_7_1 = dqPrevVec_6;
+        _zz_rdataVec_7_2 = io_phy_dq_in_6;
+      end
+      default : begin
+        _zz_rdataVec_7_1 = dqPrevVec_7;
+        _zz_rdataVec_7_2 = io_phy_dq_in_7;
+      end
     endcase
   end
 
@@ -4884,23 +5235,9 @@ module Ddr3ControllerCore (
       Ddr3State_IDLE : state_string = "IDLE          ";
       Ddr3State_READ : state_string = "READ          ";
       Ddr3State_WRITE : state_string = "WRITE         ";
+      Ddr3State_PRECHARGE : state_string = "PRECHARGE     ";
       Ddr3State_REFRESH : state_string = "REFRESH       ";
       default : state_string = "??????????????";
-    endcase
-  end
-  always @(*) begin
-    case(_zz_state)
-      Ddr3State_RST_WAIT : _zz_state_string = "RST_WAIT      ";
-      Ddr3State_CKE_WAIT : _zz_state_string = "CKE_WAIT      ";
-      Ddr3State_CONFIG_1 : _zz_state_string = "CONFIG_1      ";
-      Ddr3State_ZQCL : _zz_state_string = "ZQCL          ";
-      Ddr3State_WRITE_LEVELING : _zz_state_string = "WRITE_LEVELING";
-      Ddr3State_READ_CALIB : _zz_state_string = "READ_CALIB    ";
-      Ddr3State_IDLE : _zz_state_string = "IDLE          ";
-      Ddr3State_READ : _zz_state_string = "READ          ";
-      Ddr3State_WRITE : _zz_state_string = "WRITE         ";
-      Ddr3State_REFRESH : _zz_state_string = "REFRESH       ";
-      default : _zz_state_string = "??????????????";
     endcase
   end
   `endif
@@ -4991,94 +5328,130 @@ module Ddr3ControllerCore (
   assign winEndRaw = (sweepMag0 + sweepMagN);
   assign winEnd = (((sweepMagN == 7'h0) || (7'h40 < winEndRaw)) ? 7'h40 : winEndRaw[6 : 0]);
   assign winDoneNow = (((sweepMagN != 7'h0) && (! s2Side)) && (s2Mag == winEnd));
-  assign when_Ddr3ControllerCore_l449 = (((state == Ddr3State_IDLE) || (state == Ddr3State_READ)) || (state == Ddr3State_WRITE));
-  assign when_Ddr3ControllerCore_l450 = (refresh_timer == 11'h250);
-  assign when_Ddr3ControllerCore_l533 = io_phy_rburst[0];
-  assign when_Ddr3ControllerCore_l534 = io_phy_rburst[1];
-  assign rdCyc = (_zz_rdCyc + 5'h01);
-  assign when_Ddr3ControllerCore_l570 = (((state == Ddr3State_READ) || (state == Ddr3State_READ_CALIB)) && (((rdCyc <= cycle) && (cycle <= _zz_when_Ddr3ControllerCore_l570)) && (cycle <= 5'h0a)));
-  assign acceptReq = (((state == Ddr3State_IDLE) && (! busy)) && (! refresh_due));
+  assign when_Ddr3ControllerCore_l471 = ((((state == Ddr3State_IDLE) || (state == Ddr3State_READ)) || (state == Ddr3State_WRITE)) || (state == Ddr3State_PRECHARGE));
+  assign when_Ddr3ControllerCore_l472 = (refresh_timer == 11'h250);
+  assign when_Ddr3ControllerCore_l555 = io_phy_rburst[0];
+  assign when_Ddr3ControllerCore_l556 = io_phy_rburst[1];
+  assign rdCyc = (_zz_rdCyc + 7'h01);
+  assign rotSplit = {6'd0, _zz_rotSplit};
+  assign when_Ddr3ControllerCore_l597 = ((state == Ddr3State_READ_CALIB) && (((rdCyc <= cycle) && (cycle <= _zz_when_Ddr3ControllerCore_l597)) && (cycle <= 7'h0a)));
+  assign when_Ddr3ControllerCore_l601 = ((state == Ddr3State_READ) && (((rdCyc <= cycle) && (cycle <= _zz_when_Ddr3ControllerCore_l601)) && (cycle <= _zz_when_Ddr3ControllerCore_l601_4)));
+  assign inRow = io_req_payload_addr[20 : 7];
+  assign inBank = io_req_payload_addr[23 : 21];
+  assign inSameRow = ((inBank == openBank) && (inRow == openRow));
+  assign canAcceptWrStream = ((((((((state == Ddr3State_WRITE) && (! trainDone)) && wrStreamOpen) && (! refresh_due)) && (wrExtraCnt < 6'h1f)) && (7'h01 <= cycle)) && io_req_payload_write) && inSameRow);
+  assign canAcceptRdStream = (((((((state == Ddr3State_READ) && rdStreamOpen) && (! refresh_due)) && (rdExtraCnt < 6'h1f)) && (7'h02 <= cycle)) && (! io_req_payload_write)) && inSameRow);
+  assign acceptReq = (((((state == Ddr3State_IDLE) && (! busy)) && (! refresh_due)) || canAcceptWrStream) || canAcceptRdStream);
   assign io_req_ready = acceptReq;
-  assign when_Ddr3ControllerCore_l598 = (wserRstCnt != 3'b000);
-  assign when_Ddr3ControllerCore_l603 = (! (wserRstCnt != 3'b000));
-  assign when_Ddr3ControllerCore_l618 = (tick_counter == 17'h0000f);
+  assign when_Ddr3ControllerCore_l640 = (wserRstCnt != 3'b000);
+  assign when_Ddr3ControllerCore_l645 = (! (wserRstCnt != 3'b000));
+  assign when_Ddr3ControllerCore_l660 = (tick_counter == 17'h0000f);
   assign _zz_A_0 = (MR1 | 16'h0084);
-  assign when_Ddr3ControllerCore_l743 = (io_phy_dq_raw[0] && io_phy_dq_raw[8]);
-  assign when_Ddr3ControllerCore_l702 = (3'b010 <= _zz_when_Ddr3ControllerCore_l702);
-  assign when_Ddr3ControllerCore_l695 = (wlVoteN == 3'b011);
-  assign when_Ddr3ControllerCore_l703 = (! wlSeenR);
-  assign when_Ddr3ControllerCore_l708 = (wlMatchNR != 8'hff);
-  assign when_Ddr3ControllerCore_l717 = (wlevel_tries == 9'h1ff);
-  assign when_Ddr3ControllerCore_l732 = ((wlevel_cnt == 4'b0001) && (8'h08 <= wstep));
-  assign when_Ddr3ControllerCore_l721 = (! when_Ddr3ControllerCore_l702);
-  assign when_Ddr3ControllerCore_l882 = ((((! aligning) && (anchorLeft == 2'b00)) && (settleLeft == 2'b00)) && (pinLeft == 2'b00));
-  assign when_Ddr3ControllerCore_l887 = ((((! aligning) && (anchorLeft == 2'b00)) && (settleLeft == 2'b00)) && (pinLeft == 2'b00));
-  assign when_Ddr3ControllerCore_l907 = (scanOn && ((aligning || (anchorLeft != 2'b00)) || (settleLeft != 2'b00)));
-  assign when_Ddr3ControllerCore_l909 = (anchorLeft != 2'b00);
-  assign when_Ddr3ControllerCore_l921 = (navigateLeft != 8'h0);
-  assign when_Ddr3ControllerCore_l945 = (((aligning || (anchorLeft != 2'b00)) || (settleLeft != 2'b00)) || (pinLeft != 2'b00));
-  assign when_Ddr3ControllerCore_l946 = (anchorLeft != 2'b00);
-  assign when_Ddr3ControllerCore_l961 = (navigateLeft != 8'h0);
-  assign when_Ddr3ControllerCore_l986 = (pinLeft != 2'b00);
-  assign when_Ddr3ControllerCore_l1004 = ((settleLeft == 2'b01) && applyArmed);
-  assign when_Ddr3ControllerCore_l1029 = (settleLeft == 2'b00);
-  assign when_Ddr3ControllerCore_l1034 = (bestCntDll < sweepScoreReg);
-  assign when_Ddr3ControllerCore_l1045 = (bestCntDll == 4'b1000);
-  assign when_Ddr3ControllerCore_l1070 = ((s2Side && (s2Mag == 7'h40)) && (rclkpos == 2'b11));
-  assign when_Ddr3ControllerCore_l1106 = (rclkpos == 2'b11);
-  assign when_Ddr3ControllerCore_l1112 = (((! s2Side) && (s2Mag == 7'h40)) && (! winDoneNow));
-  assign when_Ddr3ControllerCore_l1134 = ((s0Mag != 7'h40) && (! winDoneNow));
-  assign when_Ddr3ControllerCore_l1153 = (! training);
-  assign when_Ddr3ControllerCore_l1158 = (! winDoneNow);
-  assign when_Ddr3ControllerCore_l1183 = (bestCnt < sweepScoreReg);
-  assign when_Ddr3ControllerCore_l1191 = (rclksel == 3'b111);
-  assign when_Ddr3ControllerCore_l1195 = (rcalib_tries == 10'h028);
-  assign when_Ddr3ControllerCore_l1202 = ((! training) && (! dllSweepDone));
-  assign when_Ddr3ControllerCore_l1210 = ((! scanOn) && (! shiftCalDone));
-  assign when_Ddr3ControllerCore_l1212 = ((bestCnt == 4'b1000) && ((tryMode == 2'b00) || (! 1'b0)));
-  assign when_Ddr3ControllerCore_l1218 = ((tryMode == 2'b00) || (best0 < bestCnt));
-  assign when_Ddr3ControllerCore_l1225 = (tryMode < 2'b11);
+  assign when_Ddr3ControllerCore_l785 = (io_phy_dq_raw[0] && io_phy_dq_raw[8]);
+  assign when_Ddr3ControllerCore_l744 = (3'b010 <= _zz_when_Ddr3ControllerCore_l744);
+  assign when_Ddr3ControllerCore_l737 = (wlVoteN == 3'b011);
+  assign when_Ddr3ControllerCore_l745 = (! wlSeenR);
+  assign when_Ddr3ControllerCore_l750 = (wlMatchNR != 8'hff);
+  assign when_Ddr3ControllerCore_l759 = (wlevel_tries == 9'h1ff);
+  assign when_Ddr3ControllerCore_l774 = ((wlevel_cnt == 4'b0001) && (8'h08 <= wstep));
+  assign when_Ddr3ControllerCore_l763 = (! when_Ddr3ControllerCore_l744);
+  assign when_Ddr3ControllerCore_l924 = ((((! aligning) && (anchorLeft == 2'b00)) && (settleLeft == 2'b00)) && (pinLeft == 2'b00));
+  assign when_Ddr3ControllerCore_l929 = ((((! aligning) && (anchorLeft == 2'b00)) && (settleLeft == 2'b00)) && (pinLeft == 2'b00));
+  assign when_Ddr3ControllerCore_l949 = (scanOn && ((aligning || (anchorLeft != 2'b00)) || (settleLeft != 2'b00)));
+  assign when_Ddr3ControllerCore_l951 = (anchorLeft != 2'b00);
+  assign when_Ddr3ControllerCore_l963 = (navigateLeft != 8'h0);
+  assign when_Ddr3ControllerCore_l987 = (((aligning || (anchorLeft != 2'b00)) || (settleLeft != 2'b00)) || (pinLeft != 2'b00));
+  assign when_Ddr3ControllerCore_l988 = (anchorLeft != 2'b00);
+  assign when_Ddr3ControllerCore_l1003 = (navigateLeft != 8'h0);
+  assign when_Ddr3ControllerCore_l1028 = (pinLeft != 2'b00);
+  assign when_Ddr3ControllerCore_l1046 = ((settleLeft == 2'b01) && applyArmed);
+  assign when_Ddr3ControllerCore_l1071 = (settleLeft == 2'b00);
+  assign when_Ddr3ControllerCore_l1076 = (bestCntDll < sweepScoreReg);
+  assign when_Ddr3ControllerCore_l1087 = (bestCntDll == 4'b1000);
+  assign when_Ddr3ControllerCore_l1112 = ((s2Side && (s2Mag == 7'h40)) && (rclkpos == 2'b11));
+  assign when_Ddr3ControllerCore_l1148 = (rclkpos == 2'b11);
+  assign when_Ddr3ControllerCore_l1154 = (((! s2Side) && (s2Mag == 7'h40)) && (! winDoneNow));
+  assign when_Ddr3ControllerCore_l1176 = ((s0Mag != 7'h40) && (! winDoneNow));
+  assign when_Ddr3ControllerCore_l1195 = (! training);
+  assign when_Ddr3ControllerCore_l1200 = (! winDoneNow);
+  assign when_Ddr3ControllerCore_l1225 = (bestCnt < sweepScoreReg);
+  assign when_Ddr3ControllerCore_l1233 = (rclksel == 3'b111);
+  assign when_Ddr3ControllerCore_l1237 = (rcalib_tries == 10'h028);
+  assign when_Ddr3ControllerCore_l1244 = ((! training) && (! dllSweepDone));
+  assign when_Ddr3ControllerCore_l1252 = ((! scanOn) && (! shiftCalDone));
+  assign when_Ddr3ControllerCore_l1254 = ((bestCnt == 4'b1000) && ((tryMode == 2'b00) || (! 1'b0)));
+  assign when_Ddr3ControllerCore_l1260 = ((tryMode == 2'b00) || (best0 < bestCnt));
+  assign when_Ddr3ControllerCore_l1267 = (tryMode < 2'b11);
   assign _zz_wrMode = (tryMode + 2'b01);
-  assign when_Ddr3ControllerCore_l1234 = (bestCnt <= best0);
-  assign when_Ddr3ControllerCore_l1251 = (bestSurveyCnt < bestCnt);
-  assign when_Ddr3ControllerCore_l1258 = (bestCnt == 4'b1000);
-  assign when_Ddr3ControllerCore_l1267 = ((! scSide) && (_zz_when_Ddr3ControllerCore_l1267 <= 7'h40));
+  assign when_Ddr3ControllerCore_l1276 = (bestCnt <= best0);
+  assign when_Ddr3ControllerCore_l1293 = (bestSurveyCnt < bestCnt);
+  assign when_Ddr3ControllerCore_l1300 = (bestCnt == 4'b1000);
+  assign when_Ddr3ControllerCore_l1309 = ((! scSide) && (_zz_when_Ddr3ControllerCore_l1309 <= 7'h40));
   assign _zz_s0Mag = (scMag + 7'h02);
-  assign when_Ddr3ControllerCore_l1279 = (_zz_when_Ddr3ControllerCore_l1279 <= 7'h40);
+  assign when_Ddr3ControllerCore_l1321 = (_zz_when_Ddr3ControllerCore_l1321 <= 7'h40);
   assign _zz_s0Mag_1 = (scMag + 7'h02);
-  assign when_Ddr3ControllerCore_l1272 = (! scSide);
-  assign when_Ddr3ControllerCore_l1308 = (sweepMagN != 7'h0);
-  assign when_Ddr3ControllerCore_l1345 = (bestCnt == 4'b1000);
-  assign when_Ddr3ControllerCore_l1390 = (! training);
+  assign when_Ddr3ControllerCore_l1314 = (! scSide);
+  assign when_Ddr3ControllerCore_l1350 = (sweepMagN != 7'h0);
+  assign when_Ddr3ControllerCore_l1387 = (bestCnt == 4'b1000);
+  assign when_Ddr3ControllerCore_l1432 = (! training);
   assign _zz_1 = ({3'd0,1'b1} <<< wTry);
-  assign when_Ddr3ControllerCore_l1393 = ((bestCnt < 4'b1000) && (wTry < 2'b10));
-  assign when_Ddr3ControllerCore_l1394 = ((wTry == 2'b00) || (bestWCnt < bestCnt));
-  assign when_Ddr3ControllerCore_l1402 = (wTry == 2'b00);
-  assign when_Ddr3ControllerCore_l1424 = ((wTry == 2'b10) && (bestCnt < bestWCnt));
-  assign _zz_state = (io_req_payload_write ? Ddr3State_WRITE : Ddr3State_READ);
-  assign when_Ddr3ControllerCore_l1523 = (! io_req_payload_write);
-  assign _zz_A_2 = {reqReg_addr[6 : 0],3'b000};
+  assign when_Ddr3ControllerCore_l1435 = ((bestCnt < 4'b1000) && (wTry < 2'b10));
+  assign when_Ddr3ControllerCore_l1436 = ((wTry == 2'b00) || (bestWCnt < bestCnt));
+  assign when_Ddr3ControllerCore_l1444 = (wTry == 2'b00);
+  assign when_Ddr3ControllerCore_l1466 = ((wTry == 2'b10) && (bestCnt < bestWCnt));
+  assign _zz_openRow = io_req_payload_addr[20 : 7];
+  assign _zz_openBank = io_req_payload_addr[23 : 21];
+  assign _zz_cycle = ((rowOpen && (_zz_openBank == openBank)) && (_zz_openRow == openRow));
+  assign when_Ddr3ControllerCore_l1570 = (rowOpen && (! _zz_cycle));
+  assign when_Ddr3ControllerCore_l1579 = (! rowOpen);
+  assign when_Ddr3ControllerCore_l1611 = (cycle == 7'h02);
+  assign _zz_openRow_1 = reqReg_addr[20 : 7];
+  assign _zz_openBank_1 = reqReg_addr[23 : 21];
   assign _zz_BA_2 = reqReg_addr[23 : 21];
-  assign when_Ddr3ControllerCore_l1538 = (cycle == 5'h01);
-  assign when_Ddr3ControllerCore_l1543 = (cycle == 5'h02);
-  assign when_Ddr3ControllerCore_l1549 = (cycle == 5'h09);
-  assign when_Ddr3ControllerCore_l1553 = (cycle == 5'h0a);
-  assign when_Ddr3ControllerCore_l1557 = (cycle == 5'h0c);
-  assign when_Ddr3ControllerCore_l1561 = (cycle == 5'h0d);
-  assign when_Ddr3ControllerCore_l1572 = (cycle == 5'h01);
-  assign when_Ddr3ControllerCore_l1578 = (cycle == 5'h02);
-  assign when_Ddr3ControllerCore_l1613 = (cycle == 5'h03);
-  assign when_Ddr3ControllerCore_l1699 = (cycle == 5'h04);
-  assign when_Ddr3ControllerCore_l1731 = (cycle == ((2'b10 <= wrMode) ? 5'h08 : 5'h07));
-  assign when_Ddr3ControllerCore_l1752 = (cycle == 5'h10);
-  assign rdataVec_0 = _zz_rdataVec_0;
-  assign rdataVec_1 = _zz_rdataVec_1;
-  assign rdataVec_2 = _zz_rdataVec_2;
-  assign rdataVec_3 = _zz_rdataVec_3;
-  assign rdataVec_4 = _zz_rdataVec_4;
-  assign rdataVec_5 = _zz_rdataVec_5;
-  assign rdataVec_6 = _zz_rdataVec_6;
-  assign rdataVec_7 = _zz_rdataVec_7;
+  assign _zz_A_2 = (_zz__zz_A_2 | 16'h1000);
+  assign when_Ddr3ControllerCore_l1657 = (cycle == 7'h01);
+  assign when_Ddr3ControllerCore_l1661 = ((cycle == 7'h02) || rdHavePending);
+  assign when_Ddr3ControllerCore_l1667 = (canAcceptRdStream && io_req_valid);
+  assign when_Ddr3ControllerCore_l1666 = (7'h02 <= cycle);
+  assign _zz_when_Ddr3ControllerCore_l1685 = (7'h09 + rotSplit);
+  assign _zz_data_ready = ((_zz_when_Ddr3ControllerCore_l1685 <= cycle) && (rdRspLeft != 6'h0));
+  assign when_Ddr3ControllerCore_l1685 = (((((! rdStreamOpen) && (! rdHavePending)) && (rdRspLeft == 6'h0)) && (! data_ready)) && (_zz_when_Ddr3ControllerCore_l1685_1 <= cycle));
+  assign _zz_A_2_1 = {reqReg_addr[6 : 0],3'b000};
+  assign _zz_BA_2_1 = reqReg_addr[23 : 21];
+  assign when_Ddr3ControllerCore_l1700 = (cycle == 7'h01);
+  assign when_Ddr3ControllerCore_l1706 = (cycle == 7'h02);
+  assign when_Ddr3ControllerCore_l1741 = (cycle == 7'h03);
+  assign when_Ddr3ControllerCore_l1827 = (cycle == 7'h04);
+  assign when_Ddr3ControllerCore_l1859 = (cycle == ((2'b10 <= wrMode) ? 7'h08 : 7'h07));
+  assign when_Ddr3ControllerCore_l1877 = ((cycle == 7'h01) || wrHavePending);
+  assign when_Ddr3ControllerCore_l1889 = (canAcceptWrStream && io_req_valid);
+  assign when_Ddr3ControllerCore_l1900 = (st1Valid && (! st2Valid));
+  assign when_Ddr3ControllerCore_l1930 = (st1Valid && (! st2Valid));
+  assign when_Ddr3ControllerCore_l1966 = (st1Valid && (! st2Valid));
+  assign when_Ddr3ControllerCore_l1969 = (st2Valid && (! st3Valid));
+  assign when_Ddr3ControllerCore_l1979 = (st3Valid && st2Valid);
+  assign when_Ddr3ControllerCore_l2000 = (st2Valid && (! st3Valid));
+  assign when_Ddr3ControllerCore_l2010 = (st3Valid && st2Valid);
+  assign when_Ddr3ControllerCore_l2038 = (wrCooldown != 4'b0000);
+  assign when_Ddr3ControllerCore_l2042 = (((((! when_Ddr3ControllerCore_l1877) && (! st1Valid)) && (! st2Valid)) && (! st3Valid)) && (wrCooldown == 4'b0000));
+  assign when_Ddr3ControllerCore_l2051 = (cycle == 7'h10);
+  assign needRotSplit = (bestRot != 3'b000);
+  assign _zz_rdataVec_0 = _zz__zz_rdataVec_0[2 : 0];
+  assign rdataVec_0 = ((needRotSplit && (3'b000 < bestRot)) ? _zz_rdataVec_0_1 : _zz_rdataVec_0_2);
+  assign _zz_rdataVec_1 = _zz__zz_rdataVec_1[2 : 0];
+  assign rdataVec_1 = ((needRotSplit && (3'b001 < bestRot)) ? _zz_rdataVec_1_1 : _zz_rdataVec_1_2);
+  assign _zz_rdataVec_2 = _zz__zz_rdataVec_2[2 : 0];
+  assign rdataVec_2 = ((needRotSplit && (3'b010 < bestRot)) ? _zz_rdataVec_2_1 : _zz_rdataVec_2_2);
+  assign _zz_rdataVec_3 = _zz__zz_rdataVec_3[2 : 0];
+  assign rdataVec_3 = ((needRotSplit && (3'b011 < bestRot)) ? _zz_rdataVec_3_1 : _zz_rdataVec_3_2);
+  assign _zz_rdataVec_4 = _zz__zz_rdataVec_4[2 : 0];
+  assign rdataVec_4 = ((needRotSplit && (3'b100 < bestRot)) ? _zz_rdataVec_4_1 : _zz_rdataVec_4_2);
+  assign _zz_rdataVec_5 = _zz__zz_rdataVec_5[2 : 0];
+  assign rdataVec_5 = ((needRotSplit && (3'b101 < bestRot)) ? _zz_rdataVec_5_1 : _zz_rdataVec_5_2);
+  assign _zz_rdataVec_6 = _zz__zz_rdataVec_6[2 : 0];
+  assign rdataVec_6 = ((needRotSplit && (3'b110 < bestRot)) ? _zz_rdataVec_6_1 : _zz_rdataVec_6_2);
+  assign _zz_rdataVec_7 = _zz__zz_rdataVec_7[2 : 0];
+  assign rdataVec_7 = ((needRotSplit && (3'b111 < bestRot)) ? _zz_rdataVec_7_1 : _zz_rdataVec_7_2);
   assign io_rsp_valid = data_ready;
   assign io_rsp_payload_rdata = {{{{{{{rdataVec_7,rdataVec_6},rdataVec_5},rdataVec_4},rdataVec_3},rdataVec_2},rdataVec_1},rdataVec_0};
   assign io_phy_dqs_hold = dqs_hold;
@@ -5124,7 +5497,7 @@ module Ddr3ControllerCore (
   assign io_phy_CKE = CKE;
   assign io_phy_resetn_delay = resetn_delay;
   assign io_phy_wser_rst = wser_rst;
-  assign when_Ddr3ControllerCore_l1907 = (((((io_phy_rst_lock_n && (! _zz_when_Ddr3ControllerCore_l1907)) && (! busy)) && (state == Ddr3State_IDLE)) && wlevel_done) && rcalib_done);
+  assign when_Ddr3ControllerCore_l2226 = (((((io_phy_rst_lock_n && (! _zz_when_Ddr3ControllerCore_l2226)) && (! busy)) && (state == Ddr3State_IDLE)) && wlevel_done) && rcalib_done);
   assign io_init_done = init_done_latched;
   assign io_write_level_done = wlevel_done;
   assign io_read_calib_done = rcalib_done;
@@ -5141,10 +5514,10 @@ module Ddr3ControllerCore (
   assign io_wr_adv = wrMode;
   assign io_w_scores = {{wScores_2,wScores_1},wScores_0};
   assign io_train_latch = bestLatch;
-  always @(posedge io_pclk or posedge _zz_when_Ddr3ControllerCore_l1907) begin
-    if(_zz_when_Ddr3ControllerCore_l1907) begin
+  always @(posedge io_pclk or posedge _zz_when_Ddr3ControllerCore_l2226) begin
+    if(_zz_when_Ddr3ControllerCore_l2226) begin
       state <= Ddr3State_RST_WAIT;
-      cycle <= 5'h0;
+      cycle <= 7'h0;
       tick_counter <= 17'h0ea60;
       tick <= 1'b0;
       resetn_delay <= 1'b0;
@@ -5152,6 +5525,21 @@ module Ddr3ControllerCore (
       busy <= 1'b1;
       data_ready <= 1'b0;
       init_done_latched <= 1'b0;
+      rowOpen <= 1'b0;
+      openBank <= 3'b000;
+      openRow <= 14'h0;
+      prechForReq <= 1'b0;
+      wrStreamOpen <= 1'b0;
+      wrHavePending <= 1'b0;
+      wrExtraCnt <= 6'h0;
+      wrCooldown <= 4'b0000;
+      st1Valid <= 1'b0;
+      st2Valid <= 1'b0;
+      st3Valid <= 1'b0;
+      rdStreamOpen <= 1'b0;
+      rdHavePending <= 1'b0;
+      rdExtraCnt <= 6'h0;
+      rdRspLeft <= 6'h0;
       wlevel_done <= 1'b0;
       wlevel_cnt <= 4'b0000;
       wlevel_tries <= 9'h0;
@@ -5279,25 +5667,36 @@ module Ddr3ControllerCore (
       dqs_oen <= 4'b1111;
       dm_out <= 8'hff;
       dqs_read <= 4'b0000;
+      dqPrevVec_0 <= 16'h0;
+      dqPrevVec_1 <= 16'h0;
+      dqPrevVec_2 <= 16'h0;
+      dqPrevVec_3 <= 16'h0;
+      dqPrevVec_4 <= 16'h0;
+      dqPrevVec_5 <= 16'h0;
+      dqPrevVec_6 <= 16'h0;
+      dqPrevVec_7 <= 16'h0;
     end else begin
       sweepMag0 <= 7'h0;
       sweepMagN <= 7'h0;
-      if(when_Ddr3ControllerCore_l449) begin
-        if(when_Ddr3ControllerCore_l450) begin
+      if(when_Ddr3ControllerCore_l471) begin
+        if(when_Ddr3ControllerCore_l472) begin
           refresh_due <= 1'b1;
           refresh_timer <= 11'h0;
         end else begin
           refresh_timer <= (refresh_timer + 11'h001);
         end
       end
-      if(when_Ddr3ControllerCore_l533) begin
+      if(when_Ddr3ControllerCore_l555) begin
         rburst_seen[0] <= 1'b1;
       end
-      if(when_Ddr3ControllerCore_l534) begin
+      if(when_Ddr3ControllerCore_l556) begin
         rburst_seen[1] <= 1'b1;
       end
       dqs_read <= 4'b0000;
-      if(when_Ddr3ControllerCore_l570) begin
+      if(when_Ddr3ControllerCore_l597) begin
+        dqs_read <= 4'b1111;
+      end
+      if(when_Ddr3ControllerCore_l601) begin
         dqs_read <= 4'b1111;
       end
       if(io_phy_rst_lock_n) begin
@@ -5327,12 +5726,12 @@ module Ddr3ControllerCore (
         dqs_out <= 8'h0;
         dqs_hold <= 1'b0;
         wser_rst <= 1'b0;
-        if(when_Ddr3ControllerCore_l598) begin
+        if(when_Ddr3ControllerCore_l640) begin
           wserRstCnt <= (wserRstCnt - 3'b001);
           wser_rst <= (3'b010 < wserRstCnt);
         end
-        if(when_Ddr3ControllerCore_l603) begin
-          cycle <= ((cycle == 5'h1f) ? 5'h1f : _zz_cycle);
+        if(when_Ddr3ControllerCore_l645) begin
+          cycle <= ((cycle == 7'h7f) ? 7'h7f : _zz_cycle_1);
           tick <= (tick_counter == 17'h00001);
           tick_counter <= ((tick_counter == 17'h0) ? 17'h0 : _zz_tick_counter);
           case(state)
@@ -5344,45 +5743,45 @@ module Ddr3ControllerCore (
               end
             end
             Ddr3State_CKE_WAIT : begin
-              if(when_Ddr3ControllerCore_l618) begin
+              if(when_Ddr3ControllerCore_l660) begin
                 CKE <= 1'b1;
               end
               if(tick) begin
                 state <= Ddr3State_CONFIG_1;
-                cycle <= 5'h0;
+                cycle <= 7'h0;
               end
             end
             Ddr3State_CONFIG_1 : begin
               case(cycle)
-                5'h0 : begin
+                7'h0 : begin
                   nRAS_0 <= CMD_SetModeReg[2];
                   nCAS_0 <= CMD_SetModeReg[1];
                   nWE_0 <= CMD_SetModeReg[0];
                   BA_0 <= MR2[15 : 13];
                   A_0 <= {1'd0, _zz_A_0_1};
                 end
-                5'h02 : begin
+                7'h02 : begin
                   nRAS_0 <= CMD_SetModeReg[2];
                   nCAS_0 <= CMD_SetModeReg[1];
                   nWE_0 <= CMD_SetModeReg[0];
                   BA_0 <= MR3[15 : 13];
                   A_0 <= {1'd0, _zz_A_0_2};
                 end
-                5'h04 : begin
+                7'h04 : begin
                   nRAS_0 <= CMD_SetModeReg[2];
                   nCAS_0 <= CMD_SetModeReg[1];
                   nWE_0 <= CMD_SetModeReg[0];
                   BA_0 <= MR1[15 : 13];
                   A_0 <= {1'd0, _zz_A_0_3};
                 end
-                5'h06 : begin
+                7'h06 : begin
                   nRAS_0 <= CMD_SetModeReg[2];
                   nCAS_0 <= CMD_SetModeReg[1];
                   nWE_0 <= CMD_SetModeReg[0];
                   BA_0 <= MR0[15 : 13];
                   A_0 <= {1'd0, _zz_A_0_4};
                 end
-                5'h0a : begin
+                7'h0a : begin
                   nRAS_0 <= CMD_ZQCL[2];
                   nCAS_0 <= CMD_ZQCL[1];
                   nWE_0 <= CMD_ZQCL[0];
@@ -5398,12 +5797,12 @@ module Ddr3ControllerCore (
             Ddr3State_ZQCL : begin
               if(tick) begin
                 state <= Ddr3State_WRITE_LEVELING;
-                cycle <= 5'h0;
+                cycle <= 7'h0;
               end
             end
             Ddr3State_WRITE_LEVELING : begin
               case(cycle)
-                5'h0 : begin
+                7'h0 : begin
                   nRAS_0 <= CMD_SetModeReg[2];
                   nCAS_0 <= CMD_SetModeReg[1];
                   nWE_0 <= CMD_SetModeReg[0];
@@ -5418,33 +5817,33 @@ module Ddr3ControllerCore (
                   wlVoteN <= 3'b000;
                   wlVoteCnt <= 3'b000;
                 end
-                5'h0a, 5'h0c, 5'h0d, 5'h0e, 5'h0f, 5'h10 : begin
+                7'h0a, 7'h0c, 7'h0d, 7'h0e, 7'h0f, 7'h10 : begin
                   dqs_out <= 8'h0;
                   dqs_oen <= 4'b0000;
                 end
-                5'h0b : begin
+                7'h0b : begin
                   dqs_out <= 8'h55;
                   dqs_oen <= 4'b0000;
                 end
-                5'h11 : begin
+                7'h11 : begin
                   dqs_out <= 8'h0;
                   dqs_oen <= 4'b0000;
-                  if(when_Ddr3ControllerCore_l695) begin
+                  if(when_Ddr3ControllerCore_l737) begin
                     wlVoteN <= 3'b000;
                     wlVoteCnt <= 3'b000;
                     wlevel_tries <= (wlevel_tries + 9'h001);
-                    wlMapR[wstep] <= when_Ddr3ControllerCore_l702;
-                    if(when_Ddr3ControllerCore_l702) begin
-                      if(when_Ddr3ControllerCore_l703) begin
+                    wlMapR[wstep] <= when_Ddr3ControllerCore_l744;
+                    if(when_Ddr3ControllerCore_l744) begin
+                      if(when_Ddr3ControllerCore_l745) begin
                         wlSeenR <= 1'b1;
                         wlFirstR <= wstep;
                       end
                       wlLastR <= wstep;
-                      if(when_Ddr3ControllerCore_l708) begin
+                      if(when_Ddr3ControllerCore_l750) begin
                         wlMatchNR <= (wlMatchNR + 8'h01);
                       end
                     end
-                    if(when_Ddr3ControllerCore_l717) begin
+                    if(when_Ddr3ControllerCore_l759) begin
                       wlevel_done <= 1'b1;
                       wstep <= 8'hff;
                       nRAS_0 <= CMD_SetModeReg[2];
@@ -5453,13 +5852,13 @@ module Ddr3ControllerCore (
                       BA_0 <= MR1[15 : 13];
                       A_0 <= {1'd0, _zz_A_0_8};
                     end else begin
-                      if(when_Ddr3ControllerCore_l721) begin
+                      if(when_Ddr3ControllerCore_l763) begin
                         wstep <= _zz_wstep;
                         wlevel_cnt <= 4'b0000;
-                        cycle <= 5'h0a;
+                        cycle <= 7'h0a;
                       end else begin
                         wlevel_cnt <= (wlevel_cnt + 4'b0001);
-                        if(when_Ddr3ControllerCore_l732) begin
+                        if(when_Ddr3ControllerCore_l774) begin
                           wlevel_done <= 1'b1;
                           wstep <= _zz_wstep_1;
                           nRAS_0 <= CMD_SetModeReg[2];
@@ -5468,29 +5867,29 @@ module Ddr3ControllerCore (
                           BA_0 <= MR1[15 : 13];
                           A_0 <= {1'd0, _zz_A_0_9};
                         end else begin
-                          cycle <= 5'h0a;
+                          cycle <= 7'h0a;
                         end
                       end
                     end
                   end else begin
-                    if(when_Ddr3ControllerCore_l743) begin
+                    if(when_Ddr3ControllerCore_l785) begin
                       wlVoteCnt <= (wlVoteCnt + 3'b001);
                     end
                     wlVoteN <= (wlVoteN + 3'b001);
-                    cycle <= 5'h0a;
+                    cycle <= 7'h0a;
                   end
                 end
-                5'h13 : begin
+                7'h13 : begin
                   nRAS_0 <= CMD_SetModeReg[2];
                   nCAS_0 <= CMD_SetModeReg[1];
                   nWE_0 <= CMD_SetModeReg[0];
                   BA_0 <= MR2_RTT_WR[15 : 13];
                   A_0 <= {1'd0, _zz_A_0_10};
                 end
-                5'h16 : begin
+                7'h16 : begin
                   wserRstCnt <= 3'b101;
                   state <= Ddr3State_READ_CALIB;
-                  cycle <= 5'h0;
+                  cycle <= 7'h0;
                 end
                 default : begin
                 end
@@ -5498,7 +5897,7 @@ module Ddr3ControllerCore (
             end
             Ddr3State_READ_CALIB : begin
               case(cycle)
-                5'h0 : begin
+                7'h0 : begin
                   nRAS_0 <= CMD_BankActivate[2];
                   nCAS_0 <= CMD_BankActivate[1];
                   nWE_0 <= CMD_BankActivate[0];
@@ -5557,25 +5956,25 @@ module Ddr3ControllerCore (
                     navigateLeft <= 8'h0;
                   end
                 end
-                5'h01 : begin
+                7'h01 : begin
                   nRAS_2 <= CMD_Read[2];
                   nCAS_2 <= CMD_Read[1];
                   nWE_2 <= CMD_Read[0];
                   BA_2 <= 3'b000;
-                  A_2 <= (_zz_A_2_1 <<< 12);
+                  A_2 <= (_zz_A_2_2 <<< 12);
                   rburst_seen <= 2'b00;
                 end
-                5'h02 : begin
+                7'h02 : begin
                   nRAS_2 <= CMD_Read[2];
                   nCAS_2 <= CMD_Read[1];
                   nWE_2 <= CMD_Read[0];
                   BA_2 <= 3'b000;
-                  A_2 <= (_zz_A_2_3 <<< 12);
+                  A_2 <= (_zz_A_2_4 <<< 12);
                 end
-                5'h0a : begin
+                7'h0a : begin
                   trainLatch <= {{{{{{{io_phy_dq_in_7,io_phy_dq_in_6},io_phy_dq_in_5},io_phy_dq_in_4},io_phy_dq_in_3},io_phy_dq_in_2},io_phy_dq_in_1},io_phy_dq_in_0};
                 end
-                5'h0c : begin
+                7'h0c : begin
                   rotScoresReg_0 <= rotScores_0;
                   rotScoresReg_1 <= rotScores_1;
                   rotScoresReg_2 <= rotScores_2;
@@ -5585,83 +5984,83 @@ module Ddr3ControllerCore (
                   rotScoresReg_6 <= rotScores_6;
                   rotScoresReg_7 <= rotScores_7;
                 end
-                5'h0d : begin
+                7'h0d : begin
                   sweepScoreReg <= rotScoreW_7;
                   sweepRotReg <= rotIdxW_7;
                 end
-                5'h0e : begin
-                  if(when_Ddr3ControllerCore_l882) begin
+                7'h0e : begin
+                  if(when_Ddr3ControllerCore_l924) begin
                     `ifndef SYNTHESIS
                       `ifdef FORMAL
-                        assert(1'b0); // Ddr3ControllerCore.scala:L883
+                        assert(1'b0); // Ddr3ControllerCore.scala:L925
                       `else
                         if(!1'b0) begin
-                          $display("NOTE RCALIB chk pos=%x sel=%x seen=%x score=%x rot=%x latch=%x best=%x tries=%x", rclkpos, rclksel, rburst_seen, sweepScoreReg, sweepRotReg, trainLatch, bestCnt, rcalib_tries); // Ddr3ControllerCore.scala:L883
+                          $display("NOTE RCALIB chk pos=%x sel=%x seen=%x score=%x rot=%x latch=%x best=%x tries=%x", rclkpos, rclksel, rburst_seen, sweepScoreReg, sweepRotReg, trainLatch, bestCnt, rcalib_tries); // Ddr3ControllerCore.scala:L925
                         end
                       `endif
                     `endif
                   end
                   rcalib_cnt <= 4'b0000;
-                  if(when_Ddr3ControllerCore_l887) begin
+                  if(when_Ddr3ControllerCore_l929) begin
                     rcalib_tries <= (rcalib_tries + 10'h001);
                   end
-                  if(when_Ddr3ControllerCore_l907) begin
+                  if(when_Ddr3ControllerCore_l949) begin
                     rmove <= 1'b0;
-                    if(when_Ddr3ControllerCore_l909) begin
+                    if(when_Ddr3ControllerCore_l951) begin
                       anchorLeft <= (anchorLeft - 2'b01);
-                      cycle <= 5'h01;
+                      cycle <= 7'h01;
                     end else begin
                       if(aligning) begin
-                        if(when_Ddr3ControllerCore_l921) begin
+                        if(when_Ddr3ControllerCore_l963) begin
                           rdir <= s0Side;
                           rmove <= navigateLeft[0];
                           navigateLeft <= (navigateLeft - 8'h01);
-                          cycle <= 5'h01;
+                          cycle <= 7'h01;
                         end else begin
                           settleLeft <= 2'b10;
                           aligning <= 1'b0;
-                          cycle <= 5'h01;
+                          cycle <= 7'h01;
                         end
                       end else begin
                         settleLeft <= (settleLeft - 2'b01);
-                        cycle <= 5'h01;
+                        cycle <= 7'h01;
                       end
                     end
                   end else begin
                     if(dllSweepOn) begin
                       rmove <= 1'b0;
-                      if(when_Ddr3ControllerCore_l945) begin
-                        if(when_Ddr3ControllerCore_l946) begin
+                      if(when_Ddr3ControllerCore_l987) begin
+                        if(when_Ddr3ControllerCore_l988) begin
                           anchorLeft <= (anchorLeft - 2'b01);
-                          cycle <= 5'h01;
+                          cycle <= 7'h01;
                         end else begin
                           if(aligning) begin
-                            if(when_Ddr3ControllerCore_l961) begin
+                            if(when_Ddr3ControllerCore_l1003) begin
                               rdir <= (applyArmed ? bestSide : s0Side);
                               rmove <= navigateLeft[0];
                               navigateLeft <= (navigateLeft - 8'h01);
-                              cycle <= 5'h01;
+                              cycle <= 7'h01;
                             end else begin
                               settleLeft <= 2'b10;
                               aligning <= 1'b0;
-                              cycle <= 5'h01;
+                              cycle <= 7'h01;
                             end
                           end else begin
-                            if(when_Ddr3ControllerCore_l986) begin
+                            if(when_Ddr3ControllerCore_l1028) begin
                               dqs_hold <= 1'b1;
                               s1Side <= s0Side;
                               s1Mag <= s0Mag;
                               s2Side <= s1Side;
                               s2Mag <= s1Mag;
                               pinLeft <= (pinLeft - 2'b01);
-                              cycle <= 5'h01;
+                              cycle <= 7'h01;
                             end else begin
                               settleLeft <= (settleLeft - 2'b01);
                               s1Side <= s0Side;
                               s1Mag <= s0Mag;
                               s2Side <= s1Side;
                               s2Mag <= s1Mag;
-                              if(when_Ddr3ControllerCore_l1004) begin
+                              if(when_Ddr3ControllerCore_l1046) begin
                                 rclkpos <= bestPos;
                                 needFinalSurvey <= 1'b1;
                                 dllSweepDone <= 1'b1;
@@ -5669,10 +6068,10 @@ module Ddr3ControllerCore (
                                 applyArmed <= 1'b0;
                                 `ifndef SYNTHESIS
                                   `ifdef FORMAL
-                                    assert(1'b0); // Ddr3ControllerCore.scala:L1014
+                                    assert(1'b0); // Ddr3ControllerCore.scala:L1056
                                   `else
                                     if(!1'b0) begin
-                                      $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L1014
+                                      $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L1056
                                     end
                                   `endif
                                 `endif
@@ -5682,14 +6081,14 @@ module Ddr3ControllerCore (
                                 BA_0 <= 3'b000;
                                 A_0 <= {13'd0, _zz_A_0_12};
                               end else begin
-                                cycle <= 5'h01;
+                                cycle <= 7'h01;
                               end
                             end
                           end
                         end
                       end else begin
-                        if(when_Ddr3ControllerCore_l1029) begin
-                          if(when_Ddr3ControllerCore_l1034) begin
+                        if(when_Ddr3ControllerCore_l1071) begin
+                          if(when_Ddr3ControllerCore_l1076) begin
                             bestCntDll <= sweepScoreReg;
                             bestLatch <= trainLatch;
                             bestMag <= s2Mag;
@@ -5698,7 +6097,7 @@ module Ddr3ControllerCore (
                             bestSel <= rclksel;
                             bestRot <= sweepRotReg;
                           end
-                          if(when_Ddr3ControllerCore_l1045) begin
+                          if(when_Ddr3ControllerCore_l1087) begin
                             aligning <= 1'b1;
                             anchorLeft <= 2'b10;
                             navigateLeft <= ({1'd0,bestMag} <<< 1'd1);
@@ -5711,16 +6110,16 @@ module Ddr3ControllerCore (
                             s2Mag <= bestMag;
                             `ifndef SYNTHESIS
                               `ifdef FORMAL
-                                assert(1'b0); // Ddr3ControllerCore.scala:L1060
+                                assert(1'b0); // Ddr3ControllerCore.scala:L1102
                               `else
                                 if(!1'b0) begin
-                                  $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L1060
+                                  $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L1102
                                 end
                               `endif
                             `endif
-                            cycle <= 5'h01;
+                            cycle <= 7'h01;
                           end else begin
-                            if(when_Ddr3ControllerCore_l1070) begin
+                            if(when_Ddr3ControllerCore_l1112) begin
                               aligning <= 1'b1;
                               anchorLeft <= 2'b10;
                               navigateLeft <= ({1'd0,bestMag} <<< 1'd1);
@@ -5733,14 +6132,14 @@ module Ddr3ControllerCore (
                               s2Mag <= bestMag;
                               `ifndef SYNTHESIS
                                 `ifdef FORMAL
-                                  assert(1'b0); // Ddr3ControllerCore.scala:L1083
+                                  assert(1'b0); // Ddr3ControllerCore.scala:L1125
                                 `else
                                   if(!1'b0) begin
-                                    $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L1083
+                                    $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L1125
                                   end
                                 `endif
                               `endif
-                              cycle <= 5'h01;
+                              cycle <= 7'h01;
                             end else begin
                               s1Side <= s0Side;
                               s1Mag <= s0Mag;
@@ -5748,8 +6147,8 @@ module Ddr3ControllerCore (
                               s2Mag <= s1Mag;
                               rclkpos <= _zz_rclkpos;
                               rdir <= s0Side;
-                              if(when_Ddr3ControllerCore_l1106) begin
-                                if(when_Ddr3ControllerCore_l1112) begin
+                              if(when_Ddr3ControllerCore_l1148) begin
+                                if(when_Ddr3ControllerCore_l1154) begin
                                   s0Side <= 1'b1;
                                   s0Mag <= 7'h01;
                                   s1Side <= 1'b1;
@@ -5762,15 +6161,15 @@ module Ddr3ControllerCore (
                                   applyArmed <= 1'b0;
                                   `ifndef SYNTHESIS
                                     `ifdef FORMAL
-                                      assert(1'b0); // Ddr3ControllerCore.scala:L1124
+                                      assert(1'b0); // Ddr3ControllerCore.scala:L1166
                                     `else
                                       if(!1'b0) begin
-                                        $display("NOTE RCALIB dll side switch to minus"); // Ddr3ControllerCore.scala:L1124
+                                        $display("NOTE RCALIB dll side switch to minus"); // Ddr3ControllerCore.scala:L1166
                                       end
                                     `endif
                                   `endif
                                 end else begin
-                                  if(when_Ddr3ControllerCore_l1134) begin
+                                  if(when_Ddr3ControllerCore_l1176) begin
                                     s0Mag <= (s0Mag + 7'h01);
                                     rmove <= 1'b1;
                                     pinLeft <= 2'b10;
@@ -5781,14 +6180,14 @@ module Ddr3ControllerCore (
                                 dllSweepOn <= 1'b0;
                                 `ifndef SYNTHESIS
                                   `ifdef FORMAL
-                                    assert(1'b0); // Ddr3ControllerCore.scala:L1151
+                                    assert(1'b0); // Ddr3ControllerCore.scala:L1193
                                   `else
                                     if(!1'b0) begin
-                                      $display("NOTE RCALIB window side=%x mag=%x pos=%x rot=%x score=%x", bestSide, bestMag, bestPos, bestRot, bestCntDll); // Ddr3ControllerCore.scala:L1151
+                                      $display("NOTE RCALIB window side=%x mag=%x pos=%x rot=%x score=%x", bestSide, bestMag, bestPos, bestRot, bestCntDll); // Ddr3ControllerCore.scala:L1193
                                     end
                                   `endif
                                 `endif
-                                if(when_Ddr3ControllerCore_l1153) begin
+                                if(when_Ddr3ControllerCore_l1195) begin
                                   rcalib_done <= 1'b1;
                                 end
                                 nRAS_0 <= CMD_PreCharge[2];
@@ -5797,19 +6196,19 @@ module Ddr3ControllerCore (
                                 BA_0 <= 3'b000;
                                 A_0 <= {13'd0, _zz_A_0_13};
                               end
-                              if(when_Ddr3ControllerCore_l1158) begin
+                              if(when_Ddr3ControllerCore_l1200) begin
                                 trainDone <= 1'b1;
                                 needPoison <= 1'b0;
                                 bistReturn <= 1'b1;
                                 state <= Ddr3State_WRITE;
-                                cycle <= 5'h0;
+                                cycle <= 7'h0;
                               end
                             end
                           end
                         end
                       end
                     end else begin
-                      if(when_Ddr3ControllerCore_l1183) begin
+                      if(when_Ddr3ControllerCore_l1225) begin
                         bestCnt <= sweepScoreReg;
                         bestLatch <= trainLatch;
                         bestPos <= rclkpos;
@@ -5817,15 +6216,15 @@ module Ddr3ControllerCore (
                         bestRot <= sweepRotReg;
                       end
                       rclksel <= _zz_rclksel;
-                      if(when_Ddr3ControllerCore_l1191) begin
+                      if(when_Ddr3ControllerCore_l1233) begin
                         rclkpos <= _zz_rclkpos_1;
                       end
-                      if(when_Ddr3ControllerCore_l1195) begin
+                      if(when_Ddr3ControllerCore_l1237) begin
                         rclkpos <= bestPos;
                         rclksel <= bestSel;
-                        if(when_Ddr3ControllerCore_l1202) begin
-                          if(when_Ddr3ControllerCore_l1210) begin
-                            if(when_Ddr3ControllerCore_l1212) begin
+                        if(when_Ddr3ControllerCore_l1244) begin
+                          if(when_Ddr3ControllerCore_l1252) begin
+                            if(when_Ddr3ControllerCore_l1254) begin
                               shiftCalDone <= 1'b1;
                               dllSweepDone <= 1'b1;
                               rcalib_tries <= 10'h028;
@@ -5833,16 +6232,16 @@ module Ddr3ControllerCore (
                               needPoison <= 1'b0;
                               bistReturn <= 1'b1;
                               state <= Ddr3State_WRITE;
-                              cycle <= 5'h0;
+                              cycle <= 7'h0;
                             end else begin
-                              if(when_Ddr3ControllerCore_l1218) begin
+                              if(when_Ddr3ControllerCore_l1260) begin
                                 best0 <= bestCnt;
                                 bestMode <= wrMode;
                                 best0Pos <= bestPos;
                                 best0Sel <= bestSel;
                                 best0Rot <= bestRot;
                               end
-                              if(when_Ddr3ControllerCore_l1225) begin
+                              if(when_Ddr3ControllerCore_l1267) begin
                                 tryMode <= _zz_wrMode;
                                 wrMode <= _zz_wrMode;
                                 rcalib_tries <= 10'h0;
@@ -5852,9 +6251,9 @@ module Ddr3ControllerCore (
                                 needPoison <= 1'b0;
                                 bistReturn <= 1'b1;
                                 state <= Ddr3State_WRITE;
-                                cycle <= 5'h0;
+                                cycle <= 7'h0;
                               end else begin
-                                if(when_Ddr3ControllerCore_l1234) begin
+                                if(when_Ddr3ControllerCore_l1276) begin
                                   bestCnt <= best0;
                                   bestPos <= best0Pos;
                                   bestSel <= best0Sel;
@@ -5868,23 +6267,23 @@ module Ddr3ControllerCore (
                                 needPoison <= 1'b0;
                                 bistReturn <= 1'b1;
                                 state <= Ddr3State_WRITE;
-                                cycle <= 5'h0;
+                                cycle <= 7'h0;
                               end
                             end
                           end
                           if(scanOn) begin
-                            if(when_Ddr3ControllerCore_l1251) begin
+                            if(when_Ddr3ControllerCore_l1293) begin
                               bestSurveyCnt <= bestCnt;
                               bestSurveySide <= scSide;
                               bestSurveyMag <= scMag;
                             end
-                            if(when_Ddr3ControllerCore_l1258) begin
+                            if(when_Ddr3ControllerCore_l1300) begin
                               `ifndef SYNTHESIS
                                 `ifdef FORMAL
-                                  assert(1'b0); // Ddr3ControllerCore.scala:L1260
+                                  assert(1'b0); // Ddr3ControllerCore.scala:L1302
                                 `else
                                   if(!1'b0) begin
-                                    $display("NOTE RCALIB scan sweep at side=%x mag=%x score=%x", scSide, scMag, bestCnt); // Ddr3ControllerCore.scala:L1260
+                                    $display("NOTE RCALIB scan sweep at side=%x mag=%x score=%x", scSide, scMag, bestCnt); // Ddr3ControllerCore.scala:L1302
                                   end
                                 `endif
                               `endif
@@ -5906,9 +6305,9 @@ module Ddr3ControllerCore (
                               anchorLeft <= 2'b10;
                               navigateLeft <= ({1'd0,scMag} <<< 1'd1);
                               applyArmed <= 1'b0;
-                              cycle <= 5'h01;
+                              cycle <= 7'h01;
                             end else begin
-                              if(when_Ddr3ControllerCore_l1267) begin
+                              if(when_Ddr3ControllerCore_l1309) begin
                                 scMag <= (scMag + 7'h02);
                                 rcalib_tries <= 10'h0;
                                 bestCnt <= 4'b0000;
@@ -5923,9 +6322,9 @@ module Ddr3ControllerCore (
                                 anchorLeft <= 2'b10;
                                 navigateLeft <= ({1'd0,_zz_s0Mag} <<< 1'd1);
                                 applyArmed <= 1'b0;
-                                cycle <= 5'h01;
+                                cycle <= 7'h01;
                               end else begin
-                                if(when_Ddr3ControllerCore_l1272) begin
+                                if(when_Ddr3ControllerCore_l1314) begin
                                   scSide <= 1'b1;
                                   scMag <= 7'h02;
                                   rcalib_tries <= 10'h0;
@@ -5941,9 +6340,9 @@ module Ddr3ControllerCore (
                                   anchorLeft <= 2'b10;
                                   navigateLeft <= ({1'd0,7'h02} <<< 1'd1);
                                   applyArmed <= 1'b0;
-                                  cycle <= 5'h01;
+                                  cycle <= 7'h01;
                                 end else begin
-                                  if(when_Ddr3ControllerCore_l1279) begin
+                                  if(when_Ddr3ControllerCore_l1321) begin
                                     scMag <= (scMag + 7'h02);
                                     rcalib_tries <= 10'h0;
                                     bestCnt <= 4'b0000;
@@ -5958,14 +6357,14 @@ module Ddr3ControllerCore (
                                     anchorLeft <= 2'b10;
                                     navigateLeft <= ({1'd0,_zz_s0Mag_1} <<< 1'd1);
                                     applyArmed <= 1'b0;
-                                    cycle <= 5'h01;
+                                    cycle <= 7'h01;
                                   end else begin
                                     `ifndef SYNTHESIS
                                       `ifdef FORMAL
-                                        assert(1'b0); // Ddr3ControllerCore.scala:L1287
+                                        assert(1'b0); // Ddr3ControllerCore.scala:L1329
                                       `else
                                         if(!1'b0) begin
-                                          $display("NOTE RCALIB scan done best side=%x mag=%x score=%x", bestSurveySide, bestSurveyMag, bestSurveyCnt); // Ddr3ControllerCore.scala:L1287
+                                          $display("NOTE RCALIB scan done best side=%x mag=%x score=%x", bestSurveySide, bestSurveyMag, bestSurveyCnt); // Ddr3ControllerCore.scala:L1329
                                         end
                                       `endif
                                     `endif
@@ -5987,7 +6386,7 @@ module Ddr3ControllerCore (
                                     anchorLeft <= 2'b10;
                                     navigateLeft <= ({1'd0,bestSurveyMag} <<< 1'd1);
                                     applyArmed <= 1'b0;
-                                    cycle <= 5'h01;
+                                    cycle <= 7'h01;
                                   end
                                 end
                               end
@@ -5998,7 +6397,7 @@ module Ddr3ControllerCore (
                               bestSurveySide <= 1'b0;
                               bestSurveyMag <= 7'h0;
                               rclksel[0] <= 1'b0;
-                              if(when_Ddr3ControllerCore_l1308) begin
+                              if(when_Ddr3ControllerCore_l1350) begin
                                 dllSweepOn <= 1'b1;
                                 bestCntDll <= 4'b0000;
                                 bestSide <= 1'b0;
@@ -6017,16 +6416,16 @@ module Ddr3ControllerCore (
                                 applyArmed <= 1'b0;
                                 `ifndef SYNTHESIS
                                   `ifdef FORMAL
-                                    assert(1'b0); // Ddr3ControllerCore.scala:L1337
+                                    assert(1'b0); // Ddr3ControllerCore.scala:L1379
                                   `else
                                     if(!1'b0) begin
-                                      $display("NOTE RCALIB window start mag0=%x n=%x", sweepMag0, sweepMagN); // Ddr3ControllerCore.scala:L1337
+                                      $display("NOTE RCALIB window start mag0=%x n=%x", sweepMag0, sweepMagN); // Ddr3ControllerCore.scala:L1379
                                     end
                                   `endif
                                 `endif
-                                cycle <= 5'h01;
+                                cycle <= 7'h01;
                               end else begin
-                                if(when_Ddr3ControllerCore_l1345) begin
+                                if(when_Ddr3ControllerCore_l1387) begin
                                   dllSweepOn <= 1'b1;
                                   bestCntDll <= 4'b0000;
                                   bestSide <= 1'b0;
@@ -6036,7 +6435,7 @@ module Ddr3ControllerCore (
                                   needPoison <= 1'b0;
                                   bistReturn <= 1'b1;
                                   state <= Ddr3State_WRITE;
-                                  cycle <= 5'h0;
+                                  cycle <= 7'h0;
                                 end else begin
                                   scanOn <= 1'b1;
                                   scSide <= 1'b0;
@@ -6045,10 +6444,10 @@ module Ddr3ControllerCore (
                                   bestCnt <= 4'b0000;
                                   `ifndef SYNTHESIS
                                     `ifdef FORMAL
-                                      assert(1'b0); // Ddr3ControllerCore.scala:L1374
+                                      assert(1'b0); // Ddr3ControllerCore.scala:L1416
                                     `else
                                       if(!1'b0) begin
-                                        $display("NOTE RCALIB scan start"); // Ddr3ControllerCore.scala:L1374
+                                        $display("NOTE RCALIB scan start"); // Ddr3ControllerCore.scala:L1416
                                       end
                                     `endif
                                   `endif
@@ -6063,7 +6462,7 @@ module Ddr3ControllerCore (
                                   anchorLeft <= 2'b10;
                                   navigateLeft <= ({1'd0,7'h02} <<< 1'd1);
                                   applyArmed <= 1'b0;
-                                  cycle <= 5'h01;
+                                  cycle <= 7'h01;
                                 end
                               end
                             end
@@ -6072,14 +6471,14 @@ module Ddr3ControllerCore (
                           dllSweepOn <= 1'b0;
                           `ifndef SYNTHESIS
                             `ifdef FORMAL
-                              assert(1'b0); // Ddr3ControllerCore.scala:L1383
+                              assert(1'b0); // Ddr3ControllerCore.scala:L1425
                             `else
                               if(!1'b0) begin
-                                $display("NOTE RCALIB lock best pos=%x sel=%x rot=%x score=%x", bestPos, bestSel, bestRot, bestCnt); // Ddr3ControllerCore.scala:L1383
+                                $display("NOTE RCALIB lock best pos=%x sel=%x rot=%x score=%x", bestPos, bestSel, bestRot, bestCnt); // Ddr3ControllerCore.scala:L1425
                               end
                             `endif
                           `endif
-                          if(when_Ddr3ControllerCore_l1390) begin
+                          if(when_Ddr3ControllerCore_l1432) begin
                             if(_zz_1[0]) begin
                               wScores_0 <= bestCnt;
                             end
@@ -6089,8 +6488,8 @@ module Ddr3ControllerCore (
                             if(_zz_1[2]) begin
                               wScores_2 <= bestCnt;
                             end
-                            if(when_Ddr3ControllerCore_l1393) begin
-                              if(when_Ddr3ControllerCore_l1394) begin
+                            if(when_Ddr3ControllerCore_l1435) begin
+                              if(when_Ddr3ControllerCore_l1436) begin
                                 bestWCnt <= bestCnt;
                                 bestWstep <= wstep;
                                 bestWPos <= bestPos;
@@ -6098,7 +6497,7 @@ module Ddr3ControllerCore (
                                 bestWRot <= bestRot;
                                 bestWMode <= wrMode;
                               end
-                              if(when_Ddr3ControllerCore_l1402) begin
+                              if(when_Ddr3ControllerCore_l1444) begin
                                 wBase <= wstep;
                                 wTry <= 2'b01;
                                 wstep <= _zz_wstep_6;
@@ -6122,9 +6521,9 @@ module Ddr3ControllerCore (
                               needPoison <= 1'b0;
                               bistReturn <= 1'b1;
                               state <= Ddr3State_WRITE;
-                              cycle <= 5'h0;
+                              cycle <= 7'h0;
                             end else begin
-                              if(when_Ddr3ControllerCore_l1424) begin
+                              if(when_Ddr3ControllerCore_l1466) begin
                                 bestCnt <= bestWCnt;
                                 wstep <= bestWstep;
                                 wserRstCnt <= 3'b101;
@@ -6155,12 +6554,12 @@ module Ddr3ControllerCore (
                         needPoison <= 1'b0;
                         bistReturn <= 1'b1;
                         state <= Ddr3State_WRITE;
-                        cycle <= 5'h0;
+                        cycle <= 7'h0;
                       end
                     end
                   end
                 end
-                5'h0f : begin
+                7'h0f : begin
                   busy <= 1'b0;
                   state <= Ddr3State_IDLE;
                 end
@@ -6179,7 +6578,7 @@ module Ddr3ControllerCore (
                 BA_0 <= 3'b000;
                 A_0 <= {13'd0, _zz_A_0_16};
                 state <= Ddr3State_WRITE;
-                cycle <= 5'h01;
+                cycle <= 7'h01;
                 busy <= 1'b1;
               end else begin
                 if(needPoison) begin
@@ -6191,36 +6590,81 @@ module Ddr3ControllerCore (
                   BA_0 <= 3'b000;
                   A_0 <= {13'd0, _zz_A_0_17};
                   state <= Ddr3State_WRITE;
-                  cycle <= 5'h01;
+                  cycle <= 7'h01;
                   busy <= 1'b1;
                 end else begin
                   if(refresh_due) begin
-                    nRAS_0 <= CMD_AutoRefresh[2];
-                    nCAS_0 <= CMD_AutoRefresh[1];
-                    nWE_0 <= CMD_AutoRefresh[0];
-                    BA_0 <= 3'b000;
-                    A_0 <= {13'd0, _zz_A_0_18};
-                    state <= Ddr3State_REFRESH;
-                    cycle <= 5'h01;
-                    busy <= 1'b1;
-                    refresh_due <= 1'b0;
+                    if(rowOpen) begin
+                      nRAS_0 <= CMD_PreCharge[2];
+                      nCAS_0 <= CMD_PreCharge[1];
+                      nWE_0 <= CMD_PreCharge[0];
+                      BA_0 <= 3'b000;
+                      A_0 <= _zz_A_0_18[13:0];
+                      rowOpen <= 1'b0;
+                      prechForReq <= 1'b0;
+                      state <= Ddr3State_PRECHARGE;
+                      cycle <= 7'h01;
+                      busy <= 1'b1;
+                    end else begin
+                      nRAS_0 <= CMD_AutoRefresh[2];
+                      nCAS_0 <= CMD_AutoRefresh[1];
+                      nWE_0 <= CMD_AutoRefresh[0];
+                      BA_0 <= 3'b000;
+                      A_0 <= {13'd0, _zz_A_0_19};
+                      state <= Ddr3State_REFRESH;
+                      cycle <= 7'h01;
+                      busy <= 1'b1;
+                      refresh_due <= 1'b0;
+                    end
                   end else begin
                     if(needFinalSurvey) begin
                       needFinalSurvey <= 1'b0;
                       state <= Ddr3State_READ_CALIB;
-                      cycle <= 5'h0;
+                      cycle <= 7'h0;
                     end else begin
                       if(io_req_valid) begin
-                        nRAS_0 <= CMD_BankActivate[2];
-                        nCAS_0 <= CMD_BankActivate[1];
-                        nWE_0 <= CMD_BankActivate[0];
-                        BA_0 <= io_req_payload_addr[23 : 21];
-                        A_0 <= io_req_payload_addr[20 : 7];
-                        state <= _zz_state;
-                        cycle <= 5'h01;
-                        busy <= 1'b1;
-                        if(when_Ddr3ControllerCore_l1523) begin
-                          dqs_hold <= 1'b1;
+                        if(when_Ddr3ControllerCore_l1570) begin
+                          nRAS_0 <= CMD_PreCharge[2];
+                          nCAS_0 <= CMD_PreCharge[1];
+                          nWE_0 <= CMD_PreCharge[0];
+                          BA_0 <= 3'b000;
+                          A_0 <= _zz_A_0_20[13:0];
+                          rowOpen <= 1'b0;
+                          prechForReq <= 1'b1;
+                          state <= Ddr3State_PRECHARGE;
+                          cycle <= 7'h01;
+                          busy <= 1'b1;
+                        end else begin
+                          if(when_Ddr3ControllerCore_l1579) begin
+                            nRAS_0 <= CMD_BankActivate[2];
+                            nCAS_0 <= CMD_BankActivate[1];
+                            nWE_0 <= CMD_BankActivate[0];
+                            BA_0 <= _zz_openBank;
+                            A_0 <= _zz_openRow;
+                            rowOpen <= 1'b1;
+                            openBank <= _zz_openBank;
+                            openRow <= _zz_openRow;
+                          end
+                          busy <= 1'b1;
+                          if(io_req_payload_write) begin
+                            wrStreamOpen <= 1'b1;
+                            wrHavePending <= 1'b0;
+                            wrExtraCnt <= 6'h0;
+                            wrCooldown <= 4'b0000;
+                            st1Valid <= 1'b0;
+                            st2Valid <= 1'b0;
+                            st3Valid <= 1'b0;
+                            state <= Ddr3State_WRITE;
+                            cycle <= (_zz_cycle ? 7'h01 : 7'h01);
+                          end else begin
+                            dqs_hold <= 1'b1;
+                            rdStreamOpen <= 1'b1;
+                            rdHavePending <= 1'b0;
+                            rdExtraCnt <= 6'h0;
+                            rdRspLeft <= 6'h01;
+                            state <= Ddr3State_READ;
+                            cycle <= (_zz_cycle ? 7'h01 : 7'h01);
+                          end
                         end
                       end
                     end
@@ -6228,212 +6672,494 @@ module Ddr3ControllerCore (
                 end
               end
             end
+            Ddr3State_PRECHARGE : begin
+              if(when_Ddr3ControllerCore_l1611) begin
+                if(prechForReq) begin
+                  prechForReq <= 1'b0;
+                  nRAS_0 <= CMD_BankActivate[2];
+                  nCAS_0 <= CMD_BankActivate[1];
+                  nWE_0 <= CMD_BankActivate[0];
+                  BA_0 <= _zz_openBank_1;
+                  A_0 <= _zz_openRow_1;
+                  rowOpen <= 1'b1;
+                  openBank <= _zz_openBank_1;
+                  openRow <= _zz_openRow_1;
+                  if(reqReg_write) begin
+                    wrStreamOpen <= 1'b1;
+                    wrHavePending <= 1'b0;
+                    wrExtraCnt <= 6'h0;
+                    wrCooldown <= 4'b0000;
+                    st1Valid <= 1'b0;
+                    st2Valid <= 1'b0;
+                    st3Valid <= 1'b0;
+                    state <= Ddr3State_WRITE;
+                    cycle <= 7'h01;
+                  end else begin
+                    dqs_hold <= 1'b1;
+                    rdStreamOpen <= 1'b1;
+                    rdHavePending <= 1'b0;
+                    rdExtraCnt <= 6'h0;
+                    rdRspLeft <= 6'h01;
+                    state <= Ddr3State_READ;
+                    cycle <= 7'h01;
+                  end
+                end else begin
+                  nRAS_0 <= CMD_AutoRefresh[2];
+                  nCAS_0 <= CMD_AutoRefresh[1];
+                  nWE_0 <= CMD_AutoRefresh[0];
+                  BA_0 <= 3'b000;
+                  A_0 <= {13'd0, _zz_A_0_21};
+                  refresh_due <= 1'b0;
+                  state <= Ddr3State_REFRESH;
+                  cycle <= 7'h01;
+                end
+              end
+            end
             Ddr3State_READ : begin
-              if(when_Ddr3ControllerCore_l1538) begin
+              if(when_Ddr3ControllerCore_l1657) begin
                 nRAS_2 <= CMD_Read[2];
                 nCAS_2 <= CMD_Read[1];
                 nWE_2 <= CMD_Read[0];
                 BA_2 <= _zz_BA_2;
-                A_2 <= _zz_A_2_5[13:0];
+                A_2 <= _zz_A_2[13:0];
               end
-              if(when_Ddr3ControllerCore_l1543) begin
+              if(when_Ddr3ControllerCore_l1661) begin
                 nRAS_2 <= CMD_Read[2];
                 nCAS_2 <= CMD_Read[1];
                 nWE_2 <= CMD_Read[0];
                 BA_2 <= _zz_BA_2;
-                A_2 <= _zz_A_2_7[13:0];
+                A_2 <= _zz_A_2[13:0];
               end
-              if(when_Ddr3ControllerCore_l1549) begin
-                data_ready <= 1'b1;
+              if(when_Ddr3ControllerCore_l1666) begin
+                if(when_Ddr3ControllerCore_l1667) begin
+                  rdHavePending <= 1'b1;
+                  rdExtraCnt <= (rdExtraCnt + 6'h01);
+                end else begin
+                  rdHavePending <= 1'b0;
+                  rdStreamOpen <= 1'b0;
+                end
+              end else begin
+                rdHavePending <= 1'b0;
               end
-              if(when_Ddr3ControllerCore_l1553) begin
-                data_ready <= 1'b0;
-              end
-              if(when_Ddr3ControllerCore_l1557) begin
-                nRAS_0 <= CMD_PreCharge[2];
-                nCAS_0 <= CMD_PreCharge[1];
-                nWE_0 <= CMD_PreCharge[0];
-                BA_0 <= 3'b000;
-                A_0 <= {13'd0, _zz_A_0_19};
-              end
-              if(when_Ddr3ControllerCore_l1561) begin
+              data_ready <= _zz_data_ready;
+              rdRspLeft <= (_zz_rdRspLeft - _zz_rdRspLeft_3);
+              if(when_Ddr3ControllerCore_l1685) begin
                 busy <= 1'b0;
                 state <= Ddr3State_IDLE;
               end
             end
             Ddr3State_WRITE : begin
-              if(when_Ddr3ControllerCore_l1572) begin
-                nRAS_2 <= CMD_Write[2];
-                nCAS_2 <= CMD_Write[1];
-                nWE_2 <= CMD_Write[0];
-                BA_2 <= reqReg_addr[23 : 21];
-                A_2 <= _zz_A_2_9[13:0];
-              end
-              if(when_Ddr3ControllerCore_l1578) begin
-                case(wrMode)
-                  2'b00 : begin
-                    dqs_out <= 8'h40;
-                    dqs_oen <= 4'b0011;
-                    dq_oen <= 4'b0111;
-                    dq_out_6 <= 16'h0;
-                    dq_out_7 <= reqReg_wdata[15 : 0];
-                    dm_out[6] <= 1'b1;
-                    dm_out[7] <= (! (|reqReg_wstrb[1 : 0]));
-                  end
-                  2'b01 : begin
-                    dqs_out <= 8'h40;
-                    dqs_oen <= 4'b0011;
-                    dq_oen <= 4'b0011;
-                    dq_out_4 <= 16'h0;
-                    dq_out_5 <= reqReg_wdata[15 : 0];
-                    dq_out_6 <= reqReg_wdata[31 : 16];
-                    dq_out_7 <= reqReg_wdata[47 : 32];
-                    dm_out[4] <= 1'b1;
-                    dm_out[5] <= (! (|reqReg_wstrb[1 : 0]));
-                    dm_out[6] <= (! (|reqReg_wstrb[3 : 2]));
-                    dm_out[7] <= (! (|reqReg_wstrb[5 : 4]));
-                  end
-                  2'b10 : begin
-                    dqs_out <= 8'h0;
-                    dqs_oen <= 4'b0111;
-                  end
-                  default : begin
-                  end
-                endcase
-              end
-              if(when_Ddr3ControllerCore_l1613) begin
-                case(wrMode)
-                  2'b00 : begin
-                    dqs_out <= 8'h55;
-                    dqs_oen <= 4'b0000;
-                    dq_oen <= 4'b0000;
-                    dq_out_0 <= reqReg_wdata[31 : 16];
-                    dq_out_1 <= reqReg_wdata[47 : 32];
-                    dq_out_2 <= reqReg_wdata[63 : 48];
-                    dq_out_3 <= reqReg_wdata[79 : 64];
-                    dq_out_4 <= reqReg_wdata[95 : 80];
-                    dq_out_5 <= reqReg_wdata[111 : 96];
-                    dq_out_6 <= reqReg_wdata[127 : 112];
-                    dq_out_7 <= 16'h0;
-                    dm_out[0] <= (! (|reqReg_wstrb[3 : 2]));
-                    dm_out[1] <= (! (|reqReg_wstrb[5 : 4]));
-                    dm_out[2] <= (! (|reqReg_wstrb[7 : 6]));
-                    dm_out[3] <= (! (|reqReg_wstrb[9 : 8]));
-                    dm_out[4] <= (! (|reqReg_wstrb[11 : 10]));
-                    dm_out[5] <= (! (|reqReg_wstrb[13 : 12]));
-                    dm_out[6] <= (! (|reqReg_wstrb[15 : 14]));
-                    dm_out[7] <= 1'b1;
-                  end
-                  2'b01 : begin
-                    dqs_out <= 8'h55;
-                    dqs_oen <= 4'b0000;
-                    dq_oen <= 4'b0000;
-                    dq_out_0 <= reqReg_wdata[63 : 48];
-                    dq_out_1 <= reqReg_wdata[79 : 64];
-                    dq_out_2 <= reqReg_wdata[95 : 80];
-                    dq_out_3 <= reqReg_wdata[111 : 96];
-                    dq_out_4 <= reqReg_wdata[127 : 112];
-                    dq_out_5 <= 16'h0;
-                    dq_out_6 <= 16'h0;
-                    dq_out_7 <= 16'h0;
-                    dm_out[0] <= (! (|reqReg_wstrb[7 : 6]));
-                    dm_out[1] <= (! (|reqReg_wstrb[9 : 8]));
-                    dm_out[2] <= (! (|reqReg_wstrb[11 : 10]));
-                    dm_out[3] <= (! (|reqReg_wstrb[13 : 12]));
-                    dm_out[4] <= (! (|reqReg_wstrb[15 : 14]));
-                    dm_out[5] <= 1'b1;
-                    dm_out[6] <= 1'b1;
-                    dm_out[7] <= 1'b1;
-                  end
-                  2'b10 : begin
-                    dqs_out <= 8'h55;
-                    dqs_oen <= 4'b0000;
-                    dq_oen <= 4'b0000;
-                    dq_out_0 <= 16'h0;
-                    dq_out_1 <= reqReg_wdata[15 : 0];
-                    dq_out_2 <= reqReg_wdata[31 : 16];
-                    dq_out_3 <= reqReg_wdata[47 : 32];
-                    dq_out_4 <= reqReg_wdata[63 : 48];
-                    dq_out_5 <= reqReg_wdata[79 : 64];
-                    dq_out_6 <= reqReg_wdata[95 : 80];
-                    dq_out_7 <= reqReg_wdata[111 : 96];
-                    dm_out[0] <= 1'b1;
-                    dm_out[1] <= (! (|reqReg_wstrb[1 : 0]));
-                    dm_out[2] <= (! (|reqReg_wstrb[3 : 2]));
-                    dm_out[3] <= (! (|reqReg_wstrb[5 : 4]));
-                    dm_out[4] <= (! (|reqReg_wstrb[7 : 6]));
-                    dm_out[5] <= (! (|reqReg_wstrb[9 : 8]));
-                    dm_out[6] <= (! (|reqReg_wstrb[11 : 10]));
-                    dm_out[7] <= (! (|reqReg_wstrb[13 : 12]));
-                  end
-                  default : begin
-                    dqs_out <= 8'h54;
-                    dqs_oen <= 4'b0000;
-                    dq_oen <= 4'b0001;
-                    dq_out_2 <= 16'h0;
-                    dq_out_3 <= reqReg_wdata[15 : 0];
-                    dq_out_4 <= reqReg_wdata[31 : 16];
-                    dq_out_5 <= reqReg_wdata[47 : 32];
-                    dq_out_6 <= reqReg_wdata[63 : 48];
-                    dq_out_7 <= reqReg_wdata[79 : 64];
-                    dm_out[2] <= 1'b1;
-                    dm_out[3] <= (! (|reqReg_wstrb[1 : 0]));
-                    dm_out[4] <= (! (|reqReg_wstrb[3 : 2]));
-                    dm_out[5] <= (! (|reqReg_wstrb[5 : 4]));
-                    dm_out[6] <= (! (|reqReg_wstrb[7 : 6]));
-                    dm_out[7] <= (! (|reqReg_wstrb[9 : 8]));
-                  end
-                endcase
-              end
-              if(when_Ddr3ControllerCore_l1699) begin
-                case(wrMode)
-                  2'b00, 2'b01 : begin
-                    dqs_out <= 8'h0;
-                    dqs_oen <= 4'b1110;
-                    dq_oen <= 4'b1111;
-                  end
-                  2'b10 : begin
-                    dqs_out <= 8'h01;
-                    dqs_oen <= 4'b1100;
-                    dq_oen <= 4'b1110;
-                    dq_out_0 <= reqReg_wdata[127 : 112];
-                    dq_out_1 <= 16'h0;
-                    dm_out[0] <= (! (|reqReg_wstrb[15 : 14]));
-                    dm_out[1] <= 1'b1;
-                  end
-                  default : begin
-                    dqs_out <= 8'h05;
-                    dqs_oen <= 4'b1000;
-                    dq_oen <= 4'b1100;
-                    dq_out_0 <= reqReg_wdata[95 : 80];
-                    dq_out_1 <= reqReg_wdata[111 : 96];
-                    dq_out_2 <= reqReg_wdata[127 : 112];
-                    dq_out_3 <= 16'h0;
-                    dm_out[0] <= (! (|reqReg_wstrb[11 : 10]));
-                    dm_out[1] <= (! (|reqReg_wstrb[13 : 12]));
-                    dm_out[2] <= (! (|reqReg_wstrb[15 : 14]));
-                    dm_out[3] <= 1'b1;
-                  end
-                endcase
-              end
-              if(when_Ddr3ControllerCore_l1731) begin
-                if(trainDone) begin
+              if(trainDone) begin
+                if(when_Ddr3ControllerCore_l1700) begin
+                  nRAS_2 <= CMD_Write[2];
+                  nCAS_2 <= CMD_Write[1];
+                  nWE_2 <= CMD_Write[0];
+                  BA_2 <= _zz_BA_2_1;
+                  A_2 <= _zz_A_2_6[13:0];
+                end
+                if(when_Ddr3ControllerCore_l1706) begin
+                  case(wrMode)
+                    2'b00 : begin
+                      dqs_out <= 8'h40;
+                      dqs_oen <= 4'b0011;
+                      dq_oen <= 4'b0111;
+                      dq_out_6 <= 16'h0;
+                      dq_out_7 <= reqReg_wdata[15 : 0];
+                      dm_out[6] <= 1'b1;
+                      dm_out[7] <= (! (|reqReg_wstrb[1 : 0]));
+                    end
+                    2'b01 : begin
+                      dqs_out <= 8'h40;
+                      dqs_oen <= 4'b0011;
+                      dq_oen <= 4'b0011;
+                      dq_out_4 <= 16'h0;
+                      dq_out_5 <= reqReg_wdata[15 : 0];
+                      dq_out_6 <= reqReg_wdata[31 : 16];
+                      dq_out_7 <= reqReg_wdata[47 : 32];
+                      dm_out[4] <= 1'b1;
+                      dm_out[5] <= (! (|reqReg_wstrb[1 : 0]));
+                      dm_out[6] <= (! (|reqReg_wstrb[3 : 2]));
+                      dm_out[7] <= (! (|reqReg_wstrb[5 : 4]));
+                    end
+                    2'b10 : begin
+                      dqs_out <= 8'h0;
+                      dqs_oen <= 4'b0111;
+                    end
+                    default : begin
+                    end
+                  endcase
+                end
+                if(when_Ddr3ControllerCore_l1741) begin
+                  case(wrMode)
+                    2'b00 : begin
+                      dqs_out <= 8'h55;
+                      dqs_oen <= 4'b0000;
+                      dq_oen <= 4'b0000;
+                      dq_out_0 <= reqReg_wdata[31 : 16];
+                      dq_out_1 <= reqReg_wdata[47 : 32];
+                      dq_out_2 <= reqReg_wdata[63 : 48];
+                      dq_out_3 <= reqReg_wdata[79 : 64];
+                      dq_out_4 <= reqReg_wdata[95 : 80];
+                      dq_out_5 <= reqReg_wdata[111 : 96];
+                      dq_out_6 <= reqReg_wdata[127 : 112];
+                      dq_out_7 <= 16'h0;
+                      dm_out[0] <= (! (|reqReg_wstrb[3 : 2]));
+                      dm_out[1] <= (! (|reqReg_wstrb[5 : 4]));
+                      dm_out[2] <= (! (|reqReg_wstrb[7 : 6]));
+                      dm_out[3] <= (! (|reqReg_wstrb[9 : 8]));
+                      dm_out[4] <= (! (|reqReg_wstrb[11 : 10]));
+                      dm_out[5] <= (! (|reqReg_wstrb[13 : 12]));
+                      dm_out[6] <= (! (|reqReg_wstrb[15 : 14]));
+                      dm_out[7] <= 1'b1;
+                    end
+                    2'b01 : begin
+                      dqs_out <= 8'h55;
+                      dqs_oen <= 4'b0000;
+                      dq_oen <= 4'b0000;
+                      dq_out_0 <= reqReg_wdata[63 : 48];
+                      dq_out_1 <= reqReg_wdata[79 : 64];
+                      dq_out_2 <= reqReg_wdata[95 : 80];
+                      dq_out_3 <= reqReg_wdata[111 : 96];
+                      dq_out_4 <= reqReg_wdata[127 : 112];
+                      dq_out_5 <= 16'h0;
+                      dq_out_6 <= 16'h0;
+                      dq_out_7 <= 16'h0;
+                      dm_out[0] <= (! (|reqReg_wstrb[7 : 6]));
+                      dm_out[1] <= (! (|reqReg_wstrb[9 : 8]));
+                      dm_out[2] <= (! (|reqReg_wstrb[11 : 10]));
+                      dm_out[3] <= (! (|reqReg_wstrb[13 : 12]));
+                      dm_out[4] <= (! (|reqReg_wstrb[15 : 14]));
+                      dm_out[5] <= 1'b1;
+                      dm_out[6] <= 1'b1;
+                      dm_out[7] <= 1'b1;
+                    end
+                    2'b10 : begin
+                      dqs_out <= 8'h55;
+                      dqs_oen <= 4'b0000;
+                      dq_oen <= 4'b0000;
+                      dq_out_0 <= 16'h0;
+                      dq_out_1 <= reqReg_wdata[15 : 0];
+                      dq_out_2 <= reqReg_wdata[31 : 16];
+                      dq_out_3 <= reqReg_wdata[47 : 32];
+                      dq_out_4 <= reqReg_wdata[63 : 48];
+                      dq_out_5 <= reqReg_wdata[79 : 64];
+                      dq_out_6 <= reqReg_wdata[95 : 80];
+                      dq_out_7 <= reqReg_wdata[111 : 96];
+                      dm_out[0] <= 1'b1;
+                      dm_out[1] <= (! (|reqReg_wstrb[1 : 0]));
+                      dm_out[2] <= (! (|reqReg_wstrb[3 : 2]));
+                      dm_out[3] <= (! (|reqReg_wstrb[5 : 4]));
+                      dm_out[4] <= (! (|reqReg_wstrb[7 : 6]));
+                      dm_out[5] <= (! (|reqReg_wstrb[9 : 8]));
+                      dm_out[6] <= (! (|reqReg_wstrb[11 : 10]));
+                      dm_out[7] <= (! (|reqReg_wstrb[13 : 12]));
+                    end
+                    default : begin
+                      dqs_out <= 8'h54;
+                      dqs_oen <= 4'b0000;
+                      dq_oen <= 4'b0001;
+                      dq_out_2 <= 16'h0;
+                      dq_out_3 <= reqReg_wdata[15 : 0];
+                      dq_out_4 <= reqReg_wdata[31 : 16];
+                      dq_out_5 <= reqReg_wdata[47 : 32];
+                      dq_out_6 <= reqReg_wdata[63 : 48];
+                      dq_out_7 <= reqReg_wdata[79 : 64];
+                      dm_out[2] <= 1'b1;
+                      dm_out[3] <= (! (|reqReg_wstrb[1 : 0]));
+                      dm_out[4] <= (! (|reqReg_wstrb[3 : 2]));
+                      dm_out[5] <= (! (|reqReg_wstrb[5 : 4]));
+                      dm_out[6] <= (! (|reqReg_wstrb[7 : 6]));
+                      dm_out[7] <= (! (|reqReg_wstrb[9 : 8]));
+                    end
+                  endcase
+                end
+                if(when_Ddr3ControllerCore_l1827) begin
+                  case(wrMode)
+                    2'b00, 2'b01 : begin
+                      dqs_out <= 8'h0;
+                      dqs_oen <= 4'b1110;
+                      dq_oen <= 4'b1111;
+                    end
+                    2'b10 : begin
+                      dqs_out <= 8'h01;
+                      dqs_oen <= 4'b1100;
+                      dq_oen <= 4'b1110;
+                      dq_out_0 <= reqReg_wdata[127 : 112];
+                      dq_out_1 <= 16'h0;
+                      dm_out[0] <= (! (|reqReg_wstrb[15 : 14]));
+                      dm_out[1] <= 1'b1;
+                    end
+                    default : begin
+                      dqs_out <= 8'h05;
+                      dqs_oen <= 4'b1000;
+                      dq_oen <= 4'b1100;
+                      dq_out_0 <= reqReg_wdata[95 : 80];
+                      dq_out_1 <= reqReg_wdata[111 : 96];
+                      dq_out_2 <= reqReg_wdata[127 : 112];
+                      dq_out_3 <= 16'h0;
+                      dm_out[0] <= (! (|reqReg_wstrb[11 : 10]));
+                      dm_out[1] <= (! (|reqReg_wstrb[13 : 12]));
+                      dm_out[2] <= (! (|reqReg_wstrb[15 : 14]));
+                      dm_out[3] <= 1'b1;
+                    end
+                  endcase
+                end
+                if(when_Ddr3ControllerCore_l1859) begin
                   trainDone <= 1'b0;
                   if(needPoison) begin
                     state <= Ddr3State_IDLE;
-                    cycle <= 5'h0;
+                    cycle <= 7'h0;
                   end else begin
                     state <= Ddr3State_READ_CALIB;
-                    cycle <= 5'h0;
+                    cycle <= 7'h0;
                   end
+                end
+              end else begin
+                if(when_Ddr3ControllerCore_l1877) begin
+                  nRAS_2 <= CMD_Write[2];
+                  nCAS_2 <= CMD_Write[1];
+                  nWE_2 <= CMD_Write[0];
+                  BA_2 <= _zz_BA_2_1;
+                  A_2 <= _zz_A_2_8[13:0];
+                end
+                st1Valid <= when_Ddr3ControllerCore_l1877;
+                st2Valid <= st1Valid;
+                st3Valid <= st2Valid;
+                if(when_Ddr3ControllerCore_l1889) begin
+                  wrHavePending <= 1'b1;
+                  wrExtraCnt <= (wrExtraCnt + 6'h01);
                 end else begin
+                  wrHavePending <= 1'b0;
+                  wrStreamOpen <= 1'b0;
+                end
+                case(wrMode)
+                  2'b00 : begin
+                    if(when_Ddr3ControllerCore_l1900) begin
+                      dqs_out <= 8'h40;
+                      dqs_oen <= 4'b0011;
+                      dq_oen <= 4'b0111;
+                      dq_out_6 <= 16'h0;
+                      dq_out_7 <= st1Req_wdata[15 : 0];
+                      dm_out[6] <= 1'b1;
+                      dm_out[7] <= (! (|st1Req_wstrb[1 : 0]));
+                    end else begin
+                      if(st2Valid) begin
+                        dqs_out <= 8'h55;
+                        dqs_oen <= 4'b0000;
+                        dq_oen <= 4'b0000;
+                        dq_out_0 <= st2Req_wdata[31 : 16];
+                        dm_out[0] <= (! (|st2Req_wstrb[3 : 2]));
+                        dq_out_1 <= st2Req_wdata[47 : 32];
+                        dm_out[1] <= (! (|st2Req_wstrb[5 : 4]));
+                        dq_out_2 <= st2Req_wdata[63 : 48];
+                        dm_out[2] <= (! (|st2Req_wstrb[7 : 6]));
+                        dq_out_3 <= st2Req_wdata[79 : 64];
+                        dm_out[3] <= (! (|st2Req_wstrb[9 : 8]));
+                        dq_out_4 <= st2Req_wdata[95 : 80];
+                        dm_out[4] <= (! (|st2Req_wstrb[11 : 10]));
+                        dq_out_5 <= st2Req_wdata[111 : 96];
+                        dm_out[5] <= (! (|st2Req_wstrb[13 : 12]));
+                        dq_out_6 <= st2Req_wdata[127 : 112];
+                        dm_out[6] <= (! (|st2Req_wstrb[15 : 14]));
+                        if(st1Valid) begin
+                          dq_out_7 <= st1Req_wdata[15 : 0];
+                          dm_out[7] <= (! (|st1Req_wstrb[1 : 0]));
+                        end else begin
+                          dq_out_7 <= 16'h0;
+                          dm_out[7] <= 1'b1;
+                        end
+                      end else begin
+                        if(st3Valid) begin
+                          dqs_out <= 8'h0;
+                          dqs_oen <= 4'b1110;
+                          dq_oen <= 4'b1111;
+                        end
+                      end
+                    end
+                  end
+                  2'b01 : begin
+                    if(when_Ddr3ControllerCore_l1930) begin
+                      dqs_out <= 8'h40;
+                      dqs_oen <= 4'b0011;
+                      dq_oen <= 4'b0011;
+                      dq_out_4 <= 16'h0;
+                      dm_out[4] <= 1'b1;
+                      dq_out_5 <= st1Req_wdata[15 : 0];
+                      dm_out[5] <= (! (|st1Req_wstrb[1 : 0]));
+                      dq_out_6 <= st1Req_wdata[31 : 16];
+                      dm_out[6] <= (! (|st1Req_wstrb[3 : 2]));
+                      dq_out_7 <= st1Req_wdata[47 : 32];
+                      dm_out[7] <= (! (|st1Req_wstrb[5 : 4]));
+                    end else begin
+                      if(st2Valid) begin
+                        dqs_out <= 8'h55;
+                        dqs_oen <= 4'b0000;
+                        dq_oen <= 4'b0000;
+                        dq_out_0 <= st2Req_wdata[63 : 48];
+                        dm_out[0] <= (! (|st2Req_wstrb[7 : 6]));
+                        dq_out_1 <= st2Req_wdata[79 : 64];
+                        dm_out[1] <= (! (|st2Req_wstrb[9 : 8]));
+                        dq_out_2 <= st2Req_wdata[95 : 80];
+                        dm_out[2] <= (! (|st2Req_wstrb[11 : 10]));
+                        dq_out_3 <= st2Req_wdata[111 : 96];
+                        dm_out[3] <= (! (|st2Req_wstrb[13 : 12]));
+                        dq_out_4 <= st2Req_wdata[127 : 112];
+                        dm_out[4] <= (! (|st2Req_wstrb[15 : 14]));
+                        if(st1Valid) begin
+                          dq_out_5 <= st1Req_wdata[15 : 0];
+                          dm_out[5] <= (! (|st1Req_wstrb[1 : 0]));
+                          dq_out_6 <= st1Req_wdata[31 : 16];
+                          dm_out[6] <= (! (|st1Req_wstrb[3 : 2]));
+                          dq_out_7 <= st1Req_wdata[47 : 32];
+                          dm_out[7] <= (! (|st1Req_wstrb[5 : 4]));
+                        end else begin
+                          dq_out_5 <= 16'h0;
+                          dm_out[5] <= 1'b1;
+                          dq_out_6 <= 16'h0;
+                          dm_out[6] <= 1'b1;
+                          dq_out_7 <= 16'h0;
+                          dm_out[7] <= 1'b1;
+                        end
+                      end else begin
+                        if(st3Valid) begin
+                          dqs_out <= 8'h0;
+                          dqs_oen <= 4'b1110;
+                          dq_oen <= 4'b1111;
+                        end
+                      end
+                    end
+                  end
+                  2'b10 : begin
+                    if(when_Ddr3ControllerCore_l1966) begin
+                      dqs_out <= 8'h0;
+                      dqs_oen <= 4'b0111;
+                    end else begin
+                      if(when_Ddr3ControllerCore_l1969) begin
+                        dqs_out <= 8'h55;
+                        dqs_oen <= 4'b0000;
+                        dq_oen <= 4'b0000;
+                        dq_out_0 <= 16'h0;
+                        dm_out[0] <= 1'b1;
+                        dq_out_1 <= st2Req_wdata[15 : 0];
+                        dm_out[1] <= (! (|st2Req_wstrb[1 : 0]));
+                        dq_out_2 <= st2Req_wdata[31 : 16];
+                        dm_out[2] <= (! (|st2Req_wstrb[3 : 2]));
+                        dq_out_3 <= st2Req_wdata[47 : 32];
+                        dm_out[3] <= (! (|st2Req_wstrb[5 : 4]));
+                        dq_out_4 <= st2Req_wdata[63 : 48];
+                        dm_out[4] <= (! (|st2Req_wstrb[7 : 6]));
+                        dq_out_5 <= st2Req_wdata[79 : 64];
+                        dm_out[5] <= (! (|st2Req_wstrb[9 : 8]));
+                        dq_out_6 <= st2Req_wdata[95 : 80];
+                        dm_out[6] <= (! (|st2Req_wstrb[11 : 10]));
+                        dq_out_7 <= st2Req_wdata[111 : 96];
+                        dm_out[7] <= (! (|st2Req_wstrb[13 : 12]));
+                      end else begin
+                        if(when_Ddr3ControllerCore_l1979) begin
+                          dqs_out <= 8'h55;
+                          dqs_oen <= 4'b0000;
+                          dq_oen <= 4'b0000;
+                          dq_out_0 <= st3Req_wdata[127 : 112];
+                          dm_out[0] <= (! (|st3Req_wstrb[15 : 14]));
+                          dq_out_1 <= st2Req_wdata[15 : 0];
+                          dm_out[1] <= (! (|st2Req_wstrb[1 : 0]));
+                          dq_out_2 <= st2Req_wdata[31 : 16];
+                          dm_out[2] <= (! (|st2Req_wstrb[3 : 2]));
+                          dq_out_3 <= st2Req_wdata[47 : 32];
+                          dm_out[3] <= (! (|st2Req_wstrb[5 : 4]));
+                          dq_out_4 <= st2Req_wdata[63 : 48];
+                          dm_out[4] <= (! (|st2Req_wstrb[7 : 6]));
+                          dq_out_5 <= st2Req_wdata[79 : 64];
+                          dm_out[5] <= (! (|st2Req_wstrb[9 : 8]));
+                          dq_out_6 <= st2Req_wdata[95 : 80];
+                          dm_out[6] <= (! (|st2Req_wstrb[11 : 10]));
+                          dq_out_7 <= st2Req_wdata[111 : 96];
+                          dm_out[7] <= (! (|st2Req_wstrb[13 : 12]));
+                        end else begin
+                          if(st3Valid) begin
+                            dqs_out <= 8'h01;
+                            dqs_oen <= 4'b1100;
+                            dq_oen <= 4'b1110;
+                            dq_out_0 <= st3Req_wdata[127 : 112];
+                            dq_out_1 <= 16'h0;
+                            dm_out[0] <= (! (|st3Req_wstrb[15 : 14]));
+                            dm_out[1] <= 1'b1;
+                          end
+                        end
+                      end
+                    end
+                  end
+                  default : begin
+                    if(when_Ddr3ControllerCore_l2000) begin
+                      dqs_out <= 8'h54;
+                      dqs_oen <= 4'b0000;
+                      dq_oen <= 4'b0001;
+                      dq_out_2 <= 16'h0;
+                      dm_out[2] <= 1'b1;
+                      dq_out_3 <= st2Req_wdata[15 : 0];
+                      dm_out[3] <= (! (|st2Req_wstrb[1 : 0]));
+                      dq_out_4 <= st2Req_wdata[31 : 16];
+                      dm_out[4] <= (! (|st2Req_wstrb[3 : 2]));
+                      dq_out_5 <= st2Req_wdata[47 : 32];
+                      dm_out[5] <= (! (|st2Req_wstrb[5 : 4]));
+                      dq_out_6 <= st2Req_wdata[63 : 48];
+                      dm_out[6] <= (! (|st2Req_wstrb[7 : 6]));
+                      dq_out_7 <= st2Req_wdata[79 : 64];
+                      dm_out[7] <= (! (|st2Req_wstrb[9 : 8]));
+                    end else begin
+                      if(when_Ddr3ControllerCore_l2010) begin
+                        dqs_out <= 8'h55;
+                        dqs_oen <= 4'b0000;
+                        dq_oen <= 4'b0000;
+                        dq_out_0 <= st3Req_wdata[95 : 80];
+                        dm_out[0] <= (! (|st3Req_wstrb[11 : 10]));
+                        dq_out_1 <= st3Req_wdata[111 : 96];
+                        dm_out[1] <= (! (|st3Req_wstrb[13 : 12]));
+                        dq_out_2 <= st3Req_wdata[127 : 112];
+                        dm_out[2] <= (! (|st3Req_wstrb[15 : 14]));
+                        dq_out_3 <= st2Req_wdata[15 : 0];
+                        dm_out[3] <= (! (|st2Req_wstrb[1 : 0]));
+                        dq_out_4 <= st2Req_wdata[31 : 16];
+                        dm_out[4] <= (! (|st2Req_wstrb[3 : 2]));
+                        dq_out_5 <= st2Req_wdata[47 : 32];
+                        dm_out[5] <= (! (|st2Req_wstrb[5 : 4]));
+                        dq_out_6 <= st2Req_wdata[63 : 48];
+                        dm_out[6] <= (! (|st2Req_wstrb[7 : 6]));
+                        dq_out_7 <= st2Req_wdata[79 : 64];
+                        dm_out[7] <= (! (|st2Req_wstrb[9 : 8]));
+                      end else begin
+                        if(st3Valid) begin
+                          dqs_out <= 8'h05;
+                          dqs_oen <= 4'b1000;
+                          dq_oen <= 4'b1100;
+                          dq_out_0 <= st3Req_wdata[95 : 80];
+                          dm_out[0] <= (! (|st3Req_wstrb[11 : 10]));
+                          dq_out_1 <= st3Req_wdata[111 : 96];
+                          dm_out[1] <= (! (|st3Req_wstrb[13 : 12]));
+                          dq_out_2 <= st3Req_wdata[127 : 112];
+                          dm_out[2] <= (! (|st3Req_wstrb[15 : 14]));
+                          dq_out_3 <= 16'h0;
+                          dm_out[3] <= 1'b1;
+                        end
+                      end
+                    end
+                  end
+                endcase
+                if(when_Ddr3ControllerCore_l1877) begin
+                  wrCooldown <= ((2'b10 <= wrMode) ? 4'b0101 : 4'b0100);
+                end else begin
+                  if(when_Ddr3ControllerCore_l2038) begin
+                    wrCooldown <= (wrCooldown - 4'b0001);
+                  end
+                end
+                if(when_Ddr3ControllerCore_l2042) begin
                   busy <= 1'b0;
                   state <= Ddr3State_IDLE;
                 end
               end
             end
             default : begin
-              if(when_Ddr3ControllerCore_l1752) begin
+              if(when_Ddr3ControllerCore_l2051) begin
                 busy <= 1'b0;
                 state <= Ddr3State_IDLE;
               end
@@ -6472,7 +7198,7 @@ module Ddr3ControllerCore (
         dqs_hold <= 1'b0;
         tick_counter <= 17'h0ea60;
         tick <= 1'b0;
-        cycle <= 5'h0;
+        cycle <= 7'h0;
         wlevel_cnt <= 4'b0000;
         wlevel_tries <= 9'h0;
         wlMapR <= 256'h0;
@@ -6550,13 +7276,36 @@ module Ddr3ControllerCore (
         rclkpos <= 2'b00;
         rclksel <= 3'b000;
         init_done_latched <= 1'b0;
+        rowOpen <= 1'b0;
+        openBank <= 3'b000;
+        openRow <= 14'h0;
+        prechForReq <= 1'b0;
+        wrStreamOpen <= 1'b0;
+        wrHavePending <= 1'b0;
+        wrExtraCnt <= 6'h0;
+        wrCooldown <= 4'b0000;
+        st1Valid <= 1'b0;
+        st2Valid <= 1'b0;
+        st3Valid <= 1'b0;
+        rdStreamOpen <= 1'b0;
+        rdHavePending <= 1'b0;
+        rdExtraCnt <= 6'h0;
+        rdRspLeft <= 6'h0;
         rburst_seen <= 2'b00;
         resetn_delay <= 1'b0;
         wserRstCnt <= 3'b000;
         wser_rst <= 1'b0;
         state <= Ddr3State_RST_WAIT;
       end
-      if(when_Ddr3ControllerCore_l1907) begin
+      dqPrevVec_0 <= io_phy_dq_in_0;
+      dqPrevVec_1 <= io_phy_dq_in_1;
+      dqPrevVec_2 <= io_phy_dq_in_2;
+      dqPrevVec_3 <= io_phy_dq_in_3;
+      dqPrevVec_4 <= io_phy_dq_in_4;
+      dqPrevVec_5 <= io_phy_dq_in_5;
+      dqPrevVec_6 <= io_phy_dq_in_6;
+      dqPrevVec_7 <= io_phy_dq_in_7;
+      if(when_Ddr3ControllerCore_l2226) begin
         init_done_latched <= 1'b1;
       end
     end
@@ -6564,7 +7313,7 @@ module Ddr3ControllerCore (
 
   always @(posedge io_pclk) begin
     if(io_phy_rst_lock_n) begin
-      if(when_Ddr3ControllerCore_l603) begin
+      if(when_Ddr3ControllerCore_l645) begin
         case(state)
           Ddr3State_RST_WAIT : begin
           end
@@ -6578,14 +7327,14 @@ module Ddr3ControllerCore (
           end
           Ddr3State_READ_CALIB : begin
             case(cycle)
-              5'h0e : begin
-                if(!when_Ddr3ControllerCore_l907) begin
+              7'h0e : begin
+                if(!when_Ddr3ControllerCore_l949) begin
                   if(dllSweepOn) begin
-                    if(!when_Ddr3ControllerCore_l945) begin
-                      if(when_Ddr3ControllerCore_l1029) begin
-                        if(!when_Ddr3ControllerCore_l1045) begin
-                          if(!when_Ddr3ControllerCore_l1070) begin
-                            if(when_Ddr3ControllerCore_l1158) begin
+                    if(!when_Ddr3ControllerCore_l987) begin
+                      if(when_Ddr3ControllerCore_l1071) begin
+                        if(!when_Ddr3ControllerCore_l1087) begin
+                          if(!when_Ddr3ControllerCore_l1112) begin
+                            if(when_Ddr3ControllerCore_l1200) begin
                               reqReg_write <= 1'b1;
                               reqReg_addr <= 27'h0;
                               reqReg_wdata <= trainPat;
@@ -6596,16 +7345,16 @@ module Ddr3ControllerCore (
                       end
                     end
                   end else begin
-                    if(when_Ddr3ControllerCore_l1195) begin
-                      if(when_Ddr3ControllerCore_l1202) begin
-                        if(when_Ddr3ControllerCore_l1210) begin
-                          if(when_Ddr3ControllerCore_l1212) begin
+                    if(when_Ddr3ControllerCore_l1237) begin
+                      if(when_Ddr3ControllerCore_l1244) begin
+                        if(when_Ddr3ControllerCore_l1252) begin
+                          if(when_Ddr3ControllerCore_l1254) begin
                             reqReg_write <= 1'b1;
                             reqReg_addr <= 27'h0;
                             reqReg_wdata <= trainPat;
                             reqReg_wstrb <= 16'hffff;
                           end else begin
-                            if(when_Ddr3ControllerCore_l1225) begin
+                            if(when_Ddr3ControllerCore_l1267) begin
                               reqReg_write <= 1'b1;
                               reqReg_addr <= 27'h0;
                               reqReg_wdata <= trainPat;
@@ -6620,8 +7369,8 @@ module Ddr3ControllerCore (
                         end
                         if(!scanOn) begin
                           if(shiftCalDone) begin
-                            if(!when_Ddr3ControllerCore_l1308) begin
-                              if(when_Ddr3ControllerCore_l1345) begin
+                            if(!when_Ddr3ControllerCore_l1350) begin
+                              if(when_Ddr3ControllerCore_l1387) begin
                                 reqReg_write <= 1'b1;
                                 reqReg_addr <= 27'h0;
                                 reqReg_wdata <= trainPat;
@@ -6631,8 +7380,8 @@ module Ddr3ControllerCore (
                           end
                         end
                       end else begin
-                        if(when_Ddr3ControllerCore_l1390) begin
-                          if(when_Ddr3ControllerCore_l1393) begin
+                        if(when_Ddr3ControllerCore_l1432) begin
+                          if(when_Ddr3ControllerCore_l1435) begin
                             reqReg_write <= 1'b1;
                             reqReg_addr <= 27'h0;
                             reqReg_wdata <= trainPat;
@@ -6679,13 +7428,404 @@ module Ddr3ControllerCore (
               end
             end
           end
+          Ddr3State_PRECHARGE : begin
+          end
           Ddr3State_READ : begin
+            if(when_Ddr3ControllerCore_l1666) begin
+              if(when_Ddr3ControllerCore_l1667) begin
+                reqReg_write <= io_req_payload_write;
+                reqReg_addr <= io_req_payload_addr;
+                reqReg_wdata <= io_req_payload_wdata;
+                reqReg_wstrb <= io_req_payload_wstrb;
+              end
+            end
           end
           Ddr3State_WRITE : begin
+            if(!trainDone) begin
+              if(when_Ddr3ControllerCore_l1877) begin
+                st1Req_write <= reqReg_write;
+                st1Req_addr <= reqReg_addr;
+                st1Req_wdata <= reqReg_wdata;
+                st1Req_wstrb <= reqReg_wstrb;
+              end
+              st2Req_write <= st1Req_write;
+              st2Req_addr <= st1Req_addr;
+              st2Req_wdata <= st1Req_wdata;
+              st2Req_wstrb <= st1Req_wstrb;
+              st3Req_write <= st2Req_write;
+              st3Req_addr <= st2Req_addr;
+              st3Req_wdata <= st2Req_wdata;
+              st3Req_wstrb <= st2Req_wstrb;
+              if(when_Ddr3ControllerCore_l1889) begin
+                reqReg_write <= io_req_payload_write;
+                reqReg_addr <= io_req_payload_addr;
+                reqReg_wdata <= io_req_payload_wdata;
+                reqReg_wstrb <= io_req_payload_wstrb;
+              end
+            end
           end
           default : begin
           end
         endcase
+      end
+    end
+  end
+
+
+endmodule
+
+module StreamFifoLowLatency_1 (
+  input  wire          io_push_valid,
+  output wire          io_push_ready,
+  input  wire [127:0]  io_push_payload_data,
+  input  wire [15:0]   io_push_payload_strb,
+  output wire          io_pop_valid,
+  input  wire          io_pop_ready,
+  output wire [127:0]  io_pop_payload_data,
+  output wire [15:0]   io_pop_payload_strb,
+  input  wire          io_flush,
+  output wire [4:0]    io_occupancy,
+  output wire [4:0]    io_availability,
+  input  wire          io_pclk,
+  input  wire          _zz_1
+);
+
+  wire                fifo_io_push_ready;
+  wire                fifo_io_pop_valid;
+  wire       [127:0]  fifo_io_pop_payload_data;
+  wire       [15:0]   fifo_io_pop_payload_strb;
+  wire       [4:0]    fifo_io_occupancy;
+  wire       [4:0]    fifo_io_availability;
+
+  StreamFifo_1 fifo (
+    .io_push_valid        (io_push_valid                  ), //i
+    .io_push_ready        (fifo_io_push_ready             ), //o
+    .io_push_payload_data (io_push_payload_data[127:0]    ), //i
+    .io_push_payload_strb (io_push_payload_strb[15:0]     ), //i
+    .io_pop_valid         (fifo_io_pop_valid              ), //o
+    .io_pop_ready         (io_pop_ready                   ), //i
+    .io_pop_payload_data  (fifo_io_pop_payload_data[127:0]), //o
+    .io_pop_payload_strb  (fifo_io_pop_payload_strb[15:0] ), //o
+    .io_flush             (io_flush                       ), //i
+    .io_occupancy         (fifo_io_occupancy[4:0]         ), //o
+    .io_availability      (fifo_io_availability[4:0]      ), //o
+    .io_pclk              (io_pclk                        ), //i
+    ._zz_4                (_zz_1                          )  //i
+  );
+  assign io_push_ready = fifo_io_push_ready;
+  assign io_pop_valid = fifo_io_pop_valid;
+  assign io_pop_payload_data = fifo_io_pop_payload_data;
+  assign io_pop_payload_strb = fifo_io_pop_payload_strb;
+  assign io_occupancy = fifo_io_occupancy;
+  assign io_availability = fifo_io_availability;
+
+endmodule
+
+module StreamFifoLowLatency (
+  input  wire          io_push_valid,
+  output wire          io_push_ready,
+  input  wire [127:0]  io_push_payload,
+  output wire          io_pop_valid,
+  input  wire          io_pop_ready,
+  output wire [127:0]  io_pop_payload,
+  input  wire          io_flush,
+  output wire [4:0]    io_occupancy,
+  output wire [4:0]    io_availability,
+  input  wire          io_pclk,
+  input  wire          _zz_1
+);
+
+  wire                fifo_io_push_ready;
+  wire                fifo_io_pop_valid;
+  wire       [127:0]  fifo_io_pop_payload;
+  wire       [4:0]    fifo_io_occupancy;
+  wire       [4:0]    fifo_io_availability;
+
+  StreamFifo fifo (
+    .io_push_valid   (io_push_valid             ), //i
+    .io_push_ready   (fifo_io_push_ready        ), //o
+    .io_push_payload (io_push_payload[127:0]    ), //i
+    .io_pop_valid    (fifo_io_pop_valid         ), //o
+    .io_pop_ready    (io_pop_ready              ), //i
+    .io_pop_payload  (fifo_io_pop_payload[127:0]), //o
+    .io_flush        (io_flush                  ), //i
+    .io_occupancy    (fifo_io_occupancy[4:0]    ), //o
+    .io_availability (fifo_io_availability[4:0] ), //o
+    .io_pclk         (io_pclk                   ), //i
+    ._zz_4           (_zz_1                     )  //i
+  );
+  assign io_push_ready = fifo_io_push_ready;
+  assign io_pop_valid = fifo_io_pop_valid;
+  assign io_pop_payload = fifo_io_pop_payload;
+  assign io_occupancy = fifo_io_occupancy;
+  assign io_availability = fifo_io_availability;
+
+endmodule
+
+module StreamFifo_1 (
+  input  wire          io_push_valid,
+  output wire          io_push_ready,
+  input  wire [127:0]  io_push_payload_data,
+  input  wire [15:0]   io_push_payload_strb,
+  output reg           io_pop_valid,
+  input  wire          io_pop_ready,
+  output reg  [127:0]  io_pop_payload_data,
+  output reg  [15:0]   io_pop_payload_strb,
+  input  wire          io_flush,
+  output wire [4:0]    io_occupancy,
+  output wire [4:0]    io_availability,
+  input  wire          io_pclk,
+  input  wire          _zz_4
+);
+
+  wire       [143:0]  logic_ram_spinal_port1;
+  wire       [143:0]  _zz_logic_ram_port;
+  reg                 _zz_1;
+  reg                 logic_ptr_doPush;
+  wire                logic_ptr_doPop;
+  wire                logic_ptr_full;
+  wire                logic_ptr_empty;
+  reg        [4:0]    logic_ptr_push;
+  reg        [4:0]    logic_ptr_pop;
+  wire       [4:0]    logic_ptr_occupancy;
+  wire       [4:0]    logic_ptr_popOnIo;
+  wire                when_Stream_l1557;
+  reg                 logic_ptr_wentUp;
+  wire                io_push_fire;
+  wire                logic_push_onRam_write_valid;
+  wire       [3:0]    logic_push_onRam_write_payload_address;
+  wire       [127:0]  logic_push_onRam_write_payload_data_data;
+  wire       [15:0]   logic_push_onRam_write_payload_data_strb;
+  wire                logic_pop_addressGen_valid;
+  wire                logic_pop_addressGen_ready;
+  wire       [3:0]    logic_pop_addressGen_payload;
+  wire                logic_pop_addressGen_fire;
+  wire       [127:0]  logic_pop_async_readed_data;
+  wire       [15:0]   logic_pop_async_readed_strb;
+  wire       [143:0]  _zz_logic_pop_async_readed_data;
+  wire                logic_pop_addressGen_translated_valid;
+  wire                logic_pop_addressGen_translated_ready;
+  wire       [127:0]  logic_pop_addressGen_translated_payload_data;
+  wire       [15:0]   logic_pop_addressGen_translated_payload_strb;
+  (* ram_style = "distributed" *) reg [143:0] logic_ram [0:15];
+
+  assign _zz_logic_ram_port = {logic_push_onRam_write_payload_data_strb,logic_push_onRam_write_payload_data_data};
+  always @(posedge io_pclk) begin
+    if(_zz_1) begin
+      logic_ram[logic_push_onRam_write_payload_address] <= _zz_logic_ram_port;
+    end
+  end
+
+  assign logic_ram_spinal_port1 = logic_ram[logic_pop_addressGen_payload];
+  always @(*) begin
+    _zz_1 = 1'b0;
+    if(logic_push_onRam_write_valid) begin
+      _zz_1 = 1'b1;
+    end
+  end
+
+  assign when_Stream_l1557 = (logic_ptr_doPush != logic_ptr_doPop);
+  assign logic_ptr_full = (((logic_ptr_push ^ logic_ptr_popOnIo) ^ 5'h10) == 5'h0);
+  assign logic_ptr_empty = (logic_ptr_push == logic_ptr_pop);
+  assign logic_ptr_occupancy = (logic_ptr_push - logic_ptr_popOnIo);
+  assign io_push_ready = (! logic_ptr_full);
+  assign io_push_fire = (io_push_valid && io_push_ready);
+  always @(*) begin
+    logic_ptr_doPush = io_push_fire;
+    if(logic_ptr_empty) begin
+      if(io_pop_ready) begin
+        logic_ptr_doPush = 1'b0;
+      end
+    end
+  end
+
+  assign logic_push_onRam_write_valid = io_push_fire;
+  assign logic_push_onRam_write_payload_address = logic_ptr_push[3:0];
+  assign logic_push_onRam_write_payload_data_data = io_push_payload_data;
+  assign logic_push_onRam_write_payload_data_strb = io_push_payload_strb;
+  assign logic_pop_addressGen_valid = (! logic_ptr_empty);
+  assign logic_pop_addressGen_payload = logic_ptr_pop[3:0];
+  assign logic_pop_addressGen_fire = (logic_pop_addressGen_valid && logic_pop_addressGen_ready);
+  assign logic_ptr_doPop = logic_pop_addressGen_fire;
+  assign _zz_logic_pop_async_readed_data = logic_ram_spinal_port1;
+  assign logic_pop_async_readed_data = _zz_logic_pop_async_readed_data[127 : 0];
+  assign logic_pop_async_readed_strb = _zz_logic_pop_async_readed_data[143 : 128];
+  assign logic_pop_addressGen_translated_valid = logic_pop_addressGen_valid;
+  assign logic_pop_addressGen_ready = logic_pop_addressGen_translated_ready;
+  assign logic_pop_addressGen_translated_payload_data = logic_pop_async_readed_data;
+  assign logic_pop_addressGen_translated_payload_strb = logic_pop_async_readed_strb;
+  always @(*) begin
+    io_pop_valid = logic_pop_addressGen_translated_valid;
+    if(logic_ptr_empty) begin
+      io_pop_valid = io_push_valid;
+    end
+  end
+
+  assign logic_pop_addressGen_translated_ready = io_pop_ready;
+  always @(*) begin
+    io_pop_payload_data = logic_pop_addressGen_translated_payload_data;
+    if(logic_ptr_empty) begin
+      io_pop_payload_data = io_push_payload_data;
+    end
+  end
+
+  always @(*) begin
+    io_pop_payload_strb = logic_pop_addressGen_translated_payload_strb;
+    if(logic_ptr_empty) begin
+      io_pop_payload_strb = io_push_payload_strb;
+    end
+  end
+
+  assign logic_ptr_popOnIo = logic_ptr_pop;
+  assign io_occupancy = logic_ptr_occupancy;
+  assign io_availability = (5'h10 - logic_ptr_occupancy);
+  always @(posedge io_pclk or posedge _zz_4) begin
+    if(_zz_4) begin
+      logic_ptr_push <= 5'h0;
+      logic_ptr_pop <= 5'h0;
+      logic_ptr_wentUp <= 1'b0;
+    end else begin
+      if(when_Stream_l1557) begin
+        logic_ptr_wentUp <= logic_ptr_doPush;
+      end
+      if(io_flush) begin
+        logic_ptr_wentUp <= 1'b0;
+      end
+      if(logic_ptr_doPush) begin
+        logic_ptr_push <= (logic_ptr_push + 5'h01);
+      end
+      if(logic_ptr_doPop) begin
+        logic_ptr_pop <= (logic_ptr_pop + 5'h01);
+      end
+      if(io_flush) begin
+        logic_ptr_push <= 5'h0;
+        logic_ptr_pop <= 5'h0;
+      end
+    end
+  end
+
+
+endmodule
+
+module StreamFifo (
+  input  wire          io_push_valid,
+  output wire          io_push_ready,
+  input  wire [127:0]  io_push_payload,
+  output reg           io_pop_valid,
+  input  wire          io_pop_ready,
+  output reg  [127:0]  io_pop_payload,
+  input  wire          io_flush,
+  output wire [4:0]    io_occupancy,
+  output wire [4:0]    io_availability,
+  input  wire          io_pclk,
+  input  wire          _zz_4
+);
+
+  wire       [127:0]  logic_ram_spinal_port1;
+  reg                 _zz_1;
+  reg                 logic_ptr_doPush;
+  wire                logic_ptr_doPop;
+  wire                logic_ptr_full;
+  wire                logic_ptr_empty;
+  reg        [4:0]    logic_ptr_push;
+  reg        [4:0]    logic_ptr_pop;
+  wire       [4:0]    logic_ptr_occupancy;
+  wire       [4:0]    logic_ptr_popOnIo;
+  wire                when_Stream_l1557;
+  reg                 logic_ptr_wentUp;
+  wire                io_push_fire;
+  wire                logic_push_onRam_write_valid;
+  wire       [3:0]    logic_push_onRam_write_payload_address;
+  wire       [127:0]  logic_push_onRam_write_payload_data;
+  wire                logic_pop_addressGen_valid;
+  wire                logic_pop_addressGen_ready;
+  wire       [3:0]    logic_pop_addressGen_payload;
+  wire                logic_pop_addressGen_fire;
+  wire       [127:0]  logic_pop_async_readed;
+  wire                logic_pop_addressGen_translated_valid;
+  wire                logic_pop_addressGen_translated_ready;
+  wire       [127:0]  logic_pop_addressGen_translated_payload;
+  (* ram_style = "distributed" *) reg [127:0] logic_ram [0:15];
+
+  always @(posedge io_pclk) begin
+    if(_zz_1) begin
+      logic_ram[logic_push_onRam_write_payload_address] <= logic_push_onRam_write_payload_data;
+    end
+  end
+
+  assign logic_ram_spinal_port1 = logic_ram[logic_pop_addressGen_payload];
+  always @(*) begin
+    _zz_1 = 1'b0;
+    if(logic_push_onRam_write_valid) begin
+      _zz_1 = 1'b1;
+    end
+  end
+
+  assign when_Stream_l1557 = (logic_ptr_doPush != logic_ptr_doPop);
+  assign logic_ptr_full = (((logic_ptr_push ^ logic_ptr_popOnIo) ^ 5'h10) == 5'h0);
+  assign logic_ptr_empty = (logic_ptr_push == logic_ptr_pop);
+  assign logic_ptr_occupancy = (logic_ptr_push - logic_ptr_popOnIo);
+  assign io_push_ready = (! logic_ptr_full);
+  assign io_push_fire = (io_push_valid && io_push_ready);
+  always @(*) begin
+    logic_ptr_doPush = io_push_fire;
+    if(logic_ptr_empty) begin
+      if(io_pop_ready) begin
+        logic_ptr_doPush = 1'b0;
+      end
+    end
+  end
+
+  assign logic_push_onRam_write_valid = io_push_fire;
+  assign logic_push_onRam_write_payload_address = logic_ptr_push[3:0];
+  assign logic_push_onRam_write_payload_data = io_push_payload;
+  assign logic_pop_addressGen_valid = (! logic_ptr_empty);
+  assign logic_pop_addressGen_payload = logic_ptr_pop[3:0];
+  assign logic_pop_addressGen_fire = (logic_pop_addressGen_valid && logic_pop_addressGen_ready);
+  assign logic_ptr_doPop = logic_pop_addressGen_fire;
+  assign logic_pop_async_readed = logic_ram_spinal_port1;
+  assign logic_pop_addressGen_translated_valid = logic_pop_addressGen_valid;
+  assign logic_pop_addressGen_ready = logic_pop_addressGen_translated_ready;
+  assign logic_pop_addressGen_translated_payload = logic_pop_async_readed;
+  always @(*) begin
+    io_pop_valid = logic_pop_addressGen_translated_valid;
+    if(logic_ptr_empty) begin
+      io_pop_valid = io_push_valid;
+    end
+  end
+
+  assign logic_pop_addressGen_translated_ready = io_pop_ready;
+  always @(*) begin
+    io_pop_payload = logic_pop_addressGen_translated_payload;
+    if(logic_ptr_empty) begin
+      io_pop_payload = io_push_payload;
+    end
+  end
+
+  assign logic_ptr_popOnIo = logic_ptr_pop;
+  assign io_occupancy = logic_ptr_occupancy;
+  assign io_availability = (5'h10 - logic_ptr_occupancy);
+  always @(posedge io_pclk or posedge _zz_4) begin
+    if(_zz_4) begin
+      logic_ptr_push <= 5'h0;
+      logic_ptr_pop <= 5'h0;
+      logic_ptr_wentUp <= 1'b0;
+    end else begin
+      if(when_Stream_l1557) begin
+        logic_ptr_wentUp <= logic_ptr_doPush;
+      end
+      if(io_flush) begin
+        logic_ptr_wentUp <= 1'b0;
+      end
+      if(logic_ptr_doPush) begin
+        logic_ptr_push <= (logic_ptr_push + 5'h01);
+      end
+      if(logic_ptr_doPop) begin
+        logic_ptr_pop <= (logic_ptr_pop + 5'h01);
+      end
+      if(io_flush) begin
+        logic_ptr_push <= 5'h0;
+        logic_ptr_pop <= 5'h0;
       end
     end
   end

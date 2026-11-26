@@ -139,8 +139,16 @@ class Ddr3MemtestEngine(
   io.axi.r.ready  := False
 
   // Address and test pattern generators
+  val axiBurstBlocks = if (testBursts >= 16) 16 else testBursts
+  val beatsPerBurst  = axiBurstBlocks * 2 // 64-bit AXI beats (16 bytes = 2 beats)
+  require(testBursts >= 1 && (testBursts % axiBurstBlocks) == 0, s"testBursts ($testBursts) must be a multiple of axiBurstBlocks ($axiBurstBlocks)")
+
   val burstIndex = Reg(UInt(log2Up(testBursts + 1) bits)) init(0)
-  val currentByteAddr = (burstIndex << 4).resize(32) // 16 bytes per burst
+  val beatIdx    = Reg(UInt(log2Up(beatsPerBurst + 1) bits)) init(0)
+  val wrCycleCnt = Reg(UInt(32 bits)) init(0)
+  val rdCycleCnt = Reg(UInt(32 bits)) init(0)
+  val currentByteAddr = (burstIndex << 4).resize(32) // 16 bytes per block
+  val beatBlockAddr   = currentByteAddr + ((beatIdx >> 1) << 4).resize(32)
 
   def makePattern0(addr: UInt): Bits = {
     (addr.asBits ^ B(0x5AA55AA5, 32 bits)) ## (addr + 1).asBits
@@ -171,12 +179,10 @@ class Ddr3MemtestEngine(
     val sSingleReadR0: State  = new State
     val sSingleReadR1: State  = new State
     val sBulkWriteAW: State   = new State
-    val sBulkWriteW0: State   = new State
-    val sBulkWriteW1: State   = new State
+    val sBulkWriteW: State    = new State
     val sBulkWriteB: State    = new State
     val sBulkReadAR: State    = new State
-    val sBulkReadR0: State    = new State
-    val sBulkReadR1: State    = new State
+    val sBulkReadR: State     = new State
     val sReportPass: State    = new State
     val sReportFail: State    = new State
     val sLoopDelay: State     = new State
@@ -460,100 +466,97 @@ class Ddr3MemtestEngine(
           goto(sReportFail)
         } otherwise {
           burstIndex := 0
+          wrCycleCnt := 0
+          rdCycleCnt := 0
           goto(sBulkWriteAW)
         }
       }
     }
 
-    // --- Phase 2: Bulk Bursts ---
+    // --- Phase 2: Bulk Multi-Beat AXI4 Bursts (+ cycle counters) ---
     sBulkWriteAW.whenIsActive {
+      wrCycleCnt      := wrCycleCnt + 1
       io.axi.aw.valid := True
       io.axi.aw.addr  := currentByteAddr
+      io.axi.aw.len   := beatsPerBurst - 1
       when(io.axi.aw.ready) {
-        goto(sBulkWriteW0)
+        beatIdx := 0
+        goto(sBulkWriteW)
       }
     }
 
-    sBulkWriteW0.whenIsActive {
+    sBulkWriteW.whenIsActive {
+      wrCycleCnt     := wrCycleCnt + 1
       io.axi.w.valid := True
-      io.axi.w.data  := makePattern0(currentByteAddr)
+      io.axi.w.data  := beatIdx(0) ? makePattern1(beatBlockAddr) | makePattern0(beatBlockAddr)
       io.axi.w.strb  := 0xFF
-      io.axi.w.last  := False
+      io.axi.w.last  := (beatIdx === beatsPerBurst - 1)
       when(io.axi.w.ready) {
-        goto(sBulkWriteW1)
-      }
-    }
-
-    sBulkWriteW1.whenIsActive {
-      io.axi.w.valid := True
-      io.axi.w.data  := makePattern1(currentByteAddr)
-      io.axi.w.strb  := 0xFF
-      io.axi.w.last  := True
-      when(io.axi.w.ready) {
-        goto(sBulkWriteB)
+        when(beatIdx === beatsPerBurst - 1) {
+          goto(sBulkWriteB)
+        } otherwise {
+          beatIdx := beatIdx + 1
+        }
       }
     }
 
     sBulkWriteB.whenIsActive {
+      wrCycleCnt := wrCycleCnt + 1
       when(io.axi.b.valid) {
-        when(burstIndex === testBursts - 1) {
+        when(burstIndex + axiBurstBlocks >= testBursts) {
           burstIndex := 0
+          rdCycleCnt := 0
           goto(sBulkReadAR)
         } otherwise {
-          burstIndex := burstIndex + 1
+          burstIndex := burstIndex + axiBurstBlocks
           goto(sBulkWriteAW)
         }
       }
     }
 
     sBulkReadAR.whenIsActive {
+      rdCycleCnt      := rdCycleCnt + 1
       io.axi.ar.valid := True
       io.axi.ar.addr  := currentByteAddr
+      io.axi.ar.len   := beatsPerBurst - 1
       when(io.axi.ar.ready) {
-        goto(sBulkReadR0)
+        beatIdx := 0
+        goto(sBulkReadR)
       }
     }
 
-    sBulkReadR0.whenIsActive {
+    sBulkReadR.whenIsActive {
+      rdCycleCnt     := rdCycleCnt + 1
       io.axi.r.ready := True
       when(io.axi.r.valid) {
-        val exp0 = makePattern0(currentByteAddr)
-        when(!errorReg && (io.axi.r.data =/= exp0)) {
+        val exp = beatIdx(0) ? makePattern1(beatBlockAddr) | makePattern0(beatBlockAddr)
+        val mismatch = (io.axi.r.data =/= exp)
+        when(!errorReg && mismatch) {
           errorReg    := True
-          errAddr     := currentByteAddr
-          errExpected := exp0
+          errAddr     := beatBlockAddr + (beatIdx(0) ? U(8, 32 bits) | U(0, 32 bits))
+          errExpected := exp
           errActual   := io.axi.r.data
         }
-        goto(sBulkReadR1)
-      }
-    }
-
-    sBulkReadR1.whenIsActive {
-      io.axi.r.ready := True
-      when(io.axi.r.valid) {
-        val exp1 = makePattern1(currentByteAddr)
-        when(!errorReg && (io.axi.r.data =/= exp1)) {
-          errorReg    := True
-          errAddr     := currentByteAddr + 8
-          errExpected := exp1
-          errActual   := io.axi.r.data
-        }
-        when(errorReg || (io.axi.r.data =/= exp1)) {
+        when(errorReg || mismatch) {
           msgIndex := 0
           goto(sReportFail)
         } otherwise {
-          when(burstIndex === testBursts - 1) {
-            msgIndex := 0
-            goto(sReportPass)
+          when(beatIdx === beatsPerBurst - 1) {
+            when(burstIndex + axiBurstBlocks >= testBursts) {
+              msgIndex := 0
+              goto(sReportPass)
+            } otherwise {
+              burstIndex := burstIndex + axiBurstBlocks
+              goto(sBulkReadAR)
+            }
           } otherwise {
-            burstIndex := burstIndex + 1
-            goto(sBulkReadAR)
+            beatIdx := beatIdx + 1
           }
         }
       }
     }
 
-    // Report Pass: "[PASS] Loop " + passCount + "\r\n"
+    // Report Pass: "[PASS] " + passCount + " W=" + wrCycleCnt + " R=" + rdCycleCnt + "\r\n"
     sReportPass.whenIsActive {
       passReg := True
       when(!printValid) {
@@ -569,8 +572,30 @@ class Ddr3MemtestEngine(
           is(8)  { printChar := nibbleToAscii(passCount(11 downto 8).asBits);  printValid := True; msgIndex := msgIndex + 1 }
           is(9)  { printChar := nibbleToAscii(passCount(7 downto 4).asBits);   printValid := True; msgIndex := msgIndex + 1 }
           is(10) { printChar := nibbleToAscii(passCount(3 downto 0).asBits);   printValid := True; msgIndex := msgIndex + 1 }
-          is(11) { printChar := 0x0D; printValid := True; msgIndex := msgIndex + 1 } // \r
-          is(12) { printChar := 0x0A; printValid := True; msgIndex := msgIndex + 1 } // \n
+          is(11) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(12) { printChar := 0x57; printValid := True; msgIndex := msgIndex + 1 } // W
+          is(13) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
+          is(14) { printChar := nibbleToAscii(wrCycleCnt(31 downto 28).asBits); printValid := True; msgIndex := msgIndex + 1 }
+          is(15) { printChar := nibbleToAscii(wrCycleCnt(27 downto 24).asBits); printValid := True; msgIndex := msgIndex + 1 }
+          is(16) { printChar := nibbleToAscii(wrCycleCnt(23 downto 20).asBits); printValid := True; msgIndex := msgIndex + 1 }
+          is(17) { printChar := nibbleToAscii(wrCycleCnt(19 downto 16).asBits); printValid := True; msgIndex := msgIndex + 1 }
+          is(18) { printChar := nibbleToAscii(wrCycleCnt(15 downto 12).asBits); printValid := True; msgIndex := msgIndex + 1 }
+          is(19) { printChar := nibbleToAscii(wrCycleCnt(11 downto 8).asBits);  printValid := True; msgIndex := msgIndex + 1 }
+          is(20) { printChar := nibbleToAscii(wrCycleCnt(7 downto 4).asBits);   printValid := True; msgIndex := msgIndex + 1 }
+          is(21) { printChar := nibbleToAscii(wrCycleCnt(3 downto 0).asBits);   printValid := True; msgIndex := msgIndex + 1 }
+          is(22) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(23) { printChar := 0x52; printValid := True; msgIndex := msgIndex + 1 } // R
+          is(24) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
+          is(25) { printChar := nibbleToAscii(rdCycleCnt(31 downto 28).asBits); printValid := True; msgIndex := msgIndex + 1 }
+          is(26) { printChar := nibbleToAscii(rdCycleCnt(27 downto 24).asBits); printValid := True; msgIndex := msgIndex + 1 }
+          is(27) { printChar := nibbleToAscii(rdCycleCnt(23 downto 20).asBits); printValid := True; msgIndex := msgIndex + 1 }
+          is(28) { printChar := nibbleToAscii(rdCycleCnt(19 downto 16).asBits); printValid := True; msgIndex := msgIndex + 1 }
+          is(29) { printChar := nibbleToAscii(rdCycleCnt(15 downto 12).asBits); printValid := True; msgIndex := msgIndex + 1 }
+          is(30) { printChar := nibbleToAscii(rdCycleCnt(11 downto 8).asBits);  printValid := True; msgIndex := msgIndex + 1 }
+          is(31) { printChar := nibbleToAscii(rdCycleCnt(7 downto 4).asBits);   printValid := True; msgIndex := msgIndex + 1 }
+          is(32) { printChar := nibbleToAscii(rdCycleCnt(3 downto 0).asBits);   printValid := True; msgIndex := msgIndex + 1 }
+          is(33) { printChar := 0x0D; printValid := True; msgIndex := msgIndex + 1 } // \r
+          is(34) { printChar := 0x0A; printValid := True; msgIndex := msgIndex + 1 } // \n
           default {
             passCount := passCount + 1
             delayCounter := 0
@@ -672,6 +697,8 @@ class Ddr3MemtestEngine(
       delayCounter := delayCounter + 1
       when(delayCounter === (clkFreqHz / 100)) { // 10ms
         burstIndex := 0
+        wrCycleCnt := 0
+        rdCycleCnt := 0
         goto(sBulkWriteAW)
       }
     }

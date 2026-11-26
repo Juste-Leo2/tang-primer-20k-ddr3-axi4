@@ -71,7 +71,7 @@ case class Ddr3Config(
 }
 
 object Ddr3State extends SpinalEnum {
-  val RST_WAIT, CKE_WAIT, CONFIG, ZQCL, WRITE_LEVELING, READ_CALIB, IDLE, READ, WRITE, REFRESH = newElement()
+  val RST_WAIT, CKE_WAIT, CONFIG, ZQCL, WRITE_LEVELING, READ_CALIB, IDLE, READ, WRITE, PRECHARGE, REFRESH = newElement()
 }
 
 case class Ddr3Req(config: Ddr3Config) extends Bundle {
@@ -189,7 +189,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
 
   // State registers
   val state        = RegInit(Ddr3State.RST_WAIT)
-  val cycle        = Reg(UInt(5 bits)) init(0)
+  val cycle        = Reg(UInt(7 bits)) init(0)
   val tick_counter = Reg(UInt(17 bits)) init(if (config.isSimulation) 1 else 60000)
   val tick         = RegInit(False)
 
@@ -198,6 +198,28 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   val busy         = RegInit(True)
   val data_ready   = RegInit(False)
   val init_done_latched = RegInit(False)
+
+  // Open-page + burst-streaming state (functional traffic only; calibration stays closed-page)
+  val rowOpen       = RegInit(False)
+  val openBank      = Reg(Bits(config.bankWidth bits)) init(0)
+  val openRow       = Reg(Bits(config.rowWidth bits)) init(0)
+  val prechForReq   = RegInit(False)
+
+  val wrStreamOpen  = RegInit(False)
+  val wrHavePending = RegInit(False)
+  val wrExtraCnt    = Reg(UInt(6 bits)) init(0)
+  val wrCooldown    = Reg(UInt(4 bits)) init(0)
+  val st1Valid      = RegInit(False)
+  val st2Valid      = RegInit(False)
+  val st3Valid      = RegInit(False)
+  val st1Req        = Reg(Ddr3Req(config))
+  val st2Req        = Reg(Ddr3Req(config))
+  val st3Req        = Reg(Ddr3Req(config))
+
+  val rdStreamOpen  = RegInit(False)
+  val rdHavePending = RegInit(False)
+  val rdExtraCnt    = Reg(UInt(6 bits)) init(0)
+  val rdRspLeft     = Reg(UInt(6 bits)) init(0)
 
   val wlevel_done  = RegInit(False)
   val wlevel_cnt   = Reg(UInt(4 bits)) init(0)
@@ -446,7 +468,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   val refresh_timer = Reg(UInt(11 bits)) init(0)
   val refresh_due   = RegInit(False)
 
-  when(state === Ddr3State.IDLE || state === Ddr3State.READ || state === Ddr3State.WRITE) {
+  when(state === Ddr3State.IDLE || state === Ddr3State.READ || state === Ddr3State.WRITE || state === Ddr3State.PRECHARGE) {
     when(refresh_timer === refreshPeriod) {
       refresh_due := True
       refresh_timer := 0
@@ -554,26 +576,46 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   // Side effect (harmless): the write strobe self-captures write data into
   // the FIFO via DQSIN loopback; the next read's HOLD reset + full double
   // burst overwrite every slot.
-  val rdCyc = rclkpos.asUInt.resize(5) + config.RCD / 4
+  val rdCyc = rclkpos.asUInt.resize(7) + config.RCD / 4
+  val rotSplit = (bestRot =/= 0).asUInt.resize(7)
   val dqs_read = Reg(Bits(4 bits)) init(0)
   dqs_read := 0
   if (config.isSimulation) {
-    when((state === Ddr3State.READ || state === Ddr3State.READ_CALIB) &&
+    when(state === Ddr3State.READ_CALIB &&
          (cycle === rdCyc || cycle === rdCyc + 1 || cycle === rdCyc + 2 || cycle === rdCyc + 3)) {
+      dqs_read := B"4'b1111"
+    }
+    when(state === Ddr3State.READ &&
+         (cycle >= rdCyc && cycle <= (rdCyc + 3 + rotSplit + rdExtraCnt.resize(7)))) {
       dqs_read := B"4'b1111"
     }
     when(state === Ddr3State.WRITE) {
       dqs_read := B"4'b1111"
     }
   } else {
-    when((state === Ddr3State.READ || state === Ddr3State.READ_CALIB) &&
+    when(state === Ddr3State.READ_CALIB &&
          (cycle >= rdCyc && cycle <= rdCyc + 7 && cycle <= 10)) {
+      dqs_read := B"4'b1111"
+    }
+    when(state === Ddr3State.READ &&
+         (cycle >= rdCyc && cycle <= (rdCyc + 7 + rotSplit + rdExtraCnt.resize(7)) && cycle <= (U(10, 7 bits) + rotSplit + rdExtraCnt.resize(7)))) {
       dqs_read := B"4'b1111"
     }
   }
 
-  // Ready to accept user requests only when in IDLE and no refresh due
-  val acceptReq = (state === Ddr3State.IDLE) && !busy && !refresh_due
+  // Open-page row decode on incoming request (never depends on io.req.valid)
+  val inBlk     = io.req.addr
+  val inRow     = inBlk(config.colWidth - 4 + config.rowWidth downto config.colWidth - 3).asBits
+  val inBank    = inBlk(config.colWidth - 4 + config.rowWidth + config.bankWidth downto config.colWidth - 3 + config.rowWidth).asBits
+  val inSameRow = (inBank === openBank) && (inRow === openRow)
+
+  val canAcceptWrStream = (state === Ddr3State.WRITE) && !trainDone && wrStreamOpen && !refresh_due &&
+                          (wrExtraCnt < 31) && (cycle >= config.RCD / 4) && io.req.write && inSameRow
+  val canAcceptRdStream = (state === Ddr3State.READ) && rdStreamOpen && !refresh_due &&
+                          (rdExtraCnt < 31) && (cycle >= config.RCD / 4 + 1) && !io.req.write && inSameRow
+
+  // Ready to accept user requests in IDLE (no refresh due) or during same-row streaming
+  val acceptReq = ((state === Ddr3State.IDLE) && !busy && !refresh_due) || canAcceptWrStream || canAcceptRdStream
   io.req.ready := acceptReq
 
   // Main FSM
@@ -601,7 +643,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
       }
     }
     when(!fsmPaused) {
-    cycle := (cycle === 31) ? U(31, 5 bits) | (cycle + 1)
+    cycle := (cycle === 127) ? U(127, 7 bits) | (cycle + 1)
     tick := (tick_counter === 1)
     tick_counter := (tick_counter === 0) ? U(0, 17 bits) | (tick_counter - 1)
 
@@ -1497,12 +1539,21 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
           cycle := 1
           busy := True
         } elsewhen(refresh_due) {
-          // Autonomous refresh
-          setCmd(0, CMD_AutoRefresh, B"3'b0", B"0".resized)
-          state := Ddr3State.REFRESH
-          cycle := 1
-          busy  := True
-          refresh_due := False
+          // Autonomous refresh (close open row first if needed)
+          when(rowOpen) {
+            setCmd(0, CMD_PreCharge, B"3'b0", B"16'h0400".resized) // A[10]=1: precharge all banks
+            rowOpen     := False
+            prechForReq := False
+            state       := Ddr3State.PRECHARGE
+            cycle       := 1
+            busy        := True
+          } otherwise {
+            setCmd(0, CMD_AutoRefresh, B"3'b0", B"0".resized)
+            state := Ddr3State.REFRESH
+            cycle := 1
+            busy  := True
+            refresh_due := False
+          }
         } elsewhen(needFinalSurvey) {
           // DLL sweep done: confirming pass-3 survey under the winning
           // offset. Re-ACTs the row at is(0), like every pass entry.
@@ -1512,53 +1563,126 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
         } elsewhen(io.req.valid) {
           reqReg := io.req.payload
           val blockIdx = io.req.addr
-          val col  = (blockIdx(config.colWidth - 4 downto 0) @@ U"3'b000").asBits
           val row  = blockIdx(config.colWidth - 4 + config.rowWidth downto config.colWidth - 3).asBits
           val bank = blockIdx(config.colWidth - 4 + config.rowWidth + config.bankWidth downto config.colWidth - 3 + config.rowWidth).asBits
+          val isRowHit = rowOpen && (bank === openBank) && (row === openRow)
 
-          setCmd(0, CMD_BankActivate, bank, row.resized)
-          state := io.req.write ? Ddr3State.WRITE | Ddr3State.READ
-          cycle := 1
-          busy  := True
-          when(!io.req.write) {
-            dqs_hold := True
+          when(rowOpen && !isRowHit) {
+            // Row miss: precharge current row, then ACTIVATE & run request
+            setCmd(0, CMD_PreCharge, B"3'b0", B"16'h0400".resized)
+            rowOpen     := False
+            prechForReq := True
+            state       := Ddr3State.PRECHARGE
+            cycle       := 1
+            busy        := True
+          } otherwise {
+            when(!rowOpen) {
+              setCmd(0, CMD_BankActivate, bank, row.resized)
+              rowOpen  := True
+              openBank := bank
+              openRow  := row
+            }
+            busy := True
+            when(io.req.write) {
+              wrStreamOpen  := True
+              wrHavePending := False
+              wrExtraCnt    := 0
+              wrCooldown    := 0
+              st1Valid      := False
+              st2Valid      := False
+              st3Valid      := False
+              state         := Ddr3State.WRITE
+              cycle         := (isRowHit ? U(config.RCD / 4, 7 bits) | U(1, 7 bits))
+            } otherwise {
+              dqs_hold      := True
+              rdStreamOpen  := True
+              rdHavePending := False
+              rdExtraCnt    := 0
+              rdRspLeft     := 1
+              state         := Ddr3State.READ
+              cycle         := (isRowHit ? U(config.RCD / 4, 7 bits) | U(1, 7 bits))
+            }
+          }
+        }
+      }
+
+      is(Ddr3State.PRECHARGE) {
+        // Wait tRP (6 tCK -> 2 pclk = 8 tCK between PRE and next ACT/REF)
+        when(cycle === (config.RP + 3) / 4) {
+          when(prechForReq) {
+            prechForReq := False
+            val blockIdx = reqReg.addr
+            val row  = blockIdx(config.colWidth - 4 + config.rowWidth downto config.colWidth - 3).asBits
+            val bank = blockIdx(config.colWidth - 4 + config.rowWidth + config.bankWidth downto config.colWidth - 3 + config.rowWidth).asBits
+            setCmd(0, CMD_BankActivate, bank, row.resized)
+            rowOpen  := True
+            openBank := bank
+            openRow  := row
+            when(reqReg.write) {
+              wrStreamOpen  := True
+              wrHavePending := False
+              wrExtraCnt    := 0
+              wrCooldown    := 0
+              st1Valid      := False
+              st2Valid      := False
+              st3Valid      := False
+              state         := Ddr3State.WRITE
+              cycle         := 1
+            } otherwise {
+              dqs_hold      := True
+              rdStreamOpen  := True
+              rdHavePending := False
+              rdExtraCnt    := 0
+              rdRspLeft     := 1
+              state         := Ddr3State.READ
+              cycle         := 1
+            }
+          } otherwise {
+            setCmd(0, CMD_AutoRefresh, B"3'b0", B"0".resized)
+            refresh_due := False
+            state       := Ddr3State.REFRESH
+            cycle       := 1
           }
         }
       }
 
       is(Ddr3State.READ) {
-        // Double-burst functional read (mirrors READ_CALIB): two back-to-back
-        // BL8 reads WITHOUT auto-precharge so the row stays open for burst 2,
-        // then explicit PRECHARGE. Burst 2 fills the FIFO slots burst 1
-        // missed; data_ready samples 8 fresh beats.
+        // Double-burst-warmed streaming functional read (open-page, A[10]=0):
+        // burst 1 warms up dqs_en/WPOINT, burst 2..2+rdExtraCnt stream 16B/pclk.
         val blockIdx = reqReg.addr
         val col  = (blockIdx(config.colWidth - 4 downto 0) @@ U"3'b000").asBits
         val bank = blockIdx(config.colWidth - 4 + config.rowWidth + config.bankWidth downto config.colWidth - 3 + config.rowWidth).asBits
+        val readA = (col.resized | B"16'h1000".resized) // A[12]=1 (BL8), A[10]=0 (keep row open)
 
         when(cycle === config.RCD / 4) {
-          val readA = (col.resized | B"16'h1000".resized) // A[12]=1 (BL8), A[10]=0 (no AP)
           setCmd(config.RCD % 4, CMD_Read, bank, readA)
         }
 
-        when(cycle === config.RCD / 4 + 1) {
-          val readA2 = (col.resized | B"16'h1000".resized) // 2nd burst, tCCD = 1 pclk
-          setCmd(config.RCD % 4, CMD_Read, bank, readA2)
+        when(cycle === config.RCD / 4 + 1 || rdHavePending) {
+          setCmd(config.RCD % 4, CMD_Read, bank, readA)
         }
 
-        val readyCyc = if (config.isSimulation) (config.RCD / 4 + 9) else (config.RCD / 4 + 8)
-        when(cycle === readyCyc) {
-          data_ready := True
+        val rdIncr = canAcceptRdStream && io.req.valid
+        when(cycle >= config.RCD / 4 + 1) {
+          when(rdIncr) {
+            reqReg        := io.req.payload
+            rdHavePending := True
+            rdExtraCnt    := rdExtraCnt + 1
+          } otherwise {
+            rdHavePending := False
+            rdStreamOpen  := False
+          }
+        } otherwise {
+          rdHavePending := False
         }
 
-        when(cycle === readyCyc + 1) {
-          data_ready := False
-        }
+        val baseReadyCyc = if (config.isSimulation) (config.RCD / 4 + 9) else (config.RCD / 4 + 8)
+        val readyCyc     = baseReadyCyc + rotSplit
+        val rdDecr = (cycle >= readyCyc) && (rdRspLeft =/= 0)
+        data_ready := rdDecr
+        rdRspLeft  := rdRspLeft + rdIncr.asUInt.resize(6) - rdDecr.asUInt.resize(6)
 
-        when(cycle === config.RCD / 4 + 11) {
-          setCmd(0, CMD_PreCharge, B"3'b0", B"0".resized)
-        }
-
-        when(cycle === config.RCD / 4 + 11 + config.RP / 4) {
+        when(!rdStreamOpen && !rdHavePending && (rdRspLeft === 0) && !data_ready && (cycle >= readyCyc + 2)) {
           busy  := False
           state := Ddr3State.IDLE
         }
@@ -1569,167 +1693,170 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
         val col  = (blockIdx(config.colWidth - 4 downto 0) @@ U"3'b000").asBits
         val bank = blockIdx(config.colWidth - 4 + config.rowWidth + config.bankWidth downto config.colWidth - 3 + config.rowWidth).asBits
 
-        when(cycle === config.RCD / 4) {
-          val writeA = (col.resized | B"16'h1400".resized) // A[12]=1 (BL8), A[10]=1 (AutoPrecharge)
-          setCmd(config.RCD % 4, CMD_Write, bank, writeA)
-        }
+        def driveDm(r: Ddr3Req, halfWord: Int): Bool = !r.wstrb(halfWord * 2 + 1 downto halfWord * 2).orR
 
-        // wrMode: 0=norm, 1=dqAdv(-1tCK), 2=burstDly1(+1tCK), 3=burstDly2(+2tCK)
-        when(cycle === (config.RCD + config.CWL) / 4) {
-          switch(wrMode) {
-            is(0) {
-              dqs_out := B"8'b0100_0000"
-              dqs_oen := B"4'b0011"
-              dq_oen  := B"4'b0111"
-              dq_out(6) := 0
-              dq_out(7) := reqReg.wdata(15 downto 0)
-              dm_out(6) := True
-              dm_out(7) := !reqReg.wstrb(1 downto 0).orR
-            }
-            is(1) {
-              dqs_out := B"8'b0100_0000"
-              dqs_oen := B"4'b0011"
-              dq_oen  := B"4'b0011"
-              dq_out(4) := B"16'h0"
-              dq_out(5) := reqReg.wdata(15 downto 0)
-              dq_out(6) := reqReg.wdata(31 downto 16)
-              dq_out(7) := reqReg.wdata(47 downto 32)
-              dm_out(4) := True
-              dm_out(5) := !reqReg.wstrb(1 downto 0).orR
-              dm_out(6) := !reqReg.wstrb(3 downto 2).orR
-              dm_out(7) := !reqReg.wstrb(5 downto 4).orR
-            }
-            is(2) {
-              // +1 tCK burst delay: preamble at D6=0, D7=0
-              dqs_out := 0
-              dqs_oen := B"4'b0111"
-            }
-            is(3) {
-              // +2 tCK burst delay: idle in cycle 2
+        when(trainDone) {
+          // Calibration write path (closed-page with AutoPrecharge, unchanged)
+          when(cycle === config.RCD / 4) {
+            val writeA = (col.resized | B"16'h1400".resized) // A[12]=1 (BL8), A[10]=1 (AutoPrecharge)
+            setCmd(config.RCD % 4, CMD_Write, bank, writeA)
+          }
+
+          // wrMode: 0=norm, 1=dqAdv(-1tCK), 2=burstDly1(+1tCK), 3=burstDly2(+2tCK)
+          when(cycle === (config.RCD + config.CWL) / 4) {
+            switch(wrMode) {
+              is(0) {
+                dqs_out := B"8'b0100_0000"
+                dqs_oen := B"4'b0011"
+                dq_oen  := B"4'b0111"
+                dq_out(6) := 0
+                dq_out(7) := reqReg.wdata(15 downto 0)
+                dm_out(6) := True
+                dm_out(7) := !reqReg.wstrb(1 downto 0).orR
+              }
+              is(1) {
+                dqs_out := B"8'b0100_0000"
+                dqs_oen := B"4'b0011"
+                dq_oen  := B"4'b0011"
+                dq_out(4) := B"16'h0"
+                dq_out(5) := reqReg.wdata(15 downto 0)
+                dq_out(6) := reqReg.wdata(31 downto 16)
+                dq_out(7) := reqReg.wdata(47 downto 32)
+                dm_out(4) := True
+                dm_out(5) := !reqReg.wstrb(1 downto 0).orR
+                dm_out(6) := !reqReg.wstrb(3 downto 2).orR
+                dm_out(7) := !reqReg.wstrb(5 downto 4).orR
+              }
+              is(2) {
+                // +1 tCK burst delay: preamble at D6=0, D7=0
+                dqs_out := 0
+                dqs_oen := B"4'b0111"
+              }
+              is(3) {
+                // +2 tCK burst delay: idle in cycle 2
+              }
             }
           }
-        }
 
-        when(cycle === (config.RCD + config.CWL) / 4 + 1) {
-          switch(wrMode) {
-            is(0) {
-              dqs_out := B"8'b0101_0101"
-              dqs_oen := B"4'b0000"
-              dq_oen  := B"4'b0000"
-              dq_out(0) := reqReg.wdata(31 downto 16)
-              dq_out(1) := reqReg.wdata(47 downto 32)
-              dq_out(2) := reqReg.wdata(63 downto 48)
-              dq_out(3) := reqReg.wdata(79 downto 64)
-              dq_out(4) := reqReg.wdata(95 downto 80)
-              dq_out(5) := reqReg.wdata(111 downto 96)
-              dq_out(6) := reqReg.wdata(127 downto 112)
-              dq_out(7) := 0
-              dm_out(0) := !reqReg.wstrb(3 downto 2).orR
-              dm_out(1) := !reqReg.wstrb(5 downto 4).orR
-              dm_out(2) := !reqReg.wstrb(7 downto 6).orR
-              dm_out(3) := !reqReg.wstrb(9 downto 8).orR
-              dm_out(4) := !reqReg.wstrb(11 downto 10).orR
-              dm_out(5) := !reqReg.wstrb(13 downto 12).orR
-              dm_out(6) := !reqReg.wstrb(15 downto 14).orR
-              dm_out(7) := True
-            }
-            is(1) {
-              dqs_out := B"8'b0101_0101"
-              dqs_oen := B"4'b0000"
-              dq_oen  := B"4'b0000"
-              dq_out(0) := reqReg.wdata(63 downto 48)
-              dq_out(1) := reqReg.wdata(79 downto 64)
-              dq_out(2) := reqReg.wdata(95 downto 80)
-              dq_out(3) := reqReg.wdata(111 downto 96)
-              dq_out(4) := reqReg.wdata(127 downto 112)
-              dq_out(5) := B"16'h0"
-              dq_out(6) := B"16'h0"
-              dq_out(7) := 0
-              dm_out(0) := !reqReg.wstrb(7 downto 6).orR
-              dm_out(1) := !reqReg.wstrb(9 downto 8).orR
-              dm_out(2) := !reqReg.wstrb(11 downto 10).orR
-              dm_out(3) := !reqReg.wstrb(13 downto 12).orR
-              dm_out(4) := !reqReg.wstrb(15 downto 14).orR
-              dm_out(5) := True
-              dm_out(6) := True
-              dm_out(7) := True
-            }
-            is(2) {
-              dqs_out := B"8'b0101_0101"
-              dqs_oen := B"4'b0000"
-              dq_oen  := B"4'b0000"
-              dq_out(0) := 0
-              dq_out(1) := reqReg.wdata(15 downto 0)
-              dq_out(2) := reqReg.wdata(31 downto 16)
-              dq_out(3) := reqReg.wdata(47 downto 32)
-              dq_out(4) := reqReg.wdata(63 downto 48)
-              dq_out(5) := reqReg.wdata(79 downto 64)
-              dq_out(6) := reqReg.wdata(95 downto 80)
-              dq_out(7) := reqReg.wdata(111 downto 96)
-              dm_out(0) := True
-              dm_out(1) := !reqReg.wstrb(1 downto 0).orR
-              dm_out(2) := !reqReg.wstrb(3 downto 2).orR
-              dm_out(3) := !reqReg.wstrb(5 downto 4).orR
-              dm_out(4) := !reqReg.wstrb(7 downto 6).orR
-              dm_out(5) := !reqReg.wstrb(9 downto 8).orR
-              dm_out(6) := !reqReg.wstrb(11 downto 10).orR
-              dm_out(7) := !reqReg.wstrb(13 downto 12).orR
-            }
-            is(3) {
-              dqs_out := B"8'b0101_0100" // D0=0,D1=0 pre; D2=1,D3=0..D6=1,D7=0
-              dqs_oen := B"4'b0000"
-              dq_oen  := B"4'b0001"      // D2..D7 driven
-              dq_out(2) := 0
-              dq_out(3) := reqReg.wdata(15 downto 0)
-              dq_out(4) := reqReg.wdata(31 downto 16)
-              dq_out(5) := reqReg.wdata(47 downto 32)
-              dq_out(6) := reqReg.wdata(63 downto 48)
-              dq_out(7) := reqReg.wdata(79 downto 64)
-              dm_out(2) := True
-              dm_out(3) := !reqReg.wstrb(1 downto 0).orR
-              dm_out(4) := !reqReg.wstrb(3 downto 2).orR
-              dm_out(5) := !reqReg.wstrb(5 downto 4).orR
-              dm_out(6) := !reqReg.wstrb(7 downto 6).orR
-              dm_out(7) := !reqReg.wstrb(9 downto 8).orR
+          when(cycle === (config.RCD + config.CWL) / 4 + 1) {
+            switch(wrMode) {
+              is(0) {
+                dqs_out := B"8'b0101_0101"
+                dqs_oen := B"4'b0000"
+                dq_oen  := B"4'b0000"
+                dq_out(0) := reqReg.wdata(31 downto 16)
+                dq_out(1) := reqReg.wdata(47 downto 32)
+                dq_out(2) := reqReg.wdata(63 downto 48)
+                dq_out(3) := reqReg.wdata(79 downto 64)
+                dq_out(4) := reqReg.wdata(95 downto 80)
+                dq_out(5) := reqReg.wdata(111 downto 96)
+                dq_out(6) := reqReg.wdata(127 downto 112)
+                dq_out(7) := 0
+                dm_out(0) := !reqReg.wstrb(3 downto 2).orR
+                dm_out(1) := !reqReg.wstrb(5 downto 4).orR
+                dm_out(2) := !reqReg.wstrb(7 downto 6).orR
+                dm_out(3) := !reqReg.wstrb(9 downto 8).orR
+                dm_out(4) := !reqReg.wstrb(11 downto 10).orR
+                dm_out(5) := !reqReg.wstrb(13 downto 12).orR
+                dm_out(6) := !reqReg.wstrb(15 downto 14).orR
+                dm_out(7) := True
+              }
+              is(1) {
+                dqs_out := B"8'b0101_0101"
+                dqs_oen := B"4'b0000"
+                dq_oen  := B"4'b0000"
+                dq_out(0) := reqReg.wdata(63 downto 48)
+                dq_out(1) := reqReg.wdata(79 downto 64)
+                dq_out(2) := reqReg.wdata(95 downto 80)
+                dq_out(3) := reqReg.wdata(111 downto 96)
+                dq_out(4) := reqReg.wdata(127 downto 112)
+                dq_out(5) := B"16'h0"
+                dq_out(6) := B"16'h0"
+                dq_out(7) := 0
+                dm_out(0) := !reqReg.wstrb(7 downto 6).orR
+                dm_out(1) := !reqReg.wstrb(9 downto 8).orR
+                dm_out(2) := !reqReg.wstrb(11 downto 10).orR
+                dm_out(3) := !reqReg.wstrb(13 downto 12).orR
+                dm_out(4) := !reqReg.wstrb(15 downto 14).orR
+                dm_out(5) := True
+                dm_out(6) := True
+                dm_out(7) := True
+              }
+              is(2) {
+                dqs_out := B"8'b0101_0101"
+                dqs_oen := B"4'b0000"
+                dq_oen  := B"4'b0000"
+                dq_out(0) := 0
+                dq_out(1) := reqReg.wdata(15 downto 0)
+                dq_out(2) := reqReg.wdata(31 downto 16)
+                dq_out(3) := reqReg.wdata(47 downto 32)
+                dq_out(4) := reqReg.wdata(63 downto 48)
+                dq_out(5) := reqReg.wdata(79 downto 64)
+                dq_out(6) := reqReg.wdata(95 downto 80)
+                dq_out(7) := reqReg.wdata(111 downto 96)
+                dm_out(0) := True
+                dm_out(1) := !reqReg.wstrb(1 downto 0).orR
+                dm_out(2) := !reqReg.wstrb(3 downto 2).orR
+                dm_out(3) := !reqReg.wstrb(5 downto 4).orR
+                dm_out(4) := !reqReg.wstrb(7 downto 6).orR
+                dm_out(5) := !reqReg.wstrb(9 downto 8).orR
+                dm_out(6) := !reqReg.wstrb(11 downto 10).orR
+                dm_out(7) := !reqReg.wstrb(13 downto 12).orR
+              }
+              is(3) {
+                dqs_out := B"8'b0101_0100" // D0=0,D1=0 pre; D2=1,D3=0..D6=1,D7=0
+                dqs_oen := B"4'b0000"
+                dq_oen  := B"4'b0001"      // D2..D7 driven
+                dq_out(2) := 0
+                dq_out(3) := reqReg.wdata(15 downto 0)
+                dq_out(4) := reqReg.wdata(31 downto 16)
+                dq_out(5) := reqReg.wdata(47 downto 32)
+                dq_out(6) := reqReg.wdata(63 downto 48)
+                dq_out(7) := reqReg.wdata(79 downto 64)
+                dm_out(2) := True
+                dm_out(3) := !reqReg.wstrb(1 downto 0).orR
+                dm_out(4) := !reqReg.wstrb(3 downto 2).orR
+                dm_out(5) := !reqReg.wstrb(5 downto 4).orR
+                dm_out(6) := !reqReg.wstrb(7 downto 6).orR
+                dm_out(7) := !reqReg.wstrb(9 downto 8).orR
+              }
             }
           }
-        }
 
-        // Cycle 4: Postamble completion (held low) then all return to high-Z
-        when(cycle === (config.RCD + config.CWL) / 4 + 2) {
-          switch(wrMode) {
-            is(0, 1) {
-              dqs_out := 0
-              dqs_oen := B"4'b1110"      // TX0=0 held low for 1/2 CK postamble
-              dq_oen  := B"4'b1111"
-            }
-            is(2) {
-              dqs_out := B"8'b0000_0001" // D0=1 (b7), D1=0, D2=0 postamble
-              dqs_oen := B"4'b1100"
-              dq_oen  := B"4'b1110"
-              dq_out(0) := reqReg.wdata(127 downto 112)
-              dq_out(1) := 0
-              dm_out(0) := !reqReg.wstrb(15 downto 14).orR
-              dm_out(1) := True
-            }
-            is(3) {
-              dqs_out := B"8'b0000_0101" // D0=1,D1=0,D2=1,D3=0,D4=0,D5=0 postamble
-              dqs_oen := B"4'b1000"
-              dq_oen  := B"4'b1100"
-              dq_out(0) := reqReg.wdata(95 downto 80)
-              dq_out(1) := reqReg.wdata(111 downto 96)
-              dq_out(2) := reqReg.wdata(127 downto 112)
-              dq_out(3) := 0
-              dm_out(0) := !reqReg.wstrb(11 downto 10).orR
-              dm_out(1) := !reqReg.wstrb(13 downto 12).orR
-              dm_out(2) := !reqReg.wstrb(15 downto 14).orR
-              dm_out(3) := True
+          // Cycle 4: Postamble completion (held low) then all return to high-Z
+          when(cycle === (config.RCD + config.CWL) / 4 + 2) {
+            switch(wrMode) {
+              is(0, 1) {
+                dqs_out := 0
+                dqs_oen := B"4'b1110"      // TX0=0 held low for 1/2 CK postamble
+                dq_oen  := B"4'b1111"
+              }
+              is(2) {
+                dqs_out := B"8'b0000_0001" // D0=1 (b7), D1=0, D2=0 postamble
+                dqs_oen := B"4'b1100"
+                dq_oen  := B"4'b1110"
+                dq_out(0) := reqReg.wdata(127 downto 112)
+                dq_out(1) := 0
+                dm_out(0) := !reqReg.wstrb(15 downto 14).orR
+                dm_out(1) := True
+              }
+              is(3) {
+                dqs_out := B"8'b0000_0101" // D0=1,D1=0,D2=1,D3=0,D4=0,D5=0 postamble
+                dqs_oen := B"4'b1000"
+                dq_oen  := B"4'b1100"
+                dq_out(0) := reqReg.wdata(95 downto 80)
+                dq_out(1) := reqReg.wdata(111 downto 96)
+                dq_out(2) := reqReg.wdata(127 downto 112)
+                dq_out(3) := 0
+                dm_out(0) := !reqReg.wstrb(11 downto 10).orR
+                dm_out(1) := !reqReg.wstrb(13 downto 12).orR
+                dm_out(2) := !reqReg.wstrb(15 downto 14).orR
+                dm_out(3) := True
+              }
             }
           }
-        }
 
-        when(cycle === ((wrMode >= 2) ? U(32 / 4, 5 bits) | U(28 / 4, 5 bits))) {
-          when(trainDone) {
+          when(cycle === ((wrMode >= 2) ? U(32 / 4, 7 bits) | U(28 / 4, 7 bits))) {
             // Calib write done: training write -> back to IDLE for the
             // poison write; poison write -> to the sweep (re-ACTs the row).
             trainDone := False
@@ -1740,7 +1867,179 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
               state := Ddr3State.READ_CALIB
               cycle := 0
             }
+          }
+        } otherwise {
+          // Functional open-page + back-to-back streaming WRITE (A[10]=0, tCCD = 1 pclk)
+          val isFirstWr  = (cycle === config.RCD / 4)
+          val issueWrCmd = isFirstWr || wrHavePending
+          val wrAccept   = canAcceptWrStream && io.req.valid
+
+          when(issueWrCmd) {
+            val writeA = (col.resized | B"16'h1000".resized) // A[12]=1 (BL8), A[10]=0 (keep row open)
+            setCmd(config.RCD % 4, CMD_Write, bank, writeA)
+          }
+
+          st1Valid := issueWrCmd
+          when(issueWrCmd) { st1Req := reqReg }
+          st2Valid := st1Valid
+          st2Req   := st1Req
+          st3Valid := st2Valid
+          st3Req   := st2Req
+
+          when(wrAccept) {
+            reqReg        := io.req.payload
+            wrHavePending := True
+            wrExtraCnt    := wrExtraCnt + 1
           } otherwise {
+            wrHavePending := False
+            wrStreamOpen  := False
+          }
+
+          switch(wrMode) {
+            is(0) {
+              when(st1Valid && !st2Valid) {
+                dqs_out := B"8'b0100_0000"
+                dqs_oen := B"4'b0011"
+                dq_oen  := B"4'b0111"
+                dq_out(6) := 0
+                dq_out(7) := st1Req.wdata(15 downto 0)
+                dm_out(6) := True
+                dm_out(7) := driveDm(st1Req, 0)
+              } elsewhen(st2Valid) {
+                dqs_out := B"8'b0101_0101"
+                dqs_oen := B"4'b0000"
+                dq_oen  := B"4'b0000"
+                for (j <- 0 until 7) {
+                  dq_out(j) := st2Req.wdata((j + 1) * 16 + 15 downto (j + 1) * 16)
+                  dm_out(j) := driveDm(st2Req, j + 1)
+                }
+                when(st1Valid) {
+                  dq_out(7) := st1Req.wdata(15 downto 0)
+                  dm_out(7) := driveDm(st1Req, 0)
+                } otherwise {
+                  dq_out(7) := 0
+                  dm_out(7) := True
+                }
+              } elsewhen(st3Valid) {
+                dqs_out := 0
+                dqs_oen := B"4'b1110"
+                dq_oen  := B"4'b1111"
+              }
+            }
+            is(1) {
+              when(st1Valid && !st2Valid) {
+                dqs_out := B"8'b0100_0000"
+                dqs_oen := B"4'b0011"
+                dq_oen  := B"4'b0011"
+                dq_out(4) := 0
+                dm_out(4) := True
+                for (j <- 0 until 3) {
+                  dq_out(5 + j) := st1Req.wdata(j * 16 + 15 downto j * 16)
+                  dm_out(5 + j) := driveDm(st1Req, j)
+                }
+              } elsewhen(st2Valid) {
+                dqs_out := B"8'b0101_0101"
+                dqs_oen := B"4'b0000"
+                dq_oen  := B"4'b0000"
+                for (j <- 0 until 5) {
+                  dq_out(j) := st2Req.wdata((j + 3) * 16 + 15 downto (j + 3) * 16)
+                  dm_out(j) := driveDm(st2Req, j + 3)
+                }
+                when(st1Valid) {
+                  for (j <- 0 until 3) {
+                    dq_out(5 + j) := st1Req.wdata(j * 16 + 15 downto j * 16)
+                    dm_out(5 + j) := driveDm(st1Req, j)
+                  }
+                } otherwise {
+                  for (j <- 5 until 8) {
+                    dq_out(j) := 0
+                    dm_out(j) := True
+                  }
+                }
+              } elsewhen(st3Valid) {
+                dqs_out := 0
+                dqs_oen := B"4'b1110"
+                dq_oen  := B"4'b1111"
+              }
+            }
+            is(2) {
+              when(st1Valid && !st2Valid) {
+                dqs_out := 0
+                dqs_oen := B"4'b0111"
+              } elsewhen(st2Valid && !st3Valid) {
+                dqs_out := B"8'b0101_0101"
+                dqs_oen := B"4'b0000"
+                dq_oen  := B"4'b0000"
+                dq_out(0) := 0
+                dm_out(0) := True
+                for (j <- 0 until 7) {
+                  dq_out(j + 1) := st2Req.wdata(j * 16 + 15 downto j * 16)
+                  dm_out(j + 1) := driveDm(st2Req, j)
+                }
+              } elsewhen(st3Valid && st2Valid) {
+                dqs_out := B"8'b0101_0101"
+                dqs_oen := B"4'b0000"
+                dq_oen  := B"4'b0000"
+                dq_out(0) := st3Req.wdata(127 downto 112)
+                dm_out(0) := driveDm(st3Req, 7)
+                for (j <- 0 until 7) {
+                  dq_out(j + 1) := st2Req.wdata(j * 16 + 15 downto j * 16)
+                  dm_out(j + 1) := driveDm(st2Req, j)
+                }
+              } elsewhen(st3Valid) {
+                dqs_out := B"8'b0000_0001"
+                dqs_oen := B"4'b1100"
+                dq_oen  := B"4'b1110"
+                dq_out(0) := st3Req.wdata(127 downto 112)
+                dq_out(1) := 0
+                dm_out(0) := driveDm(st3Req, 7)
+                dm_out(1) := True
+              }
+            }
+            is(3) {
+              when(st2Valid && !st3Valid) {
+                dqs_out := B"8'b0101_0100"
+                dqs_oen := B"4'b0000"
+                dq_oen  := B"4'b0001"
+                dq_out(2) := 0
+                dm_out(2) := True
+                for (j <- 0 until 5) {
+                  dq_out(3 + j) := st2Req.wdata(j * 16 + 15 downto j * 16)
+                  dm_out(3 + j) := driveDm(st2Req, j)
+                }
+              } elsewhen(st3Valid && st2Valid) {
+                dqs_out := B"8'b0101_0101"
+                dqs_oen := B"4'b0000"
+                dq_oen  := B"4'b0000"
+                for (j <- 0 until 3) {
+                  dq_out(j) := st3Req.wdata((j + 5) * 16 + 15 downto (j + 5) * 16)
+                  dm_out(j) := driveDm(st3Req, j + 5)
+                }
+                for (j <- 0 until 5) {
+                  dq_out(3 + j) := st2Req.wdata(j * 16 + 15 downto j * 16)
+                  dm_out(3 + j) := driveDm(st2Req, j)
+                }
+              } elsewhen(st3Valid) {
+                dqs_out := B"8'b0000_0101"
+                dqs_oen := B"4'b1000"
+                dq_oen  := B"4'b1100"
+                for (j <- 0 until 3) {
+                  dq_out(j) := st3Req.wdata((j + 5) * 16 + 15 downto (j + 5) * 16)
+                  dm_out(j) := driveDm(st3Req, j + 5)
+                }
+                dq_out(3) := 0
+                dm_out(3) := True
+              }
+            }
+          }
+
+          when(issueWrCmd) {
+            wrCooldown := (wrMode >= 2) ? U(5, 4 bits) | U(4, 4 bits)
+          } elsewhen(wrCooldown =/= 0) {
+            wrCooldown := wrCooldown - 1
+          }
+
+          when(!issueWrCmd && !st1Valid && !st2Valid && !st3Valid && (wrCooldown === 0)) {
             busy  := False
             state := Ddr3State.IDLE
           }
@@ -1850,6 +2149,21 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     rclkpos := (if (config.isSimulation) B"2'd0" else B"2'd0")
     rclksel := (if (config.isSimulation) B"3'd0" else B"3'd0")
     init_done_latched := False
+    rowOpen := False
+    openBank := 0
+    openRow := 0
+    prechForReq := False
+    wrStreamOpen := False
+    wrHavePending := False
+    wrExtraCnt := 0
+    wrCooldown := 0
+    st1Valid := False
+    st2Valid := False
+    st3Valid := False
+    rdStreamOpen := False
+    rdHavePending := False
+    rdExtraCnt := 0
+    rdRspLeft := 0
     rburst_seen := 0
     resetn_delay := False
     if (!config.isSimulation) {
@@ -1859,14 +2173,19 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     state := Ddr3State.RST_WAIT
   }
 
-  // Feed read data out (128 bits), de-rotated by the locked training
-  // rotation: beat j comes from slot (j - bestRot) mod 8.
+  // Feed read data out (128 bits), de-rotated by the locked training rotation.
+  // When bestRot != 0, beats j < bestRot (newest FIFO slots 8-bestRot..7) arrive one pclk
+  // earlier than beats j >= bestRot (oldest FIFO slots 0..7-bestRot) during streamed reads,
+  // so we combine dqPrevVec (previous pclk) with live dqVec.
   val dqVec = Vec(io.phy.dq_in(0), io.phy.dq_in(1), io.phy.dq_in(2), io.phy.dq_in(3),
                   io.phy.dq_in(4), io.phy.dq_in(5), io.phy.dq_in(6), io.phy.dq_in(7))
+  val dqPrevVec = Vec((0 until 8).map(j => RegNext(io.phy.dq_in(j)) init(0)))
   def derot(j: Int): UInt = (U(j, 4 bits) - bestRot.resize(4))(2 downto 0)
+  val needRotSplit = (bestRot =/= 0)
   val rdataVec = Vec(Bits(16 bits), 8)
   for (j <- 0 until 8) {
-    rdataVec(j) := dqVec(derot(j))
+    val slot = derot(j)
+    rdataVec(j) := (needRotSplit && U(j, 3 bits) < bestRot) ? dqPrevVec(slot) | dqVec(slot)
   }
   io.rsp.valid := data_ready
   io.rsp.rdata := (rdataVec(7) ## rdataVec(6) ## rdataVec(5) ## rdataVec(4) ##
@@ -1931,14 +2250,15 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   if (GenerationFlags.formal) {
     import spinal.core.formal._
     when(pastValidAfterReset()) {
-    // P1: accept exactly in IDLE, idle, no refresh pending
-    assert(io.req.ready === (state === Ddr3State.IDLE && !busy && !refresh_due))
+    // P1: accept in IDLE (idle, no refresh) or during active same-row stream
+    assert(io.req.ready === acceptReq)
     // P2: response handshake mirrors data_ready
     assert(io.rsp.valid === data_ready)
-    // P3: 128-bit assembly wiring with locked de-rotation
-    // (slice j == dq_in((j - bestRot) mod 8)).
+    // P3: 128-bit assembly wiring with locked de-rotation + cross-cycle split reassembly
     for (j <- 0 until 8) {
-      assert(io.rsp.rdata(j * 16 + 15 downto j * 16) === dqVec(derot(j)).asBits)
+      val slot = derot(j)
+      val expBeat = (needRotSplit && U(j, 3 bits) < bestRot) ? dqPrevVec(slot) | dqVec(slot)
+      assert(io.rsp.rdata(j * 16 + 15 downto j * 16) === expBeat.asBits)
     }
     // P4: data_ready implies busy (cleared together)
     assert(!data_ready || busy)
@@ -1946,28 +2266,29 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     assert(!io.init_done || (wlevel_done && rcalib_done))
     // P6: DQS read strobe is all lanes or nothing
     assert(io.phy.dqs_read === B"4'b0000" || io.phy.dqs_read === B"4'b1111")
-    // P7: functional READs carry BL8 (A12) WITHOUT auto-precharge (A10=0):
-    // double-burst capture keeps the row open for burst 2, closed by an
-    // explicit PRECHARGE after. WRITE keeps BL8 + auto-precharge.
-    // setCmd fires at cycle RCD/4 (+1 for burst 2) on subcycle RCD%4:
-    // visible next cycle.
+    // P7: functional READs carry BL8 (A12) WITHOUT auto-precharge (A10=0).
+    // P8: calibration WRITEs keep auto-precharge (A10=1); functional WRITEs keep row open (A10=0).
+    // setCmd fires at cycle RCD/4 (+1 for burst 2) on subcycle RCD%4: visible next cycle.
     when(state === Ddr3State.READ && cycle === config.RCD / 4 + 1) {
       assert(A(config.RCD % 4)(12) && !A(config.RCD % 4)(10))
     }
     when(state === Ddr3State.READ && cycle === config.RCD / 4 + 2) {
       assert(A(config.RCD % 4)(12) && !A(config.RCD % 4)(10))
     }
-    when(state === Ddr3State.WRITE && cycle === config.RCD / 4 + 1) {
+    when(state === Ddr3State.WRITE && trainDone && cycle === config.RCD / 4 + 1) {
       assert(A(config.RCD % 4)(12) && A(config.RCD % 4)(10))
+    }
+    when(state === Ddr3State.WRITE && !trainDone && cycle === config.RCD / 4 + 1) {
+      assert(A(config.RCD % 4)(12) && !A(config.RCD % 4)(10))
     }
     // P9: no DQ/DQS bus contention outside write drive windows.
     // dq_out/dqs_out assignments at cycle c are observable at c+1.
     val wc = (config.RCD + config.CWL) / 4
-    when(!(state === Ddr3State.WRITE && (cycle === wc + 1 || cycle === wc + 2))) {
+    when(!(state === Ddr3State.WRITE && ((trainDone && (cycle === wc + 1 || cycle === wc + 2)) || (!trainDone && (st1Valid || st2Valid || st3Valid))))) {
       assert(dq_oen === B"4'b1111")
     }
     // NB: WRITE_LEVELING drives DQS (test strobe) by design: excluded.
-    when(!(state === Ddr3State.WRITE_LEVELING) && !(state === Ddr3State.WRITE && (cycle === wc + 1 || cycle === wc + 2 || cycle === wc + 3))) {
+    when(!(state === Ddr3State.WRITE_LEVELING) && !(state === Ddr3State.WRITE && ((trainDone && (cycle === wc + 1 || cycle === wc + 2 || cycle === wc + 3)) || (!trainDone && (st1Valid || st2Valid || st3Valid || (wrCooldown =/= 0)))))) {
       assert(dqs_oen === B"4'b1111")
     }
     // P10: mode-register program order MR2 -> MR3 -> MR1 -> MR0.
@@ -1989,15 +2310,15 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     }
     // P12: data_ready only inside READ.
     assert(!data_ready || state === Ddr3State.READ)
-    // P13: write datapath mapping (beats + DM vs wstrb), observable next cycle.
+    // P13: write datapath mapping (beats + DM vs wstrb), observable next cycle (legacy calib path).
     // Shift-0 mapping only: under wrMode != 0 the beats are remapped on purpose.
-    when(state === Ddr3State.WRITE && cycle === wc + 1 && wrMode === 0) {
+    when(state === Ddr3State.WRITE && trainDone && cycle === wc + 1 && wrMode === 0) {
       assert(dq_out(7) === reqReg.wdata(15 downto 0))
       assert(dq_out(6) === 0)
       assert(dm_out(7) === !reqReg.wstrb(1 downto 0).orR)
       assert(dm_out(6))
     }
-    when(state === Ddr3State.WRITE && cycle === wc + 2 && wrMode === 0) {
+    when(state === Ddr3State.WRITE && trainDone && cycle === wc + 2 && wrMode === 0) {
       assert(dq_out(0) === reqReg.wdata(31 downto 16))
       assert(dq_out(1) === reqReg.wdata(47 downto 32))
       assert(dq_out(2) === reqReg.wdata(63 downto 48))
@@ -2015,17 +2336,10 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
       assert(dm_out(6) === !reqReg.wstrb(15 downto 14).orR)
       assert(dm_out(7))
     }
-    // P14: ACT bank/row coherence between activate and R/W commands.
-    val reqBank = reqReg.addr(config.colWidth - 4 + config.rowWidth + config.bankWidth downto config.colWidth - 3 + config.rowWidth).asBits
-    val reqRow = reqReg.addr(config.colWidth - 4 + config.rowWidth downto config.colWidth - 3).asBits
-    when((state === Ddr3State.READ || state === Ddr3State.WRITE) && cycle === 1) {
-      assert(BA(0) === reqBank && A(0).asBits === reqRow.resized)
-    }
+    // P14: open-page invariants — never auto-refresh while a row is open, and commands match openBank.
+    assert(!(state === Ddr3State.REFRESH && rowOpen))
     when((state === Ddr3State.READ || state === Ddr3State.WRITE) && cycle === config.RCD / 4 + 1) {
-      assert(BA(config.RCD % 4) === reqBank)
-    }
-    when(state === Ddr3State.READ && cycle === config.RCD / 4 + 2) {
-      assert(BA(config.RCD % 4) === reqBank)
+      assert(BA(config.RCD % 4) === openBank || trainDone)
     }
     // Reachability sanity
     cover(state === Ddr3State.CONFIG)
