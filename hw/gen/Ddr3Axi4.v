@@ -1,7 +1,7 @@
 // Generator : SpinalHDL v1.15.0    git head : 05a01af3d3345aa0afcaad8e0186dde13a359db2
 // Component : Ddr3Axi4
-// Git hash  : 938d91df56096189ad7e0892f29e13a736de1626
-// Date      : 26/11/2026, 21:40:23
+// Git hash  : 10480b8a50d23853b47407a454b79bac2afa8b53
+// Date      : 26/11/2026, 22:11:40
 
 `timescale 1ns/1ps
 
@@ -692,22 +692,33 @@ module Ddr3Axi4Bridge (
   wire       [0:0]    _zz_wPendingBlks_4;
   wire       [8:0]    _zz__zz_rCmdLeft;
   wire                outReq_valid;
-  reg                 outReq_ready;
+  wire                outReq_ready;
   wire                outReq_payload_write;
   wire       [26:0]   outReq_payload_addr;
   wire       [127:0]  outReq_payload_wdata;
   wire       [15:0]   outReq_payload_wstrb;
-  wire                outReq_stage_valid;
-  wire                outReq_stage_ready;
-  wire                outReq_stage_payload_write;
-  wire       [26:0]   outReq_stage_payload_addr;
-  wire       [127:0]  outReq_stage_payload_wdata;
-  wire       [15:0]   outReq_stage_payload_wstrb;
-  reg                 outReq_rValid;
+  wire                outReq_s2mPipe_valid;
+  reg                 outReq_s2mPipe_ready;
+  wire                outReq_s2mPipe_payload_write;
+  wire       [26:0]   outReq_s2mPipe_payload_addr;
+  wire       [127:0]  outReq_s2mPipe_payload_wdata;
+  wire       [15:0]   outReq_s2mPipe_payload_wstrb;
+  reg                 outReq_rValidN;
   reg                 outReq_rData_write;
   reg        [26:0]   outReq_rData_addr;
   reg        [127:0]  outReq_rData_wdata;
   reg        [15:0]   outReq_rData_wstrb;
+  wire                outReq_s2mPipe_m2sPipe_valid;
+  wire                outReq_s2mPipe_m2sPipe_ready;
+  wire                outReq_s2mPipe_m2sPipe_payload_write;
+  wire       [26:0]   outReq_s2mPipe_m2sPipe_payload_addr;
+  wire       [127:0]  outReq_s2mPipe_m2sPipe_payload_wdata;
+  wire       [15:0]   outReq_s2mPipe_m2sPipe_payload_wstrb;
+  reg                 outReq_s2mPipe_rValid;
+  reg                 outReq_s2mPipe_rData_write;
+  reg        [26:0]   outReq_s2mPipe_rData_addr;
+  reg        [127:0]  outReq_s2mPipe_rData_wdata;
+  reg        [15:0]   outReq_s2mPipe_rData_wstrb;
   wire                when_Stream_l477;
   reg        [1:0]    mode;
   reg        [31:0]   rReqAddr;
@@ -818,25 +829,31 @@ module Ddr3Axi4Bridge (
   end
   `endif
 
+  assign outReq_ready = outReq_rValidN;
+  assign outReq_s2mPipe_valid = (outReq_valid || (! outReq_rValidN));
+  assign outReq_s2mPipe_payload_write = (outReq_rValidN ? outReq_payload_write : outReq_rData_write);
+  assign outReq_s2mPipe_payload_addr = (outReq_rValidN ? outReq_payload_addr : outReq_rData_addr);
+  assign outReq_s2mPipe_payload_wdata = (outReq_rValidN ? outReq_payload_wdata : outReq_rData_wdata);
+  assign outReq_s2mPipe_payload_wstrb = (outReq_rValidN ? outReq_payload_wstrb : outReq_rData_wstrb);
   always @(*) begin
-    outReq_ready = outReq_stage_ready;
+    outReq_s2mPipe_ready = outReq_s2mPipe_m2sPipe_ready;
     if(when_Stream_l477) begin
-      outReq_ready = 1'b1;
+      outReq_s2mPipe_ready = 1'b1;
     end
   end
 
-  assign when_Stream_l477 = (! outReq_stage_valid);
-  assign outReq_stage_valid = outReq_rValid;
-  assign outReq_stage_payload_write = outReq_rData_write;
-  assign outReq_stage_payload_addr = outReq_rData_addr;
-  assign outReq_stage_payload_wdata = outReq_rData_wdata;
-  assign outReq_stage_payload_wstrb = outReq_rData_wstrb;
-  assign io_req_valid = outReq_stage_valid;
-  assign outReq_stage_ready = io_req_ready;
-  assign io_req_payload_write = outReq_stage_payload_write;
-  assign io_req_payload_addr = outReq_stage_payload_addr;
-  assign io_req_payload_wdata = outReq_stage_payload_wdata;
-  assign io_req_payload_wstrb = outReq_stage_payload_wstrb;
+  assign when_Stream_l477 = (! outReq_s2mPipe_m2sPipe_valid);
+  assign outReq_s2mPipe_m2sPipe_valid = outReq_s2mPipe_rValid;
+  assign outReq_s2mPipe_m2sPipe_payload_write = outReq_s2mPipe_rData_write;
+  assign outReq_s2mPipe_m2sPipe_payload_addr = outReq_s2mPipe_rData_addr;
+  assign outReq_s2mPipe_m2sPipe_payload_wdata = outReq_s2mPipe_rData_wdata;
+  assign outReq_s2mPipe_m2sPipe_payload_wstrb = outReq_s2mPipe_rData_wstrb;
+  assign io_req_valid = outReq_s2mPipe_m2sPipe_valid;
+  assign outReq_s2mPipe_m2sPipe_ready = io_req_ready;
+  assign io_req_payload_write = outReq_s2mPipe_m2sPipe_payload_write;
+  assign io_req_payload_addr = outReq_s2mPipe_m2sPipe_payload_addr;
+  assign io_req_payload_wdata = outReq_s2mPipe_m2sPipe_payload_wdata;
+  assign io_req_payload_wstrb = outReq_s2mPipe_m2sPipe_payload_wstrb;
   assign rFifo_io_push_valid = ((mode == BridgeMode_READ) && io_rsp_valid);
   assign rConsume = ((! rValidReg) || io_axi_r_ready);
   always @(*) begin
@@ -912,7 +929,8 @@ module Ddr3Axi4Bridge (
   assign when_Ddr3Axi4Bridge_l281 = (wBValidReg && io_axi_b_ready);
   always @(posedge io_pclk or posedge _zz_1) begin
     if(_zz_1) begin
-      outReq_rValid <= 1'b0;
+      outReq_rValidN <= 1'b1;
+      outReq_s2mPipe_rValid <= 1'b0;
       mode <= BridgeMode_IDLE;
       rReqAddr <= 32'h0;
       rIncr <= 1'b1;
@@ -936,8 +954,14 @@ module Ddr3Axi4Bridge (
       wDraining <= 1'b0;
       wPendingBlks <= 9'h0;
     end else begin
-      if(outReq_ready) begin
-        outReq_rValid <= outReq_valid;
+      if(outReq_valid) begin
+        outReq_rValidN <= 1'b0;
+      end
+      if(outReq_s2mPipe_ready) begin
+        outReq_rValidN <= 1'b1;
+      end
+      if(outReq_s2mPipe_ready) begin
+        outReq_s2mPipe_rValid <= outReq_s2mPipe_valid;
       end
       if(when_Ddr3Axi4Bridge_l68) begin
         rValidReg <= 1'b0;
@@ -1043,6 +1067,12 @@ module Ddr3Axi4Bridge (
       outReq_rData_addr <= outReq_payload_addr;
       outReq_rData_wdata <= outReq_payload_wdata;
       outReq_rData_wstrb <= outReq_payload_wstrb;
+    end
+    if(outReq_s2mPipe_ready) begin
+      outReq_s2mPipe_rData_write <= outReq_s2mPipe_payload_write;
+      outReq_s2mPipe_rData_addr <= outReq_s2mPipe_payload_addr;
+      outReq_s2mPipe_rData_wdata <= outReq_s2mPipe_payload_wdata;
+      outReq_s2mPipe_rData_wstrb <= outReq_s2mPipe_payload_wstrb;
     end
   end
 

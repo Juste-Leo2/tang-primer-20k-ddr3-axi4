@@ -27,9 +27,9 @@ class Ddr3Axi4Bridge(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Con
   val fifoDepth = 16
   val chunkTrig = 8
 
-  // Registered request output slice decouples bridge FIFO/address paths from core row-hit comparator
+  // Registered request slice (s2m then m2s) puts pure FFs directly at controller input
   val outReq = Stream(Ddr3Req(config))
-  outReq.stage() <> io.req
+  outReq.s2mPipe().m2sPipe() <> io.req
 
   // =========================================================================
   // Shared Read/Write Transaction Arbitration (mutually exclusive bursts)

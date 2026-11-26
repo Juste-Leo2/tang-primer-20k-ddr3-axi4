@@ -58,22 +58,21 @@ class Ddr3MemtestEngine(
   val txStream = Stream(Bits(8 bits))
   uart.io.write << txStream
 
-  // Helper to convert 4-bit nibble to ASCII
-  def nibbleToAscii(n: Bits): Bits = {
-    val u = n.resize(4).asUInt.resize(8)
-    val res = Bits(8 bits)
-    when(u < 10) {
-      res := (u + U(0x30, 8 bits)).asBits
-    } otherwise {
-      res := (u + U(0x37, 8 bits)).asBits
-    }
-    res
-  }
+  // Helper to convert 4-bit nibble to ASCII (pure 16-entry LUT ROM, no comparator/adder chain)
+  val hexAsciiRom = Vec("0123456789ABCDEF".map(c => B(c.toInt, 8 bits)))
+  def nibbleToAscii(n: Bits): Bits = hexAsciiRom(n.resize(4).asUInt)
 
-  // UART print queue / character generator
+  // UART print queue / character generator (2-stage to keep printChar/CE trivial)
+  val nextPrintValid = Bool()
+  val nextPrintChar  = Bits(8 bits)
+  nextPrintValid := False
+  nextPrintChar  := 0
+
+  val stageValid = RegNext(nextPrintValid) init(False)
+  val stageChar  = RegNext(nextPrintChar) init(0)
+
   val printValid = RegInit(False)
   val printChar  = Reg(Bits(8 bits)) init(0)
-  val printBusy  = RegInit(False)
 
   txStream.valid   := printValid
   txStream.payload := printChar
@@ -81,6 +80,11 @@ class Ddr3MemtestEngine(
   when(txStream.fire) {
     printValid := False
   }
+  when(stageValid) {
+    printChar  := stageChar
+    printValid := True
+  }
+  val canPrint = !printValid && !stageValid
 
   // --- 2. Test Control Registers ---
   val passCount     = Reg(UInt(16 bits)) init(0)
@@ -139,7 +143,7 @@ class Ddr3MemtestEngine(
   io.axi.r.ready  := False
 
   // Address and test pattern generators
-  val axiBurstBlocks = if (testBursts >= 16) 16 else testBursts
+  val axiBurstBlocks = if (testBursts >= 64) 64 else testBursts
   val beatsPerBurst  = axiBurstBlocks * 2 // 64-bit AXI beats (16 bytes = 2 beats)
   require(testBursts >= 1 && (testBursts % axiBurstBlocks) == 0, s"testBursts ($testBursts) must be a multiple of axiBurstBlocks ($axiBurstBlocks)")
 
@@ -163,6 +167,15 @@ class Ddr3MemtestEngine(
   for (i <- 0 until 64) wlMapNib(i) := io.wlMap(i * 4 + 3 downto i * 4)
   val latchNib = Vec(Bits(4 bits), 32)
   for (i <- 0 until 32) latchNib(i) := io.train_latch(i * 4 + 3 downto i * 4)
+  val passPrefix = Vec(
+    B(0x5B, 8 bits), B(0x50, 8 bits), B(0x41, 8 bits), B(0x53, 8 bits),
+    B(0x53, 8 bits), B(0x5D, 8 bits), B(0x20, 8 bits)
+  ) // "[PASS] "
+  val failPrefix = Vec(
+    B(0x5B, 8 bits), B(0x46, 8 bits), B(0x41, 8 bits), B(0x49, 8 bits),
+    B(0x4C, 8 bits), B(0x5D, 8 bits), B(0x20, 8 bits), B(0x41, 8 bits),
+    B(0x3D, 8 bits)
+  ) // "[FAIL] A="
 
   val fsm = new StateMachine {
     val sBootBanner: State    = new State
@@ -196,28 +209,28 @@ class Ddr3MemtestEngine(
 
     // Immediate Boot Banner on power up / reset release
     sBootBanner.whenIsActive {
-      when(!printValid) {
+      when(canPrint) {
         switch(msgIndex) {
-          is(0)  { printChar := 0x0D; printValid := True; msgIndex := msgIndex + 1 } // \r
-          is(1)  { printChar := 0x0A; printValid := True; msgIndex := msgIndex + 1 } // \n
-          is(2)  { printChar := 0x5B; printValid := True; msgIndex := msgIndex + 1 } // [
-          is(3)  { printChar := 0x42; printValid := True; msgIndex := msgIndex + 1 } // B
-          is(4)  { printChar := 0x4F; printValid := True; msgIndex := msgIndex + 1 } // O
-          is(5)  { printChar := 0x4F; printValid := True; msgIndex := msgIndex + 1 } // O
-          is(6)  { printChar := 0x54; printValid := True; msgIndex := msgIndex + 1 } // T
-          is(7)  { printChar := 0x5D; printValid := True; msgIndex := msgIndex + 1 } // ]
-          is(8)  { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(9)  { printChar := 0x44; printValid := True; msgIndex := msgIndex + 1 } // D
-          is(10) { printChar := 0x44; printValid := True; msgIndex := msgIndex + 1 } // D
-          is(11) { printChar := 0x52; printValid := True; msgIndex := msgIndex + 1 } // R
-          is(12) { printChar := 0x33; printValid := True; msgIndex := msgIndex + 1 } // 3
-          is(13) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(14) { printChar := 0x43; printValid := True; msgIndex := msgIndex + 1 } // C
-          is(15) { printChar := 0x6F; printValid := True; msgIndex := msgIndex + 1 } // o
-          is(16) { printChar := 0x72; printValid := True; msgIndex := msgIndex + 1 } // r
-          is(17) { printChar := 0x65; printValid := True; msgIndex := msgIndex + 1 } // e
-          is(18) { printChar := 0x0D; printValid := True; msgIndex := msgIndex + 1 } // \r
-          is(19) { printChar := 0x0A; printValid := True; msgIndex := msgIndex + 1 } // \n
+          is(0)  { nextPrintChar := 0x0D; nextPrintValid := True; msgIndex := msgIndex + 1 } // \r
+          is(1)  { nextPrintChar := 0x0A; nextPrintValid := True; msgIndex := msgIndex + 1 } // \n
+          is(2)  { nextPrintChar := 0x5B; nextPrintValid := True; msgIndex := msgIndex + 1 } // [
+          is(3)  { nextPrintChar := 0x42; nextPrintValid := True; msgIndex := msgIndex + 1 } // B
+          is(4)  { nextPrintChar := 0x4F; nextPrintValid := True; msgIndex := msgIndex + 1 } // O
+          is(5)  { nextPrintChar := 0x4F; nextPrintValid := True; msgIndex := msgIndex + 1 } // O
+          is(6)  { nextPrintChar := 0x54; nextPrintValid := True; msgIndex := msgIndex + 1 } // T
+          is(7)  { nextPrintChar := 0x5D; nextPrintValid := True; msgIndex := msgIndex + 1 } // ]
+          is(8)  { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(9)  { nextPrintChar := 0x44; nextPrintValid := True; msgIndex := msgIndex + 1 } // D
+          is(10) { nextPrintChar := 0x44; nextPrintValid := True; msgIndex := msgIndex + 1 } // D
+          is(11) { nextPrintChar := 0x52; nextPrintValid := True; msgIndex := msgIndex + 1 } // R
+          is(12) { nextPrintChar := 0x33; nextPrintValid := True; msgIndex := msgIndex + 1 } // 3
+          is(13) { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(14) { nextPrintChar := 0x43; nextPrintValid := True; msgIndex := msgIndex + 1 } // C
+          is(15) { nextPrintChar := 0x6F; nextPrintValid := True; msgIndex := msgIndex + 1 } // o
+          is(16) { nextPrintChar := 0x72; nextPrintValid := True; msgIndex := msgIndex + 1 } // r
+          is(17) { nextPrintChar := 0x65; nextPrintValid := True; msgIndex := msgIndex + 1 } // e
+          is(18) { nextPrintChar := 0x0D; nextPrintValid := True; msgIndex := msgIndex + 1 } // \r
+          is(19) { nextPrintChar := 0x0A; nextPrintValid := True; msgIndex := msgIndex + 1 } // \n
           default {
             msgIndex := 0
             delayCounter := 0
@@ -247,23 +260,23 @@ class Ddr3MemtestEngine(
     // Progress line while calibrating: "[CAL s=X W=HH]\r\n" (X = controller
     // state 0-9, HH = write-leveling taps; W=FF means the WL watchdog fired).
     sPrintCalib.whenIsActive {
-      when(!printValid) {
+      when(canPrint) {
         switch(msgIndex) {
-          is(0)  { printChar := 0x5B; printValid := True; msgIndex := msgIndex + 1 } // [
-          is(1)  { printChar := 0x43; printValid := True; msgIndex := msgIndex + 1 } // C
-          is(2)  { printChar := 0x41; printValid := True; msgIndex := msgIndex + 1 } // A
-          is(3)  { printChar := 0x4C; printValid := True; msgIndex := msgIndex + 1 } // L
-          is(4)  { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(5)  { printChar := 0x73; printValid := True; msgIndex := msgIndex + 1 } // s
-          is(6)  { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
-          is(7)  { printChar := nibbleToAscii(io.dbg_state); printValid := True; msgIndex := msgIndex + 1 }
-          is(8)  { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(9)  { printChar := 0x57; printValid := True; msgIndex := msgIndex + 1 } // W
-          is(10) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
-          is(11) { printChar := nibbleToAscii(io.wstep(7 downto 4)); printValid := True; msgIndex := msgIndex + 1 }
-          is(12) { printChar := nibbleToAscii(io.wstep(3 downto 0)); printValid := True; msgIndex := msgIndex + 1 }
-          is(13) { printChar := 0x0D; printValid := True; msgIndex := msgIndex + 1 } // \r
-          is(14) { printChar := 0x0A; printValid := True; msgIndex := msgIndex + 1 } // \n
+          is(0)  { nextPrintChar := 0x5B; nextPrintValid := True; msgIndex := msgIndex + 1 } // [
+          is(1)  { nextPrintChar := 0x43; nextPrintValid := True; msgIndex := msgIndex + 1 } // C
+          is(2)  { nextPrintChar := 0x41; nextPrintValid := True; msgIndex := msgIndex + 1 } // A
+          is(3)  { nextPrintChar := 0x4C; nextPrintValid := True; msgIndex := msgIndex + 1 } // L
+          is(4)  { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(5)  { nextPrintChar := 0x73; nextPrintValid := True; msgIndex := msgIndex + 1 } // s
+          is(6)  { nextPrintChar := 0x3D; nextPrintValid := True; msgIndex := msgIndex + 1 } // =
+          is(7)  { nextPrintChar := nibbleToAscii(io.dbg_state); nextPrintValid := True; msgIndex := msgIndex + 1 }
+          is(8)  { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(9)  { nextPrintChar := 0x57; nextPrintValid := True; msgIndex := msgIndex + 1 } // W
+          is(10) { nextPrintChar := 0x3D; nextPrintValid := True; msgIndex := msgIndex + 1 } // =
+          is(11) { nextPrintChar := nibbleToAscii(io.wstep(7 downto 4)); nextPrintValid := True; msgIndex := msgIndex + 1 }
+          is(12) { nextPrintChar := nibbleToAscii(io.wstep(3 downto 0)); nextPrintValid := True; msgIndex := msgIndex + 1 }
+          is(13) { nextPrintChar := 0x0D; nextPrintValid := True; msgIndex := msgIndex + 1 } // \r
+          is(14) { nextPrintChar := 0x0A; nextPrintValid := True; msgIndex := msgIndex + 1 } // \n
           default {
             msgIndex := 0
             goto(sWaitCalib)
@@ -274,42 +287,42 @@ class Ddr3MemtestEngine(
 
     // Banner message: "\r\n[DDR3-OK] W=" + wstep + " P=" + rclkpos + " S=" + rclksel + " R=" + best_rot + " C=" + best_score + "\r\n"
     sPrintBanner.whenIsActive {
-      when(!printValid) {
+      when(canPrint) {
         switch(msgIndex) {
-          is(0)  { printChar := 0x0D; printValid := True; msgIndex := msgIndex + 1 } // \r
-          is(1)  { printChar := 0x0A; printValid := True; msgIndex := msgIndex + 1 } // \n
-          is(2)  { printChar := 0x5B; printValid := True; msgIndex := msgIndex + 1 } // [
-          is(3)  { printChar := 0x44; printValid := True; msgIndex := msgIndex + 1 } // D
-          is(4)  { printChar := 0x44; printValid := True; msgIndex := msgIndex + 1 } // D
-          is(5)  { printChar := 0x52; printValid := True; msgIndex := msgIndex + 1 } // R
-          is(6)  { printChar := 0x33; printValid := True; msgIndex := msgIndex + 1 } // 3
-          is(7)  { printChar := 0x2D; printValid := True; msgIndex := msgIndex + 1 } // -
-          is(8)  { printChar := 0x4F; printValid := True; msgIndex := msgIndex + 1 } // O
-          is(9)  { printChar := 0x4B; printValid := True; msgIndex := msgIndex + 1 } // K
-          is(10) { printChar := 0x5D; printValid := True; msgIndex := msgIndex + 1 } // ]
-          is(11) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(12) { printChar := 0x57; printValid := True; msgIndex := msgIndex + 1 } // W
-          is(13) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
-          is(14) { printChar := nibbleToAscii(io.wstep(7 downto 4)); printValid := True; msgIndex := msgIndex + 1 }
-          is(15) { printChar := nibbleToAscii(io.wstep(3 downto 0)); printValid := True; msgIndex := msgIndex + 1 }
-          is(16) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(17) { printChar := 0x50; printValid := True; msgIndex := msgIndex + 1 } // P
-          is(18) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
-          is(19) { printChar := nibbleToAscii(io.rclkpos.asBits.resized); printValid := True; msgIndex := msgIndex + 1 }
-          is(20) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(21) { printChar := 0x53; printValid := True; msgIndex := msgIndex + 1 } // S
-          is(22) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
-          is(23) { printChar := nibbleToAscii(io.rclksel.asBits.resized); printValid := True; msgIndex := msgIndex + 1 }
-          is(24) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(25) { printChar := 0x52; printValid := True; msgIndex := msgIndex + 1 } // R
-          is(26) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
-          is(27) { printChar := nibbleToAscii(io.best_rot.asBits.resized); printValid := True; msgIndex := msgIndex + 1 }
-          is(28) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(29) { printChar := 0x43; printValid := True; msgIndex := msgIndex + 1 } // C
-          is(30) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
-          is(31) { printChar := nibbleToAscii(io.best_score.asBits.resized); printValid := True; msgIndex := msgIndex + 1 }
-          is(32) { printChar := 0x0D; printValid := True; msgIndex := msgIndex + 1 } // \r
-          is(33) { printChar := 0x0A; printValid := True; msgIndex := msgIndex + 1 } // \n
+          is(0)  { nextPrintChar := 0x0D; nextPrintValid := True; msgIndex := msgIndex + 1 } // \r
+          is(1)  { nextPrintChar := 0x0A; nextPrintValid := True; msgIndex := msgIndex + 1 } // \n
+          is(2)  { nextPrintChar := 0x5B; nextPrintValid := True; msgIndex := msgIndex + 1 } // [
+          is(3)  { nextPrintChar := 0x44; nextPrintValid := True; msgIndex := msgIndex + 1 } // D
+          is(4)  { nextPrintChar := 0x44; nextPrintValid := True; msgIndex := msgIndex + 1 } // D
+          is(5)  { nextPrintChar := 0x52; nextPrintValid := True; msgIndex := msgIndex + 1 } // R
+          is(6)  { nextPrintChar := 0x33; nextPrintValid := True; msgIndex := msgIndex + 1 } // 3
+          is(7)  { nextPrintChar := 0x2D; nextPrintValid := True; msgIndex := msgIndex + 1 } // -
+          is(8)  { nextPrintChar := 0x4F; nextPrintValid := True; msgIndex := msgIndex + 1 } // O
+          is(9)  { nextPrintChar := 0x4B; nextPrintValid := True; msgIndex := msgIndex + 1 } // K
+          is(10) { nextPrintChar := 0x5D; nextPrintValid := True; msgIndex := msgIndex + 1 } // ]
+          is(11) { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(12) { nextPrintChar := 0x57; nextPrintValid := True; msgIndex := msgIndex + 1 } // W
+          is(13) { nextPrintChar := 0x3D; nextPrintValid := True; msgIndex := msgIndex + 1 } // =
+          is(14) { nextPrintChar := nibbleToAscii(io.wstep(7 downto 4)); nextPrintValid := True; msgIndex := msgIndex + 1 }
+          is(15) { nextPrintChar := nibbleToAscii(io.wstep(3 downto 0)); nextPrintValid := True; msgIndex := msgIndex + 1 }
+          is(16) { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(17) { nextPrintChar := 0x50; nextPrintValid := True; msgIndex := msgIndex + 1 } // P
+          is(18) { nextPrintChar := 0x3D; nextPrintValid := True; msgIndex := msgIndex + 1 } // =
+          is(19) { nextPrintChar := nibbleToAscii(io.rclkpos.asBits.resized); nextPrintValid := True; msgIndex := msgIndex + 1 }
+          is(20) { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(21) { nextPrintChar := 0x53; nextPrintValid := True; msgIndex := msgIndex + 1 } // S
+          is(22) { nextPrintChar := 0x3D; nextPrintValid := True; msgIndex := msgIndex + 1 } // =
+          is(23) { nextPrintChar := nibbleToAscii(io.rclksel.asBits.resized); nextPrintValid := True; msgIndex := msgIndex + 1 }
+          is(24) { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(25) { nextPrintChar := 0x52; nextPrintValid := True; msgIndex := msgIndex + 1 } // R
+          is(26) { nextPrintChar := 0x3D; nextPrintValid := True; msgIndex := msgIndex + 1 } // =
+          is(27) { nextPrintChar := nibbleToAscii(io.best_rot.asBits.resized); nextPrintValid := True; msgIndex := msgIndex + 1 }
+          is(28) { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(29) { nextPrintChar := 0x43; nextPrintValid := True; msgIndex := msgIndex + 1 } // C
+          is(30) { nextPrintChar := 0x3D; nextPrintValid := True; msgIndex := msgIndex + 1 } // =
+          is(31) { nextPrintChar := nibbleToAscii(io.best_score.asBits.resized); nextPrintValid := True; msgIndex := msgIndex + 1 }
+          is(32) { nextPrintChar := 0x0D; nextPrintValid := True; msgIndex := msgIndex + 1 } // \r
+          is(33) { nextPrintChar := 0x0A; nextPrintValid := True; msgIndex := msgIndex + 1 } // \n
           default {
             msgIndex := 0
             goto(sPrintWlmap)
@@ -322,39 +335,39 @@ class Ddr3MemtestEngine(
     // m=<64 hex>]\r\n" (map bit k = echo match at wstep k, MSB first).
     // Printed once after the banner, before the memtest starts.
     sPrintWlmap.whenIsActive {
-      when(!printValid) {
+      when(canPrint) {
         switch(msgIndex) {
-          is(0)  { printChar := 0x0D; printValid := True; msgIndex := msgIndex + 1 } // \r
-          is(1)  { printChar := 0x0A; printValid := True; msgIndex := msgIndex + 1 } // \n
-          is(2)  { printChar := 0x5B; printValid := True; msgIndex := msgIndex + 1 } // [
-          is(3)  { printChar := 0x57; printValid := True; msgIndex := msgIndex + 1 } // W
-          is(4)  { printChar := 0x4C; printValid := True; msgIndex := msgIndex + 1 } // L
-          is(5)  { printChar := 0x4D; printValid := True; msgIndex := msgIndex + 1 } // M
-          is(6)  { printChar := 0x41; printValid := True; msgIndex := msgIndex + 1 } // A
-          is(7)  { printChar := 0x50; printValid := True; msgIndex := msgIndex + 1 } // P
-          is(8)  { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(9)  { printChar := 0x66; printValid := True; msgIndex := msgIndex + 1 } // f
-          is(10) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
-          is(11) { printChar := nibbleToAscii(io.wlFirst(7 downto 4)); printValid := True; msgIndex := msgIndex + 1 }
-          is(12) { printChar := nibbleToAscii(io.wlFirst(3 downto 0)); printValid := True; msgIndex := msgIndex + 1 }
-          is(13) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(14) { printChar := 0x6C; printValid := True; msgIndex := msgIndex + 1 } // l
-          is(15) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
-          is(16) { printChar := nibbleToAscii(io.wlLast(7 downto 4)); printValid := True; msgIndex := msgIndex + 1 }
-          is(17) { printChar := nibbleToAscii(io.wlLast(3 downto 0)); printValid := True; msgIndex := msgIndex + 1 }
-          is(18) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(19) { printChar := 0x6E; printValid := True; msgIndex := msgIndex + 1 } // n
-          is(20) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
-          is(21) { printChar := nibbleToAscii(io.wlMatchN(7 downto 4)); printValid := True; msgIndex := msgIndex + 1 }
-          is(22) { printChar := nibbleToAscii(io.wlMatchN(3 downto 0)); printValid := True; msgIndex := msgIndex + 1 }
-          is(23) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(24) { printChar := 0x6D; printValid := True; msgIndex := msgIndex + 1 } // m
-          is(25) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
-          is(90) { printChar := 0x0D; printValid := True; msgIndex := msgIndex + 1 } // \r
-          is(91) { printChar := 0x0A; printValid := True; msgIndex := 0; goto(sPrintLatch) } // \n
+          is(0)  { nextPrintChar := 0x0D; nextPrintValid := True; msgIndex := msgIndex + 1 } // \r
+          is(1)  { nextPrintChar := 0x0A; nextPrintValid := True; msgIndex := msgIndex + 1 } // \n
+          is(2)  { nextPrintChar := 0x5B; nextPrintValid := True; msgIndex := msgIndex + 1 } // [
+          is(3)  { nextPrintChar := 0x57; nextPrintValid := True; msgIndex := msgIndex + 1 } // W
+          is(4)  { nextPrintChar := 0x4C; nextPrintValid := True; msgIndex := msgIndex + 1 } // L
+          is(5)  { nextPrintChar := 0x4D; nextPrintValid := True; msgIndex := msgIndex + 1 } // M
+          is(6)  { nextPrintChar := 0x41; nextPrintValid := True; msgIndex := msgIndex + 1 } // A
+          is(7)  { nextPrintChar := 0x50; nextPrintValid := True; msgIndex := msgIndex + 1 } // P
+          is(8)  { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(9)  { nextPrintChar := 0x66; nextPrintValid := True; msgIndex := msgIndex + 1 } // f
+          is(10) { nextPrintChar := 0x3D; nextPrintValid := True; msgIndex := msgIndex + 1 } // =
+          is(11) { nextPrintChar := nibbleToAscii(io.wlFirst(7 downto 4)); nextPrintValid := True; msgIndex := msgIndex + 1 }
+          is(12) { nextPrintChar := nibbleToAscii(io.wlFirst(3 downto 0)); nextPrintValid := True; msgIndex := msgIndex + 1 }
+          is(13) { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(14) { nextPrintChar := 0x6C; nextPrintValid := True; msgIndex := msgIndex + 1 } // l
+          is(15) { nextPrintChar := 0x3D; nextPrintValid := True; msgIndex := msgIndex + 1 } // =
+          is(16) { nextPrintChar := nibbleToAscii(io.wlLast(7 downto 4)); nextPrintValid := True; msgIndex := msgIndex + 1 }
+          is(17) { nextPrintChar := nibbleToAscii(io.wlLast(3 downto 0)); nextPrintValid := True; msgIndex := msgIndex + 1 }
+          is(18) { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(19) { nextPrintChar := 0x6E; nextPrintValid := True; msgIndex := msgIndex + 1 } // n
+          is(20) { nextPrintChar := 0x3D; nextPrintValid := True; msgIndex := msgIndex + 1 } // =
+          is(21) { nextPrintChar := nibbleToAscii(io.wlMatchN(7 downto 4)); nextPrintValid := True; msgIndex := msgIndex + 1 }
+          is(22) { nextPrintChar := nibbleToAscii(io.wlMatchN(3 downto 0)); nextPrintValid := True; msgIndex := msgIndex + 1 }
+          is(23) { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(24) { nextPrintChar := 0x6D; nextPrintValid := True; msgIndex := msgIndex + 1 } // m
+          is(25) { nextPrintChar := 0x3D; nextPrintValid := True; msgIndex := msgIndex + 1 } // =
+          is(90) { nextPrintChar := 0x0D; nextPrintValid := True; msgIndex := msgIndex + 1 } // \r
+          is(91) { nextPrintChar := 0x0A; nextPrintValid := True; msgIndex := 0; goto(sPrintLatch) } // \n
           default {
             // Map nibbles MSB first: msgIndex 26 -> bits 255..252, ... 89 -> bits 3..0.
-            printChar := nibbleToAscii(wlMapNib(U(63, 6 bits) - (msgIndex - 26).resize(6))); printValid := True; msgIndex := msgIndex + 1
+            nextPrintChar := nibbleToAscii(wlMapNib(U(63, 6 bits) - (msgIndex - 26).resize(6))); nextPrintValid := True; msgIndex := msgIndex + 1
           }
         }
       }
@@ -362,32 +375,32 @@ class Ddr3MemtestEngine(
 
     // Print "[LATCH] A=<0..3> S=<w0><w1><w2> L=<32 hex>\r\n"
     sPrintLatch.whenIsActive {
-      when(!printValid) {
+      when(canPrint) {
         switch(msgIndex) {
-          is(0)  { printChar := 0x5B; printValid := True; msgIndex := msgIndex + 1 } // [
-          is(1)  { printChar := 0x4C; printValid := True; msgIndex := msgIndex + 1 } // L
-          is(2)  { printChar := 0x41; printValid := True; msgIndex := msgIndex + 1 } // A
-          is(3)  { printChar := 0x54; printValid := True; msgIndex := msgIndex + 1 } // T
-          is(4)  { printChar := 0x43; printValid := True; msgIndex := msgIndex + 1 } // C
-          is(5)  { printChar := 0x48; printValid := True; msgIndex := msgIndex + 1 } // H
-          is(6)  { printChar := 0x5D; printValid := True; msgIndex := msgIndex + 1 } // ]
-          is(7)  { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(8)  { printChar := 0x41; printValid := True; msgIndex := msgIndex + 1 } // A
-          is(9)  { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
-          is(10) { printChar := nibbleToAscii(io.wr_adv.resized); printValid := True; msgIndex := msgIndex + 1 }
-          is(11) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(12) { printChar := 0x53; printValid := True; msgIndex := msgIndex + 1 } // S
-          is(13) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
-          is(14) { printChar := nibbleToAscii(io.w_scores(3 downto 0)); printValid := True; msgIndex := msgIndex + 1 }
-          is(15) { printChar := nibbleToAscii(io.w_scores(7 downto 4)); printValid := True; msgIndex := msgIndex + 1 }
-          is(16) { printChar := nibbleToAscii(io.w_scores(11 downto 8)); printValid := True; msgIndex := msgIndex + 1 }
-          is(17) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(18) { printChar := 0x4C; printValid := True; msgIndex := msgIndex + 1 } // L
-          is(19) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
-          is(52) { printChar := 0x0D; printValid := True; msgIndex := msgIndex + 1 } // \r
-          is(53) { printChar := 0x0A; printValid := True; msgIndex := 0; goto(sSingleWriteAW) } // \n
+          is(0)  { nextPrintChar := 0x5B; nextPrintValid := True; msgIndex := msgIndex + 1 } // [
+          is(1)  { nextPrintChar := 0x4C; nextPrintValid := True; msgIndex := msgIndex + 1 } // L
+          is(2)  { nextPrintChar := 0x41; nextPrintValid := True; msgIndex := msgIndex + 1 } // A
+          is(3)  { nextPrintChar := 0x54; nextPrintValid := True; msgIndex := msgIndex + 1 } // T
+          is(4)  { nextPrintChar := 0x43; nextPrintValid := True; msgIndex := msgIndex + 1 } // C
+          is(5)  { nextPrintChar := 0x48; nextPrintValid := True; msgIndex := msgIndex + 1 } // H
+          is(6)  { nextPrintChar := 0x5D; nextPrintValid := True; msgIndex := msgIndex + 1 } // ]
+          is(7)  { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(8)  { nextPrintChar := 0x41; nextPrintValid := True; msgIndex := msgIndex + 1 } // A
+          is(9)  { nextPrintChar := 0x3D; nextPrintValid := True; msgIndex := msgIndex + 1 } // =
+          is(10) { nextPrintChar := nibbleToAscii(io.wr_adv.resized); nextPrintValid := True; msgIndex := msgIndex + 1 }
+          is(11) { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(12) { nextPrintChar := 0x53; nextPrintValid := True; msgIndex := msgIndex + 1 } // S
+          is(13) { nextPrintChar := 0x3D; nextPrintValid := True; msgIndex := msgIndex + 1 } // =
+          is(14) { nextPrintChar := nibbleToAscii(io.w_scores(3 downto 0)); nextPrintValid := True; msgIndex := msgIndex + 1 }
+          is(15) { nextPrintChar := nibbleToAscii(io.w_scores(7 downto 4)); nextPrintValid := True; msgIndex := msgIndex + 1 }
+          is(16) { nextPrintChar := nibbleToAscii(io.w_scores(11 downto 8)); nextPrintValid := True; msgIndex := msgIndex + 1 }
+          is(17) { nextPrintChar := 0x20; nextPrintValid := True; msgIndex := msgIndex + 1 } // ' '
+          is(18) { nextPrintChar := 0x4C; nextPrintValid := True; msgIndex := msgIndex + 1 } // L
+          is(19) { nextPrintChar := 0x3D; nextPrintValid := True; msgIndex := msgIndex + 1 } // =
+          is(52) { nextPrintChar := 0x0D; nextPrintValid := True; msgIndex := msgIndex + 1 } // \r
+          is(53) { nextPrintChar := 0x0A; nextPrintValid := True; msgIndex := 0; goto(sSingleWriteAW) } // \n
           default {
-            printChar := nibbleToAscii(latchNib(U(31, 5 bits) - (msgIndex - 20).resize(5))); printValid := True; msgIndex := msgIndex + 1
+            nextPrintChar := nibbleToAscii(latchNib(U(31, 5 bits) - (msgIndex - 20).resize(5))); nextPrintValid := True; msgIndex := msgIndex + 1
           }
         }
       }
@@ -559,135 +572,46 @@ class Ddr3MemtestEngine(
     // Report Pass: "[PASS] " + passCount + " W=" + wrCycleCnt + " R=" + rdCycleCnt + "\r\n"
     sReportPass.whenIsActive {
       passReg := True
-      when(!printValid) {
-        switch(msgIndex) {
-          is(0)  { printChar := 0x5B; printValid := True; msgIndex := msgIndex + 1 } // [
-          is(1)  { printChar := 0x50; printValid := True; msgIndex := msgIndex + 1 } // P
-          is(2)  { printChar := 0x41; printValid := True; msgIndex := msgIndex + 1 } // A
-          is(3)  { printChar := 0x53; printValid := True; msgIndex := msgIndex + 1 } // S
-          is(4)  { printChar := 0x53; printValid := True; msgIndex := msgIndex + 1 } // S
-          is(5)  { printChar := 0x5D; printValid := True; msgIndex := msgIndex + 1 } // ]
-          is(6)  { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(7)  { printChar := nibbleToAscii(passCount(15 downto 12).asBits); printValid := True; msgIndex := msgIndex + 1 }
-          is(8)  { printChar := nibbleToAscii(passCount(11 downto 8).asBits);  printValid := True; msgIndex := msgIndex + 1 }
-          is(9)  { printChar := nibbleToAscii(passCount(7 downto 4).asBits);   printValid := True; msgIndex := msgIndex + 1 }
-          is(10) { printChar := nibbleToAscii(passCount(3 downto 0).asBits);   printValid := True; msgIndex := msgIndex + 1 }
-          is(11) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(12) { printChar := 0x57; printValid := True; msgIndex := msgIndex + 1 } // W
-          is(13) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
-          is(14) { printChar := nibbleToAscii(wrCycleCnt(31 downto 28).asBits); printValid := True; msgIndex := msgIndex + 1 }
-          is(15) { printChar := nibbleToAscii(wrCycleCnt(27 downto 24).asBits); printValid := True; msgIndex := msgIndex + 1 }
-          is(16) { printChar := nibbleToAscii(wrCycleCnt(23 downto 20).asBits); printValid := True; msgIndex := msgIndex + 1 }
-          is(17) { printChar := nibbleToAscii(wrCycleCnt(19 downto 16).asBits); printValid := True; msgIndex := msgIndex + 1 }
-          is(18) { printChar := nibbleToAscii(wrCycleCnt(15 downto 12).asBits); printValid := True; msgIndex := msgIndex + 1 }
-          is(19) { printChar := nibbleToAscii(wrCycleCnt(11 downto 8).asBits);  printValid := True; msgIndex := msgIndex + 1 }
-          is(20) { printChar := nibbleToAscii(wrCycleCnt(7 downto 4).asBits);   printValid := True; msgIndex := msgIndex + 1 }
-          is(21) { printChar := nibbleToAscii(wrCycleCnt(3 downto 0).asBits);   printValid := True; msgIndex := msgIndex + 1 }
-          is(22) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(23) { printChar := 0x52; printValid := True; msgIndex := msgIndex + 1 } // R
-          is(24) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
-          is(25) { printChar := nibbleToAscii(rdCycleCnt(31 downto 28).asBits); printValid := True; msgIndex := msgIndex + 1 }
-          is(26) { printChar := nibbleToAscii(rdCycleCnt(27 downto 24).asBits); printValid := True; msgIndex := msgIndex + 1 }
-          is(27) { printChar := nibbleToAscii(rdCycleCnt(23 downto 20).asBits); printValid := True; msgIndex := msgIndex + 1 }
-          is(28) { printChar := nibbleToAscii(rdCycleCnt(19 downto 16).asBits); printValid := True; msgIndex := msgIndex + 1 }
-          is(29) { printChar := nibbleToAscii(rdCycleCnt(15 downto 12).asBits); printValid := True; msgIndex := msgIndex + 1 }
-          is(30) { printChar := nibbleToAscii(rdCycleCnt(11 downto 8).asBits);  printValid := True; msgIndex := msgIndex + 1 }
-          is(31) { printChar := nibbleToAscii(rdCycleCnt(7 downto 4).asBits);   printValid := True; msgIndex := msgIndex + 1 }
-          is(32) { printChar := nibbleToAscii(rdCycleCnt(3 downto 0).asBits);   printValid := True; msgIndex := msgIndex + 1 }
-          is(33) { printChar := 0x0D; printValid := True; msgIndex := msgIndex + 1 } // \r
-          is(34) { printChar := 0x0A; printValid := True; msgIndex := msgIndex + 1 } // \n
-          default {
-            passCount := passCount + 1
-            delayCounter := 0
-            goto(sLoopDelay)
-          }
+      val passChars = Vec(
+        passPrefix ++
+        (0 until 4).map(i => nibbleToAscii(passCount((3 - i) * 4 + 3 downto (3 - i) * 4).asBits)) ++
+        Seq(B(0x20, 8 bits), B(0x57, 8 bits), B(0x3D, 8 bits)) ++
+        (0 until 8).map(i => nibbleToAscii(wrCycleCnt((7 - i) * 4 + 3 downto (7 - i) * 4).asBits)) ++
+        Seq(B(0x20, 8 bits), B(0x52, 8 bits), B(0x3D, 8 bits)) ++
+        (0 until 8).map(i => nibbleToAscii(rdCycleCnt((7 - i) * 4 + 3 downto (7 - i) * 4).asBits)) ++
+        Seq(B(0x0D, 8 bits), B(0x0A, 8 bits))
+      )
+      when(canPrint) {
+        when(msgIndex < 35) {
+          nextPrintChar  := passChars(msgIndex.resize(6))
+          nextPrintValid := True
+          msgIndex   := msgIndex + 1
+        } otherwise {
+          passCount    := passCount + 1
+          delayCounter := 0
+          goto(sLoopDelay)
         }
       }
     }
 
     // Report Fail: "[FAIL] A=" + errAddr + " E=" + errExpected + " G=" + errActual + " H=" + errActual1 + "\r\n"
     sReportFail.whenIsActive {
-      when(!printValid) {
-        switch(msgIndex) {
-          is(0)  { printChar := 0x5B; printValid := True; msgIndex := msgIndex + 1 } // [
-          is(1)  { printChar := 0x46; printValid := True; msgIndex := msgIndex + 1 } // F
-          is(2)  { printChar := 0x41; printValid := True; msgIndex := msgIndex + 1 } // A
-          is(3)  { printChar := 0x49; printValid := True; msgIndex := msgIndex + 1 } // I
-          is(4)  { printChar := 0x4C; printValid := True; msgIndex := msgIndex + 1 } // L
-          is(5)  { printChar := 0x5D; printValid := True; msgIndex := msgIndex + 1 } // ]
-          is(6)  { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(7)  { printChar := 0x41; printValid := True; msgIndex := msgIndex + 1 } // A
-          is(8)  { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
-          is(9)  { printChar := nibbleToAscii(errAddr(31 downto 28).asBits); printValid := True; msgIndex := msgIndex + 1 }
-          is(10) { printChar := nibbleToAscii(errAddr(27 downto 24).asBits); printValid := True; msgIndex := msgIndex + 1 }
-          is(11) { printChar := nibbleToAscii(errAddr(23 downto 20).asBits); printValid := True; msgIndex := msgIndex + 1 }
-          is(12) { printChar := nibbleToAscii(errAddr(19 downto 16).asBits); printValid := True; msgIndex := msgIndex + 1 }
-          is(13) { printChar := nibbleToAscii(errAddr(15 downto 12).asBits); printValid := True; msgIndex := msgIndex + 1 }
-          is(14) { printChar := nibbleToAscii(errAddr(11 downto 8).asBits);  printValid := True; msgIndex := msgIndex + 1 }
-          is(15) { printChar := nibbleToAscii(errAddr(7 downto 4).asBits);   printValid := True; msgIndex := msgIndex + 1 }
-          is(16) { printChar := nibbleToAscii(errAddr(3 downto 0).asBits);   printValid := True; msgIndex := msgIndex + 1 }
-          is(17) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(18) { printChar := 0x45; printValid := True; msgIndex := msgIndex + 1 } // E
-          is(19) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
-          is(20) { printChar := nibbleToAscii(errExpected(63 downto 60)); printValid := True; msgIndex := msgIndex + 1 }
-          is(21) { printChar := nibbleToAscii(errExpected(59 downto 56)); printValid := True; msgIndex := msgIndex + 1 }
-          is(22) { printChar := nibbleToAscii(errExpected(55 downto 52)); printValid := True; msgIndex := msgIndex + 1 }
-          is(23) { printChar := nibbleToAscii(errExpected(51 downto 48)); printValid := True; msgIndex := msgIndex + 1 }
-          is(24) { printChar := nibbleToAscii(errExpected(47 downto 44)); printValid := True; msgIndex := msgIndex + 1 }
-          is(25) { printChar := nibbleToAscii(errExpected(43 downto 40)); printValid := True; msgIndex := msgIndex + 1 }
-          is(26) { printChar := nibbleToAscii(errExpected(39 downto 36)); printValid := True; msgIndex := msgIndex + 1 }
-          is(27) { printChar := nibbleToAscii(errExpected(35 downto 32)); printValid := True; msgIndex := msgIndex + 1 }
-          is(28) { printChar := nibbleToAscii(errExpected(31 downto 28)); printValid := True; msgIndex := msgIndex + 1 }
-          is(29) { printChar := nibbleToAscii(errExpected(27 downto 24)); printValid := True; msgIndex := msgIndex + 1 }
-          is(30) { printChar := nibbleToAscii(errExpected(23 downto 20)); printValid := True; msgIndex := msgIndex + 1 }
-          is(31) { printChar := nibbleToAscii(errExpected(19 downto 16)); printValid := True; msgIndex := msgIndex + 1 }
-          is(32) { printChar := nibbleToAscii(errExpected(15 downto 12)); printValid := True; msgIndex := msgIndex + 1 }
-          is(33) { printChar := nibbleToAscii(errExpected(11 downto 8));  printValid := True; msgIndex := msgIndex + 1 }
-          is(34) { printChar := nibbleToAscii(errExpected(7 downto 4));   printValid := True; msgIndex := msgIndex + 1 }
-          is(35) { printChar := nibbleToAscii(errExpected(3 downto 0));   printValid := True; msgIndex := msgIndex + 1 }
-          is(36) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(37) { printChar := 0x47; printValid := True; msgIndex := msgIndex + 1 } // G
-          is(38) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
-          is(39) { printChar := nibbleToAscii(errActual(63 downto 60)); printValid := True; msgIndex := msgIndex + 1 }
-          is(40) { printChar := nibbleToAscii(errActual(59 downto 56)); printValid := True; msgIndex := msgIndex + 1 }
-          is(41) { printChar := nibbleToAscii(errActual(55 downto 52)); printValid := True; msgIndex := msgIndex + 1 }
-          is(42) { printChar := nibbleToAscii(errActual(51 downto 48)); printValid := True; msgIndex := msgIndex + 1 }
-          is(43) { printChar := nibbleToAscii(errActual(47 downto 44)); printValid := True; msgIndex := msgIndex + 1 }
-          is(44) { printChar := nibbleToAscii(errActual(43 downto 40)); printValid := True; msgIndex := msgIndex + 1 }
-          is(45) { printChar := nibbleToAscii(errActual(39 downto 36)); printValid := True; msgIndex := msgIndex + 1 }
-          is(46) { printChar := nibbleToAscii(errActual(35 downto 32)); printValid := True; msgIndex := msgIndex + 1 }
-          is(47) { printChar := nibbleToAscii(errActual(31 downto 28)); printValid := True; msgIndex := msgIndex + 1 }
-          is(48) { printChar := nibbleToAscii(errActual(27 downto 24)); printValid := True; msgIndex := msgIndex + 1 }
-          is(49) { printChar := nibbleToAscii(errActual(23 downto 20)); printValid := True; msgIndex := msgIndex + 1 }
-          is(50) { printChar := nibbleToAscii(errActual(19 downto 16)); printValid := True; msgIndex := msgIndex + 1 }
-          is(51) { printChar := nibbleToAscii(errActual(15 downto 12)); printValid := True; msgIndex := msgIndex + 1 }
-          is(52) { printChar := nibbleToAscii(errActual(11 downto 8));  printValid := True; msgIndex := msgIndex + 1 }
-          is(53) { printChar := nibbleToAscii(errActual(7 downto 4));   printValid := True; msgIndex := msgIndex + 1 }
-          is(54) { printChar := nibbleToAscii(errActual(3 downto 0));   printValid := True; msgIndex := msgIndex + 1 }
-          is(55) { printChar := 0x20; printValid := True; msgIndex := msgIndex + 1 } // ' '
-          is(56) { printChar := 0x48; printValid := True; msgIndex := msgIndex + 1 } // H
-          is(57) { printChar := 0x3D; printValid := True; msgIndex := msgIndex + 1 } // =
-          is(58) { printChar := nibbleToAscii(errActual1(63 downto 60)); printValid := True; msgIndex := msgIndex + 1 }
-          is(59) { printChar := nibbleToAscii(errActual1(59 downto 56)); printValid := True; msgIndex := msgIndex + 1 }
-          is(60) { printChar := nibbleToAscii(errActual1(55 downto 52)); printValid := True; msgIndex := msgIndex + 1 }
-          is(61) { printChar := nibbleToAscii(errActual1(51 downto 48)); printValid := True; msgIndex := msgIndex + 1 }
-          is(62) { printChar := nibbleToAscii(errActual1(47 downto 44)); printValid := True; msgIndex := msgIndex + 1 }
-          is(63) { printChar := nibbleToAscii(errActual1(43 downto 40)); printValid := True; msgIndex := msgIndex + 1 }
-          is(64) { printChar := nibbleToAscii(errActual1(39 downto 36)); printValid := True; msgIndex := msgIndex + 1 }
-          is(65) { printChar := nibbleToAscii(errActual1(35 downto 32)); printValid := True; msgIndex := msgIndex + 1 }
-          is(66) { printChar := nibbleToAscii(errActual1(31 downto 28)); printValid := True; msgIndex := msgIndex + 1 }
-          is(67) { printChar := nibbleToAscii(errActual1(27 downto 24)); printValid := True; msgIndex := msgIndex + 1 }
-          is(68) { printChar := nibbleToAscii(errActual1(23 downto 20)); printValid := True; msgIndex := msgIndex + 1 }
-          is(69) { printChar := nibbleToAscii(errActual1(19 downto 16)); printValid := True; msgIndex := msgIndex + 1 }
-          is(70) { printChar := nibbleToAscii(errActual1(15 downto 12)); printValid := True; msgIndex := msgIndex + 1 }
-          is(71) { printChar := nibbleToAscii(errActual1(11 downto 8));  printValid := True; msgIndex := msgIndex + 1 }
-          is(72) { printChar := nibbleToAscii(errActual1(7 downto 4));   printValid := True; msgIndex := msgIndex + 1 }
-          is(73) { printChar := nibbleToAscii(errActual1(3 downto 0));   printValid := True; msgIndex := msgIndex + 1 }
-          is(74) { printChar := 0x0D; printValid := True; msgIndex := msgIndex + 1 } // \r
-          is(75) { printChar := 0x0A; printValid := True; msgIndex := msgIndex + 1 } // \n
-          default {
-            // Stay in error state
-          }
+      val failChars = Vec(
+        failPrefix ++
+        (0 until 8).map(i => nibbleToAscii(errAddr((7 - i) * 4 + 3 downto (7 - i) * 4).asBits)) ++
+        Seq(B(0x20, 8 bits), B(0x45, 8 bits), B(0x3D, 8 bits)) ++
+        (0 until 16).map(i => nibbleToAscii(errExpected((15 - i) * 4 + 3 downto (15 - i) * 4))) ++
+        Seq(B(0x20, 8 bits), B(0x47, 8 bits), B(0x3D, 8 bits)) ++
+        (0 until 16).map(i => nibbleToAscii(errActual((15 - i) * 4 + 3 downto (15 - i) * 4))) ++
+        Seq(B(0x20, 8 bits), B(0x48, 8 bits), B(0x3D, 8 bits)) ++
+        (0 until 16).map(i => nibbleToAscii(errActual1((15 - i) * 4 + 3 downto (15 - i) * 4))) ++
+        Seq(B(0x0D, 8 bits), B(0x0A, 8 bits))
+      )
+      when(canPrint) {
+        when(msgIndex < 76) {
+          nextPrintChar  := failChars(msgIndex.resize(7))
+          nextPrintValid := True
+          msgIndex   := msgIndex + 1
         }
       }
     }
