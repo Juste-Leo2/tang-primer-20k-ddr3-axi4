@@ -1,7 +1,7 @@
 // Generator : SpinalHDL v1.15.0    git head : 05a01af3d3345aa0afcaad8e0186dde13a359db2
 // Component : Ddr3Controller
-// Git hash  : d6972f6dfff16701ae40d5cf03fdb94ef4e8dedd
-// Date      : 26/11/2026, 17:50:14
+// Git hash  : 4f2b9d9b2e3630cd724d92875e0480b071137942
+// Date      : 26/11/2026, 18:43:50
 
 `timescale 1ns/1ps
 
@@ -1096,18 +1096,19 @@ module GowinDdr3Phy (
   reg                 pclkRstArea_rst_io_p;
   wire                _zz_2;
   wire                _zz_3;
+  wire                _zz_4;
   (* async_reg = "true" *) reg                 fclkRstArea_s0_cmd;
   (* async_reg = "true" *) reg                 fclkRstArea_s0_io;
   (* async_reg = "true" *) reg                 fclkRstArea_s1_cmd;
-  (* syn_keep = 1 *) reg                 fclkRstArea_rst_cmd_a;
-  (* syn_keep = 1 *) reg                 fclkRstArea_rst_cmd_b;
-  (* async_reg = "true" *) reg                 fclkRstArea_s1_io;
+  (* async_reg = "true" *) reg                 fclkRstArea_s0_io_regNext;
   (* syn_keep = 1 *) reg                 fclkRstArea_rst_dqs0;
   (* syn_keep = 1 *) reg                 fclkRstArea_rst_dqs1;
   (* syn_keep = 1 *) reg                 fclkRstArea_rst_dq0a;
   (* syn_keep = 1 *) reg                 fclkRstArea_rst_dq0b;
   (* syn_keep = 1 *) reg                 fclkRstArea_rst_dq1a;
   (* syn_keep = 1 *) reg                 fclkRstArea_rst_dq1b;
+  (* syn_keep = 1 , async_reg = "true" *) reg                 fclkRstArea_rst_cmd_a;
+  (* syn_keep = 1 , async_reg = "true" *) reg                 fclkRstArea_rst_cmd_b;
   wire       [2:0]    dqs_waddr_0;
   wire       [2:0]    dqs_waddr_1;
   wire       [2:0]    dqs_raddr_0;
@@ -2409,6 +2410,7 @@ module GowinDdr3Phy (
   assign when_GowinDdr3Phy_l93 = (pclkRstArea_holdCnt != 4'b1111);
   assign _zz_2 = (! raw_rst_n);
   assign _zz_3 = (! raw_rst_n);
+  assign _zz_4 = (! raw_rst_n);
   assign io_rst_lock_n = pclkRstArea_rst_pclk_n;
   assign io_pad_DDR3_nRESET = (pclkRstArea_rst_pclk_n && io_resetn_delay);
   assign io_pad_DDR3_ODT = 1'b1;
@@ -3148,9 +3150,7 @@ module GowinDdr3Phy (
   always @(negedge io_fclk or posedge _zz_3) begin
     if(_zz_3) begin
       fclkRstArea_s1_cmd <= 1'b1;
-      fclkRstArea_rst_cmd_a <= 1'b1;
-      fclkRstArea_rst_cmd_b <= 1'b1;
-      fclkRstArea_s1_io <= 1'b1;
+      fclkRstArea_s0_io_regNext <= 1'b1;
       fclkRstArea_rst_dqs0 <= 1'b1;
       fclkRstArea_rst_dqs1 <= 1'b1;
       fclkRstArea_rst_dq0a <= 1'b1;
@@ -3159,15 +3159,23 @@ module GowinDdr3Phy (
       fclkRstArea_rst_dq1b <= 1'b1;
     end else begin
       fclkRstArea_s1_cmd <= fclkRstArea_s0_cmd;
+      fclkRstArea_s0_io_regNext <= fclkRstArea_s0_io;
+      fclkRstArea_rst_dqs0 <= fclkRstArea_s0_io_regNext;
+      fclkRstArea_rst_dqs1 <= fclkRstArea_s0_io_regNext;
+      fclkRstArea_rst_dq0a <= fclkRstArea_s0_io_regNext;
+      fclkRstArea_rst_dq0b <= fclkRstArea_s0_io_regNext;
+      fclkRstArea_rst_dq1a <= fclkRstArea_s0_io_regNext;
+      fclkRstArea_rst_dq1b <= fclkRstArea_s0_io_regNext;
+    end
+  end
+
+  always @(posedge io_ck or posedge _zz_4) begin
+    if(_zz_4) begin
+      fclkRstArea_rst_cmd_a <= 1'b1;
+      fclkRstArea_rst_cmd_b <= 1'b1;
+    end else begin
       fclkRstArea_rst_cmd_a <= fclkRstArea_s1_cmd;
       fclkRstArea_rst_cmd_b <= fclkRstArea_s1_cmd;
-      fclkRstArea_s1_io <= fclkRstArea_s0_io;
-      fclkRstArea_rst_dqs0 <= fclkRstArea_s1_io;
-      fclkRstArea_rst_dqs1 <= fclkRstArea_s1_io;
-      fclkRstArea_rst_dq0a <= fclkRstArea_s1_io;
-      fclkRstArea_rst_dq0b <= fclkRstArea_s1_io;
-      fclkRstArea_rst_dq1a <= fclkRstArea_s1_io;
-      fclkRstArea_rst_dq1b <= fclkRstArea_s1_io;
     end
   end
 

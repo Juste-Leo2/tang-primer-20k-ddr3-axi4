@@ -105,17 +105,16 @@ class GowinDdr3Phy(rowWidth: Int = 14, bankWidth: Int = 3) extends Component {
     reset = !raw_rst_n,
     config = ClockDomainConfig(clockEdge = FALLING, resetKind = ASYNC, resetActiveLevel = HIGH)
   )
+  val ckDomain = ClockDomain(
+    clock = io.ck,
+    reset = !raw_rst_n,
+    config = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = HIGH)
+  )
   val fclkRstArea = new ClockingArea(fclkRiseDomain) {
     val s0_cmd = RegNext(pclkRstArea.rst_cmd_p) init(True) addTag(crossClockDomain)
     val s0_io  = RegNext(pclkRstArea.rst_io_p)  init(True) addTag(crossClockDomain)
-    // Launch the final LUT-free RESET registers on FCLK falling edge (+1.646 ns)
-    // so every IOLOGIC/DQS .RESET endpoint (fabric->IOLOGIC skew ~2.14 ns) lands
-    // cleanly in ~[4.0, 6.2] ns between Cycle 1 [R] (3.75 ns) and Cycle 2 [R] (6.68 ns).
-    val (s1_cmd, rst_cmd_a, rst_cmd_b, s1_io, rst_dqs0, rst_dqs1, rst_dq0a, rst_dq0b, rst_dq1a, rst_dq1b) = fclkFallDomain {
-      val s1_cmd    = RegNext(s0_cmd) init(True) addTag(crossClockDomain)
-      val rst_cmd_a = RegNext(s1_cmd) init(True) addAttribute("syn_keep", 1)
-      val rst_cmd_b = RegNext(s1_cmd) init(True) addAttribute("syn_keep", 1)
-
+    val (s1_cmd, rst_dqs0, rst_dqs1, rst_dq0a, rst_dq0b, rst_dq1a, rst_dq1b) = fclkFallDomain {
+      val s1_cmd   = RegNext(s0_cmd) init(True) addTag(crossClockDomain)
       val s1_io    = RegNext(s0_io) init(True) addTag(crossClockDomain)
       val rst_dqs0 = RegNext(s1_io) init(True) addAttribute("syn_keep", 1)
       val rst_dqs1 = RegNext(s1_io) init(True) addAttribute("syn_keep", 1)
@@ -123,7 +122,14 @@ class GowinDdr3Phy(rowWidth: Int = 14, bankWidth: Int = 3) extends Component {
       val rst_dq0b = RegNext(s1_io) init(True) addAttribute("syn_keep", 1)
       val rst_dq1a = RegNext(s1_io) init(True) addAttribute("syn_keep", 1)
       val rst_dq1b = RegNext(s1_io) init(True) addAttribute("syn_keep", 1)
-      (s1_cmd, rst_cmd_a, rst_cmd_b, s1_io, rst_dqs0, rst_dqs1, rst_dq0a, rst_dq0b, rst_dq1a, rst_dq1b)
+      (s1_cmd, rst_dqs0, rst_dqs1, rst_dq0a, rst_dq0b, rst_dq1a, rst_dq1b)
+    }
+    // Launch command OSER8 resets on io.ck (+0.823 ns) from s1_cmd (+1.646 ns -> +2.469 ns setup margin):
+    // arrives at ~10.7..11.9 ns and latches cleanly on FCLK #4 (same cycle as rst_io), avoiding 6.19 ns ceiling.
+    val (rst_cmd_a, rst_cmd_b) = ckDomain {
+      val rst_cmd_a = RegNext(s1_cmd) init(True) addTag(crossClockDomain) addAttribute("syn_keep", 1)
+      val rst_cmd_b = RegNext(s1_cmd) init(True) addTag(crossClockDomain) addAttribute("syn_keep", 1)
+      (rst_cmd_a, rst_cmd_b)
     }
   }
   val rst_lock_n = pclkRstArea.rst_pclk_n
