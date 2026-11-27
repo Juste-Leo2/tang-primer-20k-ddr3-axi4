@@ -74,6 +74,13 @@ python fpga_run.py --timeout 12 --pass-target 0     # Flash SRAM & verify live U
 └── fpga_run.py         # FPGA SRAM/Flash programmer & UART test monitor
 ```
 
+## Acknowledgments
+
+This project would not have been possible without:
+- **[SpinalHDL](https://spinalhdl.github.io/SpinalDoc-RTD/)** for its expressive Scala-based hardware description, `Axi4` / `Axi4CC` ecosystem, and SpinalSim/Verilator integration.
+- **[nand2mario/ddr3-tang-primer-20k](https://github.com/nand2mario/ddr3-tang-primer-20k)** for the foundational Tang Primer 20K pin constraints, PLL setup, and reference Gowin DDR3 PHY bring-up.
+- **LLM coding assistants** that greatly helped throughout architecture, bring-up, debugging, and verification: **Gemini** (via **Antigravity**) and **DeepSeek** (via **OpenCode**).
+
 ## License
 
 - **SpinalHDL implementation & scripts:** [MIT License](LICENSE) — Léonard Adamo ([Juste-Leo2](https://github.com/Juste-Leo2))
