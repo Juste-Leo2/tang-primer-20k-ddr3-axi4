@@ -43,6 +43,10 @@ All modes verified in Verilator (`ddr3.test`) and on physical Tang Primer 20K ha
 
 Ready-to-run bitstream + `pyserial` visualizer in [`demo/`](demo/) (**no Mill or Gowin IDE required**: just flash the prebuilt [`Ddr3UartDemoTop.fs`](demo/Ddr3UartDemoTop.fs) via [`demo_ddr3.py`](demo/demo_ddr3.py)):
 
+<p align="center">
+  <a href="doc/demo.gif"><img src="doc/demo.gif" width="340" alt="Tang Primer 20K DDR3 Demo" /></a>
+</p>
+
 ```powershell
 # Flash prebuilt demo bitstream to SRAM, round-trip an RGB image + message in DDR3,
 # and display a live AXI4 Write/Read throughput & peak graph (COM8 @ 115200 baud)
@@ -71,6 +75,7 @@ python fpga_run.py --timeout 12 --pass-target 0     # Flash SRAM & verify live U
 ├── ddr3/src/ddr3/      # SpinalHDL sources (config/, phy/, core/, axi/, board/TangPrimer20kDdr3.scala, examples/)
 ├── ddr3/test/          # Verilator unit tests & formal properties (Ddr3FormalProof)
 ├── demo/               # Prebuilt Ddr3UartDemoTop.fs + demo_ddr3.py (UART round-trip + live MB/s graph)
+├── doc/                # Design docs & hardware demo GIF (demo.gif)
 ├── hw/gen/             # Pre-generated Verilog (Ddr3Controller, Ddr3Axi4, TangPrimer20kDdr3, Ddr3TesterTop, Ddr3UartDemoTop)
 ├── src/                # Tang Primer 20K constraints (tang20k.cst, ddr3.sdc) & Gowin_rPLL
 ├── eda-flow.py         # Headless Gowin synthesis, PnR & flash helper (--preset ddr3 | demo)
