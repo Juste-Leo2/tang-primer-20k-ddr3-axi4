@@ -73,8 +73,8 @@ private[ddr3] object Ddr3FormalProps {
         when(state === Ddr3State.WRITE && trainDone && cycle === wc + 1 && wrMode === 0) {
           assert(dq_out(7) === reqReg.wdata(15 downto 0))
           assert(dq_out(6) === 0)
-          assert(dm_out(7) === !reqReg.wstrb(1 downto 0).orR)
-          assert(dm_out(6))
+          assert(dm_out(7) === ~reqReg.wstrb(1 downto 0))
+          assert(dm_out(6) === B"2'b11")
         }
         when(state === Ddr3State.WRITE && trainDone && cycle === wc + 2 && wrMode === 0) {
           assert(dq_out(0) === reqReg.wdata(31 downto 16))
@@ -85,14 +85,14 @@ private[ddr3] object Ddr3FormalProps {
           assert(dq_out(5) === reqReg.wdata(111 downto 96))
           assert(dq_out(6) === reqReg.wdata(127 downto 112))
           assert(dq_out(7) === 0)
-          assert(dm_out(0) === !reqReg.wstrb(3 downto 2).orR)
-          assert(dm_out(1) === !reqReg.wstrb(5 downto 4).orR)
-          assert(dm_out(2) === !reqReg.wstrb(7 downto 6).orR)
-          assert(dm_out(3) === !reqReg.wstrb(9 downto 8).orR)
-          assert(dm_out(4) === !reqReg.wstrb(11 downto 10).orR)
-          assert(dm_out(5) === !reqReg.wstrb(13 downto 12).orR)
-          assert(dm_out(6) === !reqReg.wstrb(15 downto 14).orR)
-          assert(dm_out(7))
+          assert(dm_out(0) === ~reqReg.wstrb(3 downto 2))
+          assert(dm_out(1) === ~reqReg.wstrb(5 downto 4))
+          assert(dm_out(2) === ~reqReg.wstrb(7 downto 6))
+          assert(dm_out(3) === ~reqReg.wstrb(9 downto 8))
+          assert(dm_out(4) === ~reqReg.wstrb(11 downto 10))
+          assert(dm_out(5) === ~reqReg.wstrb(13 downto 12))
+          assert(dm_out(6) === ~reqReg.wstrb(15 downto 14))
+          assert(dm_out(7) === B"2'b11")
         }
         // P14: open-page invariants - never auto-refresh while a row is open, and commands match openBank.
         assert(!(state === Ddr3State.REFRESH && rowOpen))

@@ -300,7 +300,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   val dq_oen  = Reg(Bits(4 bits)) init(B"4'b1111")
   val dqs_out = Reg(Bits(8 bits)) init(0)
   val dqs_oen = Reg(Bits(4 bits)) init(B"4'b1111")
-  val dm_out  = Reg(Bits(8 bits)) init(B"8'b1111_1111")
+  val dm_out  = Vec(Reg(Bits(2 bits)) init(B"2'b11"), 8)
 
   // Helper function to set command on a specific sub-cycle
   def setCmd(subcycle: Int, cmd: Bits, baVal: Bits, aVal: Bits): Unit = {
@@ -437,7 +437,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
       A(i)    := 0
       BA(i)   := 0
     }
-    dm_out  := B"8'b1111_1111"
+    for (j <- 0 until 8) { dm_out(j) := B"2'b11" }
     dqs_oen := B"4'b1111"
     dq_oen  := B"4'b1111"
     dqs_out := 0
@@ -1476,7 +1476,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
         val col  = (blockIdx(config.colWidth - 4 downto 0) @@ U"3'b000").asBits
         val bank = blockIdx(config.colWidth - 4 + config.rowWidth + config.bankWidth downto config.colWidth - 3 + config.rowWidth).asBits
 
-        def driveDm(r: Ddr3Req, halfWord: Int): Bool = !r.wstrb(halfWord * 2 + 1 downto halfWord * 2).orR
+        def driveDm(r: Ddr3Req, halfWord: Int): Bits = ~r.wstrb(halfWord * 2 + 1 downto halfWord * 2)
 
         when(trainDone) {
           // Calibration write path (closed-page with AutoPrecharge, unchanged)
@@ -1494,8 +1494,8 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                 dq_oen  := B"4'b0111"
                 dq_out(6) := 0
                 dq_out(7) := reqReg.wdata(15 downto 0)
-                dm_out(6) := True
-                dm_out(7) := !reqReg.wstrb(1 downto 0).orR
+                dm_out(6) := B"2'b11"
+                dm_out(7) := ~reqReg.wstrb(1 downto 0)
               }
               is(1) {
                 dqs_out := B"8'b0100_0000"
@@ -1505,10 +1505,10 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                 dq_out(5) := reqReg.wdata(15 downto 0)
                 dq_out(6) := reqReg.wdata(31 downto 16)
                 dq_out(7) := reqReg.wdata(47 downto 32)
-                dm_out(4) := True
-                dm_out(5) := !reqReg.wstrb(1 downto 0).orR
-                dm_out(6) := !reqReg.wstrb(3 downto 2).orR
-                dm_out(7) := !reqReg.wstrb(5 downto 4).orR
+                dm_out(4) := B"2'b11"
+                dm_out(5) := ~reqReg.wstrb(1 downto 0)
+                dm_out(6) := ~reqReg.wstrb(3 downto 2)
+                dm_out(7) := ~reqReg.wstrb(5 downto 4)
               }
               is(2) {
                 // +1 tCK burst delay: preamble at D6=0, D7=0
@@ -1535,14 +1535,14 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                 dq_out(5) := reqReg.wdata(111 downto 96)
                 dq_out(6) := reqReg.wdata(127 downto 112)
                 dq_out(7) := 0
-                dm_out(0) := !reqReg.wstrb(3 downto 2).orR
-                dm_out(1) := !reqReg.wstrb(5 downto 4).orR
-                dm_out(2) := !reqReg.wstrb(7 downto 6).orR
-                dm_out(3) := !reqReg.wstrb(9 downto 8).orR
-                dm_out(4) := !reqReg.wstrb(11 downto 10).orR
-                dm_out(5) := !reqReg.wstrb(13 downto 12).orR
-                dm_out(6) := !reqReg.wstrb(15 downto 14).orR
-                dm_out(7) := True
+                dm_out(0) := ~reqReg.wstrb(3 downto 2)
+                dm_out(1) := ~reqReg.wstrb(5 downto 4)
+                dm_out(2) := ~reqReg.wstrb(7 downto 6)
+                dm_out(3) := ~reqReg.wstrb(9 downto 8)
+                dm_out(4) := ~reqReg.wstrb(11 downto 10)
+                dm_out(5) := ~reqReg.wstrb(13 downto 12)
+                dm_out(6) := ~reqReg.wstrb(15 downto 14)
+                dm_out(7) := B"2'b11"
               }
               is(1) {
                 dqs_out := B"8'b0101_0101"
@@ -1556,14 +1556,14 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                 dq_out(5) := B"16'h0"
                 dq_out(6) := B"16'h0"
                 dq_out(7) := 0
-                dm_out(0) := !reqReg.wstrb(7 downto 6).orR
-                dm_out(1) := !reqReg.wstrb(9 downto 8).orR
-                dm_out(2) := !reqReg.wstrb(11 downto 10).orR
-                dm_out(3) := !reqReg.wstrb(13 downto 12).orR
-                dm_out(4) := !reqReg.wstrb(15 downto 14).orR
-                dm_out(5) := True
-                dm_out(6) := True
-                dm_out(7) := True
+                dm_out(0) := ~reqReg.wstrb(7 downto 6)
+                dm_out(1) := ~reqReg.wstrb(9 downto 8)
+                dm_out(2) := ~reqReg.wstrb(11 downto 10)
+                dm_out(3) := ~reqReg.wstrb(13 downto 12)
+                dm_out(4) := ~reqReg.wstrb(15 downto 14)
+                dm_out(5) := B"2'b11"
+                dm_out(6) := B"2'b11"
+                dm_out(7) := B"2'b11"
               }
               is(2) {
                 dqs_out := B"8'b0101_0101"
@@ -1577,14 +1577,14 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                 dq_out(5) := reqReg.wdata(79 downto 64)
                 dq_out(6) := reqReg.wdata(95 downto 80)
                 dq_out(7) := reqReg.wdata(111 downto 96)
-                dm_out(0) := True
-                dm_out(1) := !reqReg.wstrb(1 downto 0).orR
-                dm_out(2) := !reqReg.wstrb(3 downto 2).orR
-                dm_out(3) := !reqReg.wstrb(5 downto 4).orR
-                dm_out(4) := !reqReg.wstrb(7 downto 6).orR
-                dm_out(5) := !reqReg.wstrb(9 downto 8).orR
-                dm_out(6) := !reqReg.wstrb(11 downto 10).orR
-                dm_out(7) := !reqReg.wstrb(13 downto 12).orR
+                dm_out(0) := B"2'b11"
+                dm_out(1) := ~reqReg.wstrb(1 downto 0)
+                dm_out(2) := ~reqReg.wstrb(3 downto 2)
+                dm_out(3) := ~reqReg.wstrb(5 downto 4)
+                dm_out(4) := ~reqReg.wstrb(7 downto 6)
+                dm_out(5) := ~reqReg.wstrb(9 downto 8)
+                dm_out(6) := ~reqReg.wstrb(11 downto 10)
+                dm_out(7) := ~reqReg.wstrb(13 downto 12)
               }
               is(3) {
                 dqs_out := B"8'b0101_0100" // D0=0,D1=0 pre; D2=1,D3=0..D6=1,D7=0
@@ -1596,12 +1596,12 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                 dq_out(5) := reqReg.wdata(47 downto 32)
                 dq_out(6) := reqReg.wdata(63 downto 48)
                 dq_out(7) := reqReg.wdata(79 downto 64)
-                dm_out(2) := True
-                dm_out(3) := !reqReg.wstrb(1 downto 0).orR
-                dm_out(4) := !reqReg.wstrb(3 downto 2).orR
-                dm_out(5) := !reqReg.wstrb(5 downto 4).orR
-                dm_out(6) := !reqReg.wstrb(7 downto 6).orR
-                dm_out(7) := !reqReg.wstrb(9 downto 8).orR
+                dm_out(2) := B"2'b11"
+                dm_out(3) := ~reqReg.wstrb(1 downto 0)
+                dm_out(4) := ~reqReg.wstrb(3 downto 2)
+                dm_out(5) := ~reqReg.wstrb(5 downto 4)
+                dm_out(6) := ~reqReg.wstrb(7 downto 6)
+                dm_out(7) := ~reqReg.wstrb(9 downto 8)
               }
             }
           }
@@ -1620,8 +1620,8 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                 dq_oen  := B"4'b1110"
                 dq_out(0) := reqReg.wdata(127 downto 112)
                 dq_out(1) := 0
-                dm_out(0) := !reqReg.wstrb(15 downto 14).orR
-                dm_out(1) := True
+                dm_out(0) := ~reqReg.wstrb(15 downto 14)
+                dm_out(1) := B"2'b11"
               }
               is(3) {
                 dqs_out := B"8'b0000_0101" // D0=1,D1=0,D2=1,D3=0,D4=0,D5=0 postamble
@@ -1631,10 +1631,10 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                 dq_out(1) := reqReg.wdata(111 downto 96)
                 dq_out(2) := reqReg.wdata(127 downto 112)
                 dq_out(3) := 0
-                dm_out(0) := !reqReg.wstrb(11 downto 10).orR
-                dm_out(1) := !reqReg.wstrb(13 downto 12).orR
-                dm_out(2) := !reqReg.wstrb(15 downto 14).orR
-                dm_out(3) := True
+                dm_out(0) := ~reqReg.wstrb(11 downto 10)
+                dm_out(1) := ~reqReg.wstrb(13 downto 12)
+                dm_out(2) := ~reqReg.wstrb(15 downto 14)
+                dm_out(3) := B"2'b11"
               }
             }
           }
@@ -1686,7 +1686,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                 dq_oen  := B"4'b0111"
                 dq_out(6) := 0
                 dq_out(7) := st1Req.wdata(15 downto 0)
-                dm_out(6) := True
+                dm_out(6) := B"2'b11"
                 dm_out(7) := driveDm(st1Req, 0)
               } elsewhen(st2Valid) {
                 dqs_out := B"8'b0101_0101"
@@ -1701,7 +1701,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                   dm_out(7) := driveDm(st1Req, 0)
                 } otherwise {
                   dq_out(7) := 0
-                  dm_out(7) := True
+                  dm_out(7) := B"2'b11"
                 }
               } elsewhen(st3Valid) {
                 dqs_out := 0
@@ -1715,7 +1715,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                 dqs_oen := B"4'b0011"
                 dq_oen  := B"4'b0011"
                 dq_out(4) := 0
-                dm_out(4) := True
+                dm_out(4) := B"2'b11"
                 for (j <- 0 until 3) {
                   dq_out(5 + j) := st1Req.wdata(j * 16 + 15 downto j * 16)
                   dm_out(5 + j) := driveDm(st1Req, j)
@@ -1736,7 +1736,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                 } otherwise {
                   for (j <- 5 until 8) {
                     dq_out(j) := 0
-                    dm_out(j) := True
+                    dm_out(j) := B"2'b11"
                   }
                 }
               } elsewhen(st3Valid) {
@@ -1754,7 +1754,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                 dqs_oen := B"4'b0000"
                 dq_oen  := B"4'b0000"
                 dq_out(0) := 0
-                dm_out(0) := True
+                dm_out(0) := B"2'b11"
                 for (j <- 0 until 7) {
                   dq_out(j + 1) := st2Req.wdata(j * 16 + 15 downto j * 16)
                   dm_out(j + 1) := driveDm(st2Req, j)
@@ -1776,7 +1776,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                 dq_out(0) := st3Req.wdata(127 downto 112)
                 dq_out(1) := 0
                 dm_out(0) := driveDm(st3Req, 7)
-                dm_out(1) := True
+                dm_out(1) := B"2'b11"
               }
             }
             is(3) {
@@ -1785,7 +1785,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                 dqs_oen := B"4'b0000"
                 dq_oen  := B"4'b0001"
                 dq_out(2) := 0
-                dm_out(2) := True
+                dm_out(2) := B"2'b11"
                 for (j <- 0 until 5) {
                   dq_out(3 + j) := st2Req.wdata(j * 16 + 15 downto j * 16)
                   dm_out(3 + j) := driveDm(st2Req, j)
@@ -1811,7 +1811,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
                   dm_out(j) := driveDm(st3Req, j + 5)
                 }
                 dq_out(3) := 0
-                dm_out(3) := True
+                dm_out(3) := B"2'b11"
               }
             }
           }
@@ -1853,7 +1853,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     dq_oen := B"4'b1111"
     dqs_oen := B"4'b1111"
     dqs_out := 0
-    dm_out := B"8'b1111_1111"
+    for (i <- 0 until 8) { dm_out(i) := B"2'b11" }
     for (i <- 0 until 8) {
       dq_out(i) := 0
     }

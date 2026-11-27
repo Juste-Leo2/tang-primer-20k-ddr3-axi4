@@ -57,14 +57,22 @@ class Ddr3TesterSimHarness(val axiConfig: Axi4Config, val config: Ddr3Config, va
   // Read calibration response: DQS read window lock
   core.io.phy.rburst := (core.io.phy.dqs_read === 0x0F) ? B"2'b11" | B"2'b00"
 
-  // 128-bit memory loopback storage (FIFO decouples streamed reads cleanly)
+  // 128-bit memory loopback storage honoring byte strobes (FIFO decouples streamed reads)
   val mem = Mem(Bits(128 bits), 64)
+  val curWord = mem.readAsync(core.io.req.payload.addr(5 downto 0))
+  val nextWord = Bits(128 bits)
+  for (byteIdx <- 0 until 16) {
+    nextWord(byteIdx * 8 + 7 downto byteIdx * 8) :=
+      core.io.req.payload.wstrb(byteIdx) ?
+        core.io.req.payload.wdata(byteIdx * 8 + 7 downto byteIdx * 8) |
+        curWord(byteIdx * 8 + 7 downto byteIdx * 8)
+  }
   when(core.io.req.fire && core.io.req.payload.write) {
-    mem.write(core.io.req.payload.addr(5 downto 0), core.io.req.payload.wdata)
+    mem.write(core.io.req.payload.addr(5 downto 0), nextWord)
   }
   val simRdFifo = new StreamFifo(Bits(128 bits), 64)
   simRdFifo.io.push.valid   := core.io.req.fire && !core.io.req.payload.write
-  simRdFifo.io.push.payload := mem.readAsync(core.io.req.payload.addr(5 downto 0))
+  simRdFifo.io.push.payload := curWord
   simRdFifo.io.pop.ready    := core.io.rsp.valid
   val readData = simRdFifo.io.pop.valid ? simRdFifo.io.pop.payload | B(0, 128 bits)
 

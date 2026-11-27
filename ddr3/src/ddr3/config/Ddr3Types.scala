@@ -80,7 +80,7 @@ case class Ddr3CorePhyIo(config: Ddr3Config) extends Bundle {
   val dq_oen       = out Bits(4 bits)
   val dqs_out      = out Bits(8 bits)
   val dqs_oen      = out Bits(4 bits)
-  val dm_out       = out Bits(8 bits)
+  val dm_out       = out Vec(Bits(2 bits), 8)
 
   val nRAS         = out Vec(Bool(), 4)
   val nCAS         = out Vec(Bool(), 4)

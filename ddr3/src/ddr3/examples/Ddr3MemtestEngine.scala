@@ -166,7 +166,26 @@ class Ddr3MemtestEngine(
   private def sliceWord(word128: Bits, idx: UInt): Bits =
     if (is128Bit) word128 else word128.subdivideIn(beatsPerBlock slices)(idx.resize(beatShift))
 
-  val singlePat128 = B"64'hFEDCBA9876543210" ## B"64'h0123456789ABCDEF"
+  private val singlePatBig = BigInt("FEDCBA98765432100123456789ABCDEF", 16)
+  private val patchDataBig = BigInt("DEADBEEFCAFEBABE", 16)
+  private val patchMaskInt = 0xA6 // tests DM[0]=1,DM[1]=0 on halfword 0 and DM[0]=0,DM[1]=1 on halfword 1
+  private val patchedPatBig: BigInt = {
+    val beatBytes = dataWidth / 8
+    (0 until 16).foldLeft(BigInt(0)) { (acc, b) =>
+      val origByte = (singlePatBig >> (b * 8)) & 0xFF
+      val outByte =
+        if (b >= 8 && (b - 8) < beatBytes && ((patchMaskInt >> (b - 8)) & 1) == 1) {
+          (patchDataBig >> ((b - 8) * 8)) & 0xFF
+        } else {
+          origByte
+        }
+      acc | (outByte << (b * 8))
+    }
+  }
+  val singlePat128  = B(singlePatBig, 128 bits)
+  val patchedPat128 = B(patchedPatBig, 128 bits)
+  val patchBeatData = B(patchDataBig, 64 bits).resize(dataWidth)
+  val patchBeatStrb = B(patchMaskInt, 8 bits).resize(axiConfig.bytePerWord)
 
   // --- 3. Main Memtest FSM ---
   val passPrefix = Vec(
@@ -189,6 +208,11 @@ class Ddr3MemtestEngine(
     val sSingleWriteB: State  = new State
     val sSingleReadAR: State  = new State
     val sSingleReadR: State   = new State
+    val sPatchWriteAW: State  = new State
+    val sPatchWriteW: State   = new State
+    val sPatchWriteB: State   = new State
+    val sPatchReadAR: State   = new State
+    val sPatchReadR: State    = new State
     val sBulkWriteAW: State   = new State
     val sBulkWriteW: State    = new State
     val sBulkWriteB: State    = new State
@@ -365,10 +389,10 @@ class Ddr3MemtestEngine(
       }
     }
 
-    sSingleReadR.whenIsActive {
+    def checkSingleBlockRead(expectedWord128: Bits)(onPass: => Unit): Unit = {
       io.axi.r.ready := True
       when(io.axi.r.valid) {
-        val expBeat  = sliceWord(singlePat128, singleIdx)
+        val expBeat  = sliceWord(expectedWord128, singleIdx)
         val mismatch = io.axi.r.data =/= expBeat
         val isLast   = if (is128Bit) True else (singleIdx === (beatsPerBlock - 1))
 
@@ -382,10 +406,7 @@ class Ddr3MemtestEngine(
             msgIndex    := 0
             goto(sReportFail)
           } otherwise {
-            burstIndex := 0
-            wrCycleCnt := 0
-            rdCycleCnt := 0
-            goto(sBulkWriteAW)
+            onPass
           }
         } else {
           when(errorReg && singleIdx === 1) {
@@ -402,14 +423,70 @@ class Ddr3MemtestEngine(
               msgIndex := 0
               goto(sReportFail)
             } otherwise {
-              burstIndex := 0
-              wrCycleCnt := 0
-              rdCycleCnt := 0
-              goto(sBulkWriteAW)
+              onPass
             }
           } otherwise {
             singleIdx := singleIdx + 1
           }
+        }
+      }
+    }
+
+    sSingleReadR.whenIsActive {
+      checkSingleBlockRead(singlePat128) {
+        if (is128Bit) {
+          burstIndex := 0
+          wrCycleCnt := 0
+          rdCycleCnt := 0
+          goto(sBulkWriteAW)
+        } else {
+          goto(sPatchWriteAW)
+        }
+      }
+    }
+
+    // --- Phase 1b (32b/64b): Unaligned 1-beat sub-word write + byte-mask (DDR3_DM) check ---
+    if (!is128Bit) {
+      sPatchWriteAW.whenIsActive {
+        io.axi.aw.valid := True
+        io.axi.aw.addr  := 8
+        io.axi.aw.len   := 0
+        when(io.axi.aw.ready) {
+          goto(sPatchWriteW)
+        }
+      }
+
+      sPatchWriteW.whenIsActive {
+        io.axi.w.valid := True
+        io.axi.w.data  := patchBeatData
+        io.axi.w.strb  := patchBeatStrb
+        io.axi.w.last  := True
+        when(io.axi.w.ready) {
+          goto(sPatchWriteB)
+        }
+      }
+
+      sPatchWriteB.whenIsActive {
+        when(io.axi.b.valid) {
+          goto(sPatchReadAR)
+        }
+      }
+
+      sPatchReadAR.whenIsActive {
+        io.axi.ar.valid := True
+        io.axi.ar.addr  := 0
+        when(io.axi.ar.ready) {
+          singleIdx := 0
+          goto(sPatchReadR)
+        }
+      }
+
+      sPatchReadR.whenIsActive {
+        checkSingleBlockRead(patchedPat128) {
+          burstIndex := 0
+          wrCycleCnt := 0
+          rdCycleCnt := 0
+          goto(sBulkWriteAW)
         }
       }
     }

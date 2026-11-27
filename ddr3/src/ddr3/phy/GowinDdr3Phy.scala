@@ -40,7 +40,7 @@ class GowinDdr3Phy(rowWidth: Int = 14, bankWidth: Int = 3) extends Component {
     val dq_oen      = in Bits(4 bits)
     val dqs_out     = in Bits(8 bits)
     val dqs_oen     = in Bits(4 bits)
-    val dm_out      = in Bits(8 bits)
+    val dm_out      = in Vec(Bits(2 bits), 8)
 
     val nRAS        = in Vec(Bool(), 4)
     val nCAS        = in Vec(Bool(), 4)
@@ -209,16 +209,16 @@ class GowinDdr3Phy(rowWidth: Int = 14, bankWidth: Int = 3) extends Component {
     dqs_pad_in(i)    := iobuf_dqs.io.O
     iobuf_dqs.io.IO  := io.pad.DDR3_DQS(i)
 
-    // DM Output SerDes
+    // DM Output SerDes (bit i selects byte lane 0=DQ[7:0], 1=DQ[15:8])
     val oser_dm = new OSER8_MEM("DQSW270")
-    oser_dm.io.D0    := io.dm_out(0)
-    oser_dm.io.D1    := io.dm_out(1)
-    oser_dm.io.D2    := io.dm_out(2)
-    oser_dm.io.D3    := io.dm_out(3)
-    oser_dm.io.D4    := io.dm_out(4)
-    oser_dm.io.D5    := io.dm_out(5)
-    oser_dm.io.D6    := io.dm_out(6)
-    oser_dm.io.D7    := io.dm_out(7)
+    oser_dm.io.D0    := io.dm_out(0)(i)
+    oser_dm.io.D1    := io.dm_out(1)(i)
+    oser_dm.io.D2    := io.dm_out(2)(i)
+    oser_dm.io.D3    := io.dm_out(3)(i)
+    oser_dm.io.D4    := io.dm_out(4)(i)
+    oser_dm.io.D5    := io.dm_out(5)(i)
+    oser_dm.io.D6    := io.dm_out(6)(i)
+    oser_dm.io.D7    := io.dm_out(7)(i)
     oser_dm.io.TX0   := False
     oser_dm.io.TX1   := False
     oser_dm.io.TX2   := False

@@ -1,7 +1,7 @@
 // Generator : SpinalHDL v1.15.0    git head : 05a01af3d3345aa0afcaad8e0186dde13a359db2
 // Component : Ddr3Controller
-// Git hash  : da56c0c62d4e77f0778eb95bbfeec7578a416346
-// Date      : 27/11/2026, 15:59:46
+// Git hash  : 76e89c3463b08a2ed35d4792ade6422df2555c82
+// Date      : 27/11/2026, 16:13:01
 
 `timescale 1ns/1ps
 
@@ -73,7 +73,14 @@ module Ddr3Controller (
   wire       [3:0]    coreArea_core_io_phy_dq_oen;
   wire       [7:0]    coreArea_core_io_phy_dqs_out;
   wire       [3:0]    coreArea_core_io_phy_dqs_oen;
-  wire       [7:0]    coreArea_core_io_phy_dm_out;
+  wire       [1:0]    coreArea_core_io_phy_dm_out_0;
+  wire       [1:0]    coreArea_core_io_phy_dm_out_1;
+  wire       [1:0]    coreArea_core_io_phy_dm_out_2;
+  wire       [1:0]    coreArea_core_io_phy_dm_out_3;
+  wire       [1:0]    coreArea_core_io_phy_dm_out_4;
+  wire       [1:0]    coreArea_core_io_phy_dm_out_5;
+  wire       [1:0]    coreArea_core_io_phy_dm_out_6;
+  wire       [1:0]    coreArea_core_io_phy_dm_out_7;
   wire                coreArea_core_io_phy_nRAS_0;
   wire                coreArea_core_io_phy_nRAS_1;
   wire                coreArea_core_io_phy_nRAS_2;
@@ -181,7 +188,14 @@ module Ddr3Controller (
     .io_phy_dq_oen                     (coreArea_core_io_phy_dq_oen[3:0]         ), //o
     .io_phy_dqs_out                    (coreArea_core_io_phy_dqs_out[7:0]        ), //o
     .io_phy_dqs_oen                    (coreArea_core_io_phy_dqs_oen[3:0]        ), //o
-    .io_phy_dm_out                     (coreArea_core_io_phy_dm_out[7:0]         ), //o
+    .io_phy_dm_out_0                   (coreArea_core_io_phy_dm_out_0[1:0]       ), //o
+    .io_phy_dm_out_1                   (coreArea_core_io_phy_dm_out_1[1:0]       ), //o
+    .io_phy_dm_out_2                   (coreArea_core_io_phy_dm_out_2[1:0]       ), //o
+    .io_phy_dm_out_3                   (coreArea_core_io_phy_dm_out_3[1:0]       ), //o
+    .io_phy_dm_out_4                   (coreArea_core_io_phy_dm_out_4[1:0]       ), //o
+    .io_phy_dm_out_5                   (coreArea_core_io_phy_dm_out_5[1:0]       ), //o
+    .io_phy_dm_out_6                   (coreArea_core_io_phy_dm_out_6[1:0]       ), //o
+    .io_phy_dm_out_7                   (coreArea_core_io_phy_dm_out_7[1:0]       ), //o
     .io_phy_nRAS_0                     (coreArea_core_io_phy_nRAS_0              ), //o
     .io_phy_nRAS_1                     (coreArea_core_io_phy_nRAS_1              ), //o
     .io_phy_nRAS_2                     (coreArea_core_io_phy_nRAS_2              ), //o
@@ -232,7 +246,14 @@ module Ddr3Controller (
     .io_dq_oen          (coreArea_core_io_phy_dq_oen[3:0]   ), //i
     .io_dqs_out         (coreArea_core_io_phy_dqs_out[7:0]  ), //i
     .io_dqs_oen         (coreArea_core_io_phy_dqs_oen[3:0]  ), //i
-    .io_dm_out          (coreArea_core_io_phy_dm_out[7:0]   ), //i
+    .io_dm_out_0        (coreArea_core_io_phy_dm_out_0[1:0] ), //i
+    .io_dm_out_1        (coreArea_core_io_phy_dm_out_1[1:0] ), //i
+    .io_dm_out_2        (coreArea_core_io_phy_dm_out_2[1:0] ), //i
+    .io_dm_out_3        (coreArea_core_io_phy_dm_out_3[1:0] ), //i
+    .io_dm_out_4        (coreArea_core_io_phy_dm_out_4[1:0] ), //i
+    .io_dm_out_5        (coreArea_core_io_phy_dm_out_5[1:0] ), //i
+    .io_dm_out_6        (coreArea_core_io_phy_dm_out_6[1:0] ), //i
+    .io_dm_out_7        (coreArea_core_io_phy_dm_out_7[1:0] ), //i
     .io_nRAS_0          (coreArea_core_io_phy_nRAS_0        ), //i
     .io_nRAS_1          (coreArea_core_io_phy_nRAS_1        ), //i
     .io_nRAS_2          (coreArea_core_io_phy_nRAS_2        ), //i
@@ -338,7 +359,14 @@ module GowinDdr3Phy (
   input  wire [3:0]    io_dq_oen,
   input  wire [7:0]    io_dqs_out,
   input  wire [3:0]    io_dqs_oen,
-  input  wire [7:0]    io_dm_out,
+  input  wire [1:0]    io_dm_out_0,
+  input  wire [1:0]    io_dm_out_1,
+  input  wire [1:0]    io_dm_out_2,
+  input  wire [1:0]    io_dm_out_3,
+  input  wire [1:0]    io_dm_out_4,
+  input  wire [1:0]    io_dm_out_5,
+  input  wire [1:0]    io_dm_out_6,
+  input  wire [1:0]    io_dm_out_7,
   input  wire          io_nRAS_0,
   input  wire          io_nRAS_1,
   input  wire          io_nRAS_2,
@@ -2434,14 +2462,14 @@ module GowinDdr3Phy (
     dqs_pad_in[1] = iOBUF_2_O;
   end
 
-  assign oSER8_MEM_2_D0 = io_dm_out[0];
-  assign oSER8_MEM_2_D1 = io_dm_out[1];
-  assign oSER8_MEM_2_D2 = io_dm_out[2];
-  assign oSER8_MEM_2_D3 = io_dm_out[3];
-  assign oSER8_MEM_2_D4 = io_dm_out[4];
-  assign oSER8_MEM_2_D5 = io_dm_out[5];
-  assign oSER8_MEM_2_D6 = io_dm_out[6];
-  assign oSER8_MEM_2_D7 = io_dm_out[7];
+  assign oSER8_MEM_2_D0 = io_dm_out_0[0];
+  assign oSER8_MEM_2_D1 = io_dm_out_1[0];
+  assign oSER8_MEM_2_D2 = io_dm_out_2[0];
+  assign oSER8_MEM_2_D3 = io_dm_out_3[0];
+  assign oSER8_MEM_2_D4 = io_dm_out_4[0];
+  assign oSER8_MEM_2_D5 = io_dm_out_5[0];
+  assign oSER8_MEM_2_D6 = io_dm_out_6[0];
+  assign oSER8_MEM_2_D7 = io_dm_out_7[0];
   always @(*) begin
     io_pad_DDR3_DM[0] = oSER8_MEM_2_Q0;
     io_pad_DDR3_DM[1] = oSER8_MEM_4_Q0;
@@ -2467,14 +2495,14 @@ module GowinDdr3Phy (
   assign oSER8_MEM_3_TX3 = io_dqs_oen[3];
   assign iOBUF_2_I = dqs_buf[1];
   assign iOBUF_2_OEN = dqs_buf_oen[1];
-  assign oSER8_MEM_4_D0 = io_dm_out[0];
-  assign oSER8_MEM_4_D1 = io_dm_out[1];
-  assign oSER8_MEM_4_D2 = io_dm_out[2];
-  assign oSER8_MEM_4_D3 = io_dm_out[3];
-  assign oSER8_MEM_4_D4 = io_dm_out[4];
-  assign oSER8_MEM_4_D5 = io_dm_out[5];
-  assign oSER8_MEM_4_D6 = io_dm_out[6];
-  assign oSER8_MEM_4_D7 = io_dm_out[7];
+  assign oSER8_MEM_4_D0 = io_dm_out_0[1];
+  assign oSER8_MEM_4_D1 = io_dm_out_1[1];
+  assign oSER8_MEM_4_D2 = io_dm_out_2[1];
+  assign oSER8_MEM_4_D3 = io_dm_out_3[1];
+  assign oSER8_MEM_4_D4 = io_dm_out_4[1];
+  assign oSER8_MEM_4_D5 = io_dm_out_5[1];
+  assign oSER8_MEM_4_D6 = io_dm_out_6[1];
+  assign oSER8_MEM_4_D7 = io_dm_out_7[1];
   assign io_rburst = rburst;
   assign io_rvalid = rvalid;
   assign io_wpoint_0 = dqs_waddr_0;
@@ -3208,7 +3236,14 @@ module Ddr3ControllerCore (
   output wire [3:0]    io_phy_dq_oen,
   output wire [7:0]    io_phy_dqs_out,
   output wire [3:0]    io_phy_dqs_oen,
-  output wire [7:0]    io_phy_dm_out,
+  output wire [1:0]    io_phy_dm_out_0,
+  output wire [1:0]    io_phy_dm_out_1,
+  output wire [1:0]    io_phy_dm_out_2,
+  output wire [1:0]    io_phy_dm_out_3,
+  output wire [1:0]    io_phy_dm_out_4,
+  output wire [1:0]    io_phy_dm_out_5,
+  output wire [1:0]    io_phy_dm_out_6,
+  output wire [1:0]    io_phy_dm_out_7,
   output wire          io_phy_nRAS_0,
   output wire          io_phy_nRAS_1,
   output wire          io_phy_nRAS_2,
@@ -3759,7 +3794,14 @@ module Ddr3ControllerCore (
   reg        [3:0]    dq_oen;
   reg        [7:0]    dqs_out;
   reg        [3:0]    dqs_oen;
-  reg        [7:0]    dm_out;
+  reg        [1:0]    dm_out_0;
+  reg        [1:0]    dm_out_1;
+  reg        [1:0]    dm_out_2;
+  reg        [1:0]    dm_out_3;
+  reg        [1:0]    dm_out_4;
+  reg        [1:0]    dm_out_5;
+  reg        [1:0]    dm_out_6;
+  reg        [1:0]    dm_out_7;
   wire                when_Ddr3ControllerCore_l364;
   wire                when_Ddr3ControllerCore_l365;
   wire       [6:0]    rdCyc;
@@ -4686,7 +4728,14 @@ module Ddr3ControllerCore (
   assign io_phy_dq_oen = dq_oen;
   assign io_phy_dqs_out = dqs_out;
   assign io_phy_dqs_oen = dqs_oen;
-  assign io_phy_dm_out = dm_out;
+  assign io_phy_dm_out_0 = dm_out_0;
+  assign io_phy_dm_out_1 = dm_out_1;
+  assign io_phy_dm_out_2 = dm_out_2;
+  assign io_phy_dm_out_3 = dm_out_3;
+  assign io_phy_dm_out_4 = dm_out_4;
+  assign io_phy_dm_out_5 = dm_out_5;
+  assign io_phy_dm_out_6 = dm_out_6;
+  assign io_phy_dm_out_7 = dm_out_7;
   assign io_phy_nRAS_0 = nRAS_0;
   assign io_phy_nRAS_1 = nRAS_1;
   assign io_phy_nRAS_2 = nRAS_2;
@@ -4862,7 +4911,14 @@ module Ddr3ControllerCore (
       dq_oen <= 4'b1111;
       dqs_out <= 8'h0;
       dqs_oen <= 4'b1111;
-      dm_out <= 8'hff;
+      dm_out_0 <= 2'b11;
+      dm_out_1 <= 2'b11;
+      dm_out_2 <= 2'b11;
+      dm_out_3 <= 2'b11;
+      dm_out_4 <= 2'b11;
+      dm_out_5 <= 2'b11;
+      dm_out_6 <= 2'b11;
+      dm_out_7 <= 2'b11;
       dqs_read <= 4'b0000;
       dqPrevVec_0 <= 16'h0;
       dqPrevVec_1 <= 16'h0;
@@ -4917,7 +4973,14 @@ module Ddr3ControllerCore (
         nWE_3 <= 1'b1;
         A_3 <= 14'h0;
         BA_3 <= 3'b000;
-        dm_out <= 8'hff;
+        dm_out_0 <= 2'b11;
+        dm_out_1 <= 2'b11;
+        dm_out_2 <= 2'b11;
+        dm_out_3 <= 2'b11;
+        dm_out_4 <= 2'b11;
+        dm_out_5 <= 2'b11;
+        dm_out_6 <= 2'b11;
+        dm_out_7 <= 2'b11;
         dqs_oen <= 4'b1111;
         dq_oen <= 4'b1111;
         dqs_out <= 8'h0;
@@ -5929,8 +5992,8 @@ module Ddr3ControllerCore (
                       dq_oen <= 4'b0111;
                       dq_out_6 <= 16'h0;
                       dq_out_7 <= reqReg_wdata[15 : 0];
-                      dm_out[6] <= 1'b1;
-                      dm_out[7] <= (! (|reqReg_wstrb[1 : 0]));
+                      dm_out_6 <= 2'b11;
+                      dm_out_7 <= (~ reqReg_wstrb[1 : 0]);
                     end
                     2'b01 : begin
                       dqs_out <= 8'h40;
@@ -5940,10 +6003,10 @@ module Ddr3ControllerCore (
                       dq_out_5 <= reqReg_wdata[15 : 0];
                       dq_out_6 <= reqReg_wdata[31 : 16];
                       dq_out_7 <= reqReg_wdata[47 : 32];
-                      dm_out[4] <= 1'b1;
-                      dm_out[5] <= (! (|reqReg_wstrb[1 : 0]));
-                      dm_out[6] <= (! (|reqReg_wstrb[3 : 2]));
-                      dm_out[7] <= (! (|reqReg_wstrb[5 : 4]));
+                      dm_out_4 <= 2'b11;
+                      dm_out_5 <= (~ reqReg_wstrb[1 : 0]);
+                      dm_out_6 <= (~ reqReg_wstrb[3 : 2]);
+                      dm_out_7 <= (~ reqReg_wstrb[5 : 4]);
                     end
                     2'b10 : begin
                       dqs_out <= 8'h0;
@@ -5967,14 +6030,14 @@ module Ddr3ControllerCore (
                       dq_out_5 <= reqReg_wdata[111 : 96];
                       dq_out_6 <= reqReg_wdata[127 : 112];
                       dq_out_7 <= 16'h0;
-                      dm_out[0] <= (! (|reqReg_wstrb[3 : 2]));
-                      dm_out[1] <= (! (|reqReg_wstrb[5 : 4]));
-                      dm_out[2] <= (! (|reqReg_wstrb[7 : 6]));
-                      dm_out[3] <= (! (|reqReg_wstrb[9 : 8]));
-                      dm_out[4] <= (! (|reqReg_wstrb[11 : 10]));
-                      dm_out[5] <= (! (|reqReg_wstrb[13 : 12]));
-                      dm_out[6] <= (! (|reqReg_wstrb[15 : 14]));
-                      dm_out[7] <= 1'b1;
+                      dm_out_0 <= (~ reqReg_wstrb[3 : 2]);
+                      dm_out_1 <= (~ reqReg_wstrb[5 : 4]);
+                      dm_out_2 <= (~ reqReg_wstrb[7 : 6]);
+                      dm_out_3 <= (~ reqReg_wstrb[9 : 8]);
+                      dm_out_4 <= (~ reqReg_wstrb[11 : 10]);
+                      dm_out_5 <= (~ reqReg_wstrb[13 : 12]);
+                      dm_out_6 <= (~ reqReg_wstrb[15 : 14]);
+                      dm_out_7 <= 2'b11;
                     end
                     2'b01 : begin
                       dqs_out <= 8'h55;
@@ -5988,14 +6051,14 @@ module Ddr3ControllerCore (
                       dq_out_5 <= 16'h0;
                       dq_out_6 <= 16'h0;
                       dq_out_7 <= 16'h0;
-                      dm_out[0] <= (! (|reqReg_wstrb[7 : 6]));
-                      dm_out[1] <= (! (|reqReg_wstrb[9 : 8]));
-                      dm_out[2] <= (! (|reqReg_wstrb[11 : 10]));
-                      dm_out[3] <= (! (|reqReg_wstrb[13 : 12]));
-                      dm_out[4] <= (! (|reqReg_wstrb[15 : 14]));
-                      dm_out[5] <= 1'b1;
-                      dm_out[6] <= 1'b1;
-                      dm_out[7] <= 1'b1;
+                      dm_out_0 <= (~ reqReg_wstrb[7 : 6]);
+                      dm_out_1 <= (~ reqReg_wstrb[9 : 8]);
+                      dm_out_2 <= (~ reqReg_wstrb[11 : 10]);
+                      dm_out_3 <= (~ reqReg_wstrb[13 : 12]);
+                      dm_out_4 <= (~ reqReg_wstrb[15 : 14]);
+                      dm_out_5 <= 2'b11;
+                      dm_out_6 <= 2'b11;
+                      dm_out_7 <= 2'b11;
                     end
                     2'b10 : begin
                       dqs_out <= 8'h55;
@@ -6009,14 +6072,14 @@ module Ddr3ControllerCore (
                       dq_out_5 <= reqReg_wdata[79 : 64];
                       dq_out_6 <= reqReg_wdata[95 : 80];
                       dq_out_7 <= reqReg_wdata[111 : 96];
-                      dm_out[0] <= 1'b1;
-                      dm_out[1] <= (! (|reqReg_wstrb[1 : 0]));
-                      dm_out[2] <= (! (|reqReg_wstrb[3 : 2]));
-                      dm_out[3] <= (! (|reqReg_wstrb[5 : 4]));
-                      dm_out[4] <= (! (|reqReg_wstrb[7 : 6]));
-                      dm_out[5] <= (! (|reqReg_wstrb[9 : 8]));
-                      dm_out[6] <= (! (|reqReg_wstrb[11 : 10]));
-                      dm_out[7] <= (! (|reqReg_wstrb[13 : 12]));
+                      dm_out_0 <= 2'b11;
+                      dm_out_1 <= (~ reqReg_wstrb[1 : 0]);
+                      dm_out_2 <= (~ reqReg_wstrb[3 : 2]);
+                      dm_out_3 <= (~ reqReg_wstrb[5 : 4]);
+                      dm_out_4 <= (~ reqReg_wstrb[7 : 6]);
+                      dm_out_5 <= (~ reqReg_wstrb[9 : 8]);
+                      dm_out_6 <= (~ reqReg_wstrb[11 : 10]);
+                      dm_out_7 <= (~ reqReg_wstrb[13 : 12]);
                     end
                     default : begin
                       dqs_out <= 8'h54;
@@ -6028,12 +6091,12 @@ module Ddr3ControllerCore (
                       dq_out_5 <= reqReg_wdata[47 : 32];
                       dq_out_6 <= reqReg_wdata[63 : 48];
                       dq_out_7 <= reqReg_wdata[79 : 64];
-                      dm_out[2] <= 1'b1;
-                      dm_out[3] <= (! (|reqReg_wstrb[1 : 0]));
-                      dm_out[4] <= (! (|reqReg_wstrb[3 : 2]));
-                      dm_out[5] <= (! (|reqReg_wstrb[5 : 4]));
-                      dm_out[6] <= (! (|reqReg_wstrb[7 : 6]));
-                      dm_out[7] <= (! (|reqReg_wstrb[9 : 8]));
+                      dm_out_2 <= 2'b11;
+                      dm_out_3 <= (~ reqReg_wstrb[1 : 0]);
+                      dm_out_4 <= (~ reqReg_wstrb[3 : 2]);
+                      dm_out_5 <= (~ reqReg_wstrb[5 : 4]);
+                      dm_out_6 <= (~ reqReg_wstrb[7 : 6]);
+                      dm_out_7 <= (~ reqReg_wstrb[9 : 8]);
                     end
                   endcase
                 end
@@ -6050,8 +6113,8 @@ module Ddr3ControllerCore (
                       dq_oen <= 4'b1110;
                       dq_out_0 <= reqReg_wdata[127 : 112];
                       dq_out_1 <= 16'h0;
-                      dm_out[0] <= (! (|reqReg_wstrb[15 : 14]));
-                      dm_out[1] <= 1'b1;
+                      dm_out_0 <= (~ reqReg_wstrb[15 : 14]);
+                      dm_out_1 <= 2'b11;
                     end
                     default : begin
                       dqs_out <= 8'h05;
@@ -6061,10 +6124,10 @@ module Ddr3ControllerCore (
                       dq_out_1 <= reqReg_wdata[111 : 96];
                       dq_out_2 <= reqReg_wdata[127 : 112];
                       dq_out_3 <= 16'h0;
-                      dm_out[0] <= (! (|reqReg_wstrb[11 : 10]));
-                      dm_out[1] <= (! (|reqReg_wstrb[13 : 12]));
-                      dm_out[2] <= (! (|reqReg_wstrb[15 : 14]));
-                      dm_out[3] <= 1'b1;
+                      dm_out_0 <= (~ reqReg_wstrb[11 : 10]);
+                      dm_out_1 <= (~ reqReg_wstrb[13 : 12]);
+                      dm_out_2 <= (~ reqReg_wstrb[15 : 14]);
+                      dm_out_3 <= 2'b11;
                     end
                   endcase
                 end
@@ -6104,33 +6167,33 @@ module Ddr3ControllerCore (
                       dq_oen <= 4'b0111;
                       dq_out_6 <= 16'h0;
                       dq_out_7 <= st1Req_wdata[15 : 0];
-                      dm_out[6] <= 1'b1;
-                      dm_out[7] <= (! (|st1Req_wstrb[1 : 0]));
+                      dm_out_6 <= 2'b11;
+                      dm_out_7 <= (~ st1Req_wstrb[1 : 0]);
                     end else begin
                       if(st2Valid) begin
                         dqs_out <= 8'h55;
                         dqs_oen <= 4'b0000;
                         dq_oen <= 4'b0000;
                         dq_out_0 <= st2Req_wdata[31 : 16];
-                        dm_out[0] <= (! (|st2Req_wstrb[3 : 2]));
+                        dm_out_0 <= (~ st2Req_wstrb[3 : 2]);
                         dq_out_1 <= st2Req_wdata[47 : 32];
-                        dm_out[1] <= (! (|st2Req_wstrb[5 : 4]));
+                        dm_out_1 <= (~ st2Req_wstrb[5 : 4]);
                         dq_out_2 <= st2Req_wdata[63 : 48];
-                        dm_out[2] <= (! (|st2Req_wstrb[7 : 6]));
+                        dm_out_2 <= (~ st2Req_wstrb[7 : 6]);
                         dq_out_3 <= st2Req_wdata[79 : 64];
-                        dm_out[3] <= (! (|st2Req_wstrb[9 : 8]));
+                        dm_out_3 <= (~ st2Req_wstrb[9 : 8]);
                         dq_out_4 <= st2Req_wdata[95 : 80];
-                        dm_out[4] <= (! (|st2Req_wstrb[11 : 10]));
+                        dm_out_4 <= (~ st2Req_wstrb[11 : 10]);
                         dq_out_5 <= st2Req_wdata[111 : 96];
-                        dm_out[5] <= (! (|st2Req_wstrb[13 : 12]));
+                        dm_out_5 <= (~ st2Req_wstrb[13 : 12]);
                         dq_out_6 <= st2Req_wdata[127 : 112];
-                        dm_out[6] <= (! (|st2Req_wstrb[15 : 14]));
+                        dm_out_6 <= (~ st2Req_wstrb[15 : 14]);
                         if(st1Valid) begin
                           dq_out_7 <= st1Req_wdata[15 : 0];
-                          dm_out[7] <= (! (|st1Req_wstrb[1 : 0]));
+                          dm_out_7 <= (~ st1Req_wstrb[1 : 0]);
                         end else begin
                           dq_out_7 <= 16'h0;
-                          dm_out[7] <= 1'b1;
+                          dm_out_7 <= 2'b11;
                         end
                       end else begin
                         if(st3Valid) begin
@@ -6147,42 +6210,42 @@ module Ddr3ControllerCore (
                       dqs_oen <= 4'b0011;
                       dq_oen <= 4'b0011;
                       dq_out_4 <= 16'h0;
-                      dm_out[4] <= 1'b1;
+                      dm_out_4 <= 2'b11;
                       dq_out_5 <= st1Req_wdata[15 : 0];
-                      dm_out[5] <= (! (|st1Req_wstrb[1 : 0]));
+                      dm_out_5 <= (~ st1Req_wstrb[1 : 0]);
                       dq_out_6 <= st1Req_wdata[31 : 16];
-                      dm_out[6] <= (! (|st1Req_wstrb[3 : 2]));
+                      dm_out_6 <= (~ st1Req_wstrb[3 : 2]);
                       dq_out_7 <= st1Req_wdata[47 : 32];
-                      dm_out[7] <= (! (|st1Req_wstrb[5 : 4]));
+                      dm_out_7 <= (~ st1Req_wstrb[5 : 4]);
                     end else begin
                       if(st2Valid) begin
                         dqs_out <= 8'h55;
                         dqs_oen <= 4'b0000;
                         dq_oen <= 4'b0000;
                         dq_out_0 <= st2Req_wdata[63 : 48];
-                        dm_out[0] <= (! (|st2Req_wstrb[7 : 6]));
+                        dm_out_0 <= (~ st2Req_wstrb[7 : 6]);
                         dq_out_1 <= st2Req_wdata[79 : 64];
-                        dm_out[1] <= (! (|st2Req_wstrb[9 : 8]));
+                        dm_out_1 <= (~ st2Req_wstrb[9 : 8]);
                         dq_out_2 <= st2Req_wdata[95 : 80];
-                        dm_out[2] <= (! (|st2Req_wstrb[11 : 10]));
+                        dm_out_2 <= (~ st2Req_wstrb[11 : 10]);
                         dq_out_3 <= st2Req_wdata[111 : 96];
-                        dm_out[3] <= (! (|st2Req_wstrb[13 : 12]));
+                        dm_out_3 <= (~ st2Req_wstrb[13 : 12]);
                         dq_out_4 <= st2Req_wdata[127 : 112];
-                        dm_out[4] <= (! (|st2Req_wstrb[15 : 14]));
+                        dm_out_4 <= (~ st2Req_wstrb[15 : 14]);
                         if(st1Valid) begin
                           dq_out_5 <= st1Req_wdata[15 : 0];
-                          dm_out[5] <= (! (|st1Req_wstrb[1 : 0]));
+                          dm_out_5 <= (~ st1Req_wstrb[1 : 0]);
                           dq_out_6 <= st1Req_wdata[31 : 16];
-                          dm_out[6] <= (! (|st1Req_wstrb[3 : 2]));
+                          dm_out_6 <= (~ st1Req_wstrb[3 : 2]);
                           dq_out_7 <= st1Req_wdata[47 : 32];
-                          dm_out[7] <= (! (|st1Req_wstrb[5 : 4]));
+                          dm_out_7 <= (~ st1Req_wstrb[5 : 4]);
                         end else begin
                           dq_out_5 <= 16'h0;
-                          dm_out[5] <= 1'b1;
+                          dm_out_5 <= 2'b11;
                           dq_out_6 <= 16'h0;
-                          dm_out[6] <= 1'b1;
+                          dm_out_6 <= 2'b11;
                           dq_out_7 <= 16'h0;
-                          dm_out[7] <= 1'b1;
+                          dm_out_7 <= 2'b11;
                         end
                       end else begin
                         if(st3Valid) begin
@@ -6203,42 +6266,42 @@ module Ddr3ControllerCore (
                         dqs_oen <= 4'b0000;
                         dq_oen <= 4'b0000;
                         dq_out_0 <= 16'h0;
-                        dm_out[0] <= 1'b1;
+                        dm_out_0 <= 2'b11;
                         dq_out_1 <= st2Req_wdata[15 : 0];
-                        dm_out[1] <= (! (|st2Req_wstrb[1 : 0]));
+                        dm_out_1 <= (~ st2Req_wstrb[1 : 0]);
                         dq_out_2 <= st2Req_wdata[31 : 16];
-                        dm_out[2] <= (! (|st2Req_wstrb[3 : 2]));
+                        dm_out_2 <= (~ st2Req_wstrb[3 : 2]);
                         dq_out_3 <= st2Req_wdata[47 : 32];
-                        dm_out[3] <= (! (|st2Req_wstrb[5 : 4]));
+                        dm_out_3 <= (~ st2Req_wstrb[5 : 4]);
                         dq_out_4 <= st2Req_wdata[63 : 48];
-                        dm_out[4] <= (! (|st2Req_wstrb[7 : 6]));
+                        dm_out_4 <= (~ st2Req_wstrb[7 : 6]);
                         dq_out_5 <= st2Req_wdata[79 : 64];
-                        dm_out[5] <= (! (|st2Req_wstrb[9 : 8]));
+                        dm_out_5 <= (~ st2Req_wstrb[9 : 8]);
                         dq_out_6 <= st2Req_wdata[95 : 80];
-                        dm_out[6] <= (! (|st2Req_wstrb[11 : 10]));
+                        dm_out_6 <= (~ st2Req_wstrb[11 : 10]);
                         dq_out_7 <= st2Req_wdata[111 : 96];
-                        dm_out[7] <= (! (|st2Req_wstrb[13 : 12]));
+                        dm_out_7 <= (~ st2Req_wstrb[13 : 12]);
                       end else begin
                         if(when_Ddr3ControllerCore_l1762) begin
                           dqs_out <= 8'h55;
                           dqs_oen <= 4'b0000;
                           dq_oen <= 4'b0000;
                           dq_out_0 <= st3Req_wdata[127 : 112];
-                          dm_out[0] <= (! (|st3Req_wstrb[15 : 14]));
+                          dm_out_0 <= (~ st3Req_wstrb[15 : 14]);
                           dq_out_1 <= st2Req_wdata[15 : 0];
-                          dm_out[1] <= (! (|st2Req_wstrb[1 : 0]));
+                          dm_out_1 <= (~ st2Req_wstrb[1 : 0]);
                           dq_out_2 <= st2Req_wdata[31 : 16];
-                          dm_out[2] <= (! (|st2Req_wstrb[3 : 2]));
+                          dm_out_2 <= (~ st2Req_wstrb[3 : 2]);
                           dq_out_3 <= st2Req_wdata[47 : 32];
-                          dm_out[3] <= (! (|st2Req_wstrb[5 : 4]));
+                          dm_out_3 <= (~ st2Req_wstrb[5 : 4]);
                           dq_out_4 <= st2Req_wdata[63 : 48];
-                          dm_out[4] <= (! (|st2Req_wstrb[7 : 6]));
+                          dm_out_4 <= (~ st2Req_wstrb[7 : 6]);
                           dq_out_5 <= st2Req_wdata[79 : 64];
-                          dm_out[5] <= (! (|st2Req_wstrb[9 : 8]));
+                          dm_out_5 <= (~ st2Req_wstrb[9 : 8]);
                           dq_out_6 <= st2Req_wdata[95 : 80];
-                          dm_out[6] <= (! (|st2Req_wstrb[11 : 10]));
+                          dm_out_6 <= (~ st2Req_wstrb[11 : 10]);
                           dq_out_7 <= st2Req_wdata[111 : 96];
-                          dm_out[7] <= (! (|st2Req_wstrb[13 : 12]));
+                          dm_out_7 <= (~ st2Req_wstrb[13 : 12]);
                         end else begin
                           if(st3Valid) begin
                             dqs_out <= 8'h01;
@@ -6246,8 +6309,8 @@ module Ddr3ControllerCore (
                             dq_oen <= 4'b1110;
                             dq_out_0 <= st3Req_wdata[127 : 112];
                             dq_out_1 <= 16'h0;
-                            dm_out[0] <= (! (|st3Req_wstrb[15 : 14]));
-                            dm_out[1] <= 1'b1;
+                            dm_out_0 <= (~ st3Req_wstrb[15 : 14]);
+                            dm_out_1 <= 2'b11;
                           end
                         end
                       end
@@ -6259,51 +6322,51 @@ module Ddr3ControllerCore (
                       dqs_oen <= 4'b0000;
                       dq_oen <= 4'b0001;
                       dq_out_2 <= 16'h0;
-                      dm_out[2] <= 1'b1;
+                      dm_out_2 <= 2'b11;
                       dq_out_3 <= st2Req_wdata[15 : 0];
-                      dm_out[3] <= (! (|st2Req_wstrb[1 : 0]));
+                      dm_out_3 <= (~ st2Req_wstrb[1 : 0]);
                       dq_out_4 <= st2Req_wdata[31 : 16];
-                      dm_out[4] <= (! (|st2Req_wstrb[3 : 2]));
+                      dm_out_4 <= (~ st2Req_wstrb[3 : 2]);
                       dq_out_5 <= st2Req_wdata[47 : 32];
-                      dm_out[5] <= (! (|st2Req_wstrb[5 : 4]));
+                      dm_out_5 <= (~ st2Req_wstrb[5 : 4]);
                       dq_out_6 <= st2Req_wdata[63 : 48];
-                      dm_out[6] <= (! (|st2Req_wstrb[7 : 6]));
+                      dm_out_6 <= (~ st2Req_wstrb[7 : 6]);
                       dq_out_7 <= st2Req_wdata[79 : 64];
-                      dm_out[7] <= (! (|st2Req_wstrb[9 : 8]));
+                      dm_out_7 <= (~ st2Req_wstrb[9 : 8]);
                     end else begin
                       if(when_Ddr3ControllerCore_l1793) begin
                         dqs_out <= 8'h55;
                         dqs_oen <= 4'b0000;
                         dq_oen <= 4'b0000;
                         dq_out_0 <= st3Req_wdata[95 : 80];
-                        dm_out[0] <= (! (|st3Req_wstrb[11 : 10]));
+                        dm_out_0 <= (~ st3Req_wstrb[11 : 10]);
                         dq_out_1 <= st3Req_wdata[111 : 96];
-                        dm_out[1] <= (! (|st3Req_wstrb[13 : 12]));
+                        dm_out_1 <= (~ st3Req_wstrb[13 : 12]);
                         dq_out_2 <= st3Req_wdata[127 : 112];
-                        dm_out[2] <= (! (|st3Req_wstrb[15 : 14]));
+                        dm_out_2 <= (~ st3Req_wstrb[15 : 14]);
                         dq_out_3 <= st2Req_wdata[15 : 0];
-                        dm_out[3] <= (! (|st2Req_wstrb[1 : 0]));
+                        dm_out_3 <= (~ st2Req_wstrb[1 : 0]);
                         dq_out_4 <= st2Req_wdata[31 : 16];
-                        dm_out[4] <= (! (|st2Req_wstrb[3 : 2]));
+                        dm_out_4 <= (~ st2Req_wstrb[3 : 2]);
                         dq_out_5 <= st2Req_wdata[47 : 32];
-                        dm_out[5] <= (! (|st2Req_wstrb[5 : 4]));
+                        dm_out_5 <= (~ st2Req_wstrb[5 : 4]);
                         dq_out_6 <= st2Req_wdata[63 : 48];
-                        dm_out[6] <= (! (|st2Req_wstrb[7 : 6]));
+                        dm_out_6 <= (~ st2Req_wstrb[7 : 6]);
                         dq_out_7 <= st2Req_wdata[79 : 64];
-                        dm_out[7] <= (! (|st2Req_wstrb[9 : 8]));
+                        dm_out_7 <= (~ st2Req_wstrb[9 : 8]);
                       end else begin
                         if(st3Valid) begin
                           dqs_out <= 8'h05;
                           dqs_oen <= 4'b1000;
                           dq_oen <= 4'b1100;
                           dq_out_0 <= st3Req_wdata[95 : 80];
-                          dm_out[0] <= (! (|st3Req_wstrb[11 : 10]));
+                          dm_out_0 <= (~ st3Req_wstrb[11 : 10]);
                           dq_out_1 <= st3Req_wdata[111 : 96];
-                          dm_out[1] <= (! (|st3Req_wstrb[13 : 12]));
+                          dm_out_1 <= (~ st3Req_wstrb[13 : 12]);
                           dq_out_2 <= st3Req_wdata[127 : 112];
-                          dm_out[2] <= (! (|st3Req_wstrb[15 : 14]));
+                          dm_out_2 <= (~ st3Req_wstrb[15 : 14]);
                           dq_out_3 <= 16'h0;
-                          dm_out[3] <= 1'b1;
+                          dm_out_3 <= 2'b11;
                         end
                       end
                     end
@@ -6349,7 +6412,14 @@ module Ddr3ControllerCore (
         dq_oen <= 4'b1111;
         dqs_oen <= 4'b1111;
         dqs_out <= 8'h0;
-        dm_out <= 8'hff;
+        dm_out_0 <= 2'b11;
+        dm_out_1 <= 2'b11;
+        dm_out_2 <= 2'b11;
+        dm_out_3 <= 2'b11;
+        dm_out_4 <= 2'b11;
+        dm_out_5 <= 2'b11;
+        dm_out_6 <= 2'b11;
+        dm_out_7 <= 2'b11;
         dq_out_0 <= 16'h0;
         dq_out_1 <= 16'h0;
         dq_out_2 <= 16'h0;

@@ -7,6 +7,7 @@ create_clock -name pll_clkoutd -period 13.168 -waveform {0 6.584} [get_pins {*rp
 create_clock -name pll_clkout -period 3.292 -waveform {0 1.646} [get_pins {*rpll_inst/CLKOUT}]
 
 set_clock_groups -asynchronous -group [get_clocks {pll_clkout}] -group [get_clocks {pll_clkoutd}]
+set_clock_groups -asynchronous -group [get_clocks {sys_clk}] -group [get_clocks {pll_clkout*}]
 
 report_timing -hold -from_clock [get_clocks {pll_clkout*}] -to_clock [get_clocks {pll_clkout*}] -max_paths 25 -max_common_paths 1
 report_timing -setup -from_clock [get_clocks {pll_clkout*}] -to_clock [get_clocks {pll_clkout*}] -max_paths 25 -max_common_paths 1
