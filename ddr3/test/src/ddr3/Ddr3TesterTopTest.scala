@@ -122,6 +122,10 @@ class Ddr3TesterTopTest extends AnyFunSuite {
     }
   }
 
+  test("Autonomous Ddr3MemtestEngine & UART Streaming Verification (32-bit)") {
+    runTesterSim(32)
+  }
+
   test("Autonomous Ddr3MemtestEngine & UART Streaming Verification (64-bit)") {
     runTesterSim(64)
   }

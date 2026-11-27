@@ -6,13 +6,18 @@ import spinal.lib.bus.amba4.axi._
 
 /**
  * Complete AXI4 DDR3 Controller for Tang Primer 20K.
- * Directly compatible with SpinalML DdrAdapter (extIo.ddrMaster).
- * 
- * Assembles:
- * - Ddr3Axi4Bridge (AXI4 protocol conversion to DDR3 burst)
- * - Ddr3Controller (FSM + GowinDdr3Phy hardware layer)
+ * Directly compatible with SpinalML DdrAdapter (extIo.ddrMaster) and general AXI4 hosts.
+ *
+ * Features:
+ * - Supports 32-bit, 64-bit (default), and 128-bit AXI4 data widths
+ * - Optional automatic clock-domain crossing (Axi4CC) when axiClockDomain is provided
+ * - Assembles Ddr3Axi4Bridge + Ddr3Controller (FSM + GowinDdr3Phy)
  */
-class Ddr3Axi4(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Config()) extends Component {
+class Ddr3Axi4(
+  val axiConfig: Axi4Config = Ddr3Axi4.defaultAxiConfig(),
+  val config: Ddr3Config = Ddr3Config(),
+  val axiClockDomain: Option[ClockDomain] = None
+) extends Component {
   val io = new Bundle {
     // Clocking and resets from PLL
     val pclk    = in Bool()
@@ -57,8 +62,25 @@ class Ddr3Axi4(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Config())
     // Pads
     io.pad <> ctrl.io.pad
 
-    // AXI slave
-    bridge.io.axi       <> io.axi
+    // AXI slave (direct in coreDomain, or crossed via Axi4CC from axiClockDomain)
+    axiClockDomain match {
+      case None =>
+        bridge.io.axi <> io.axi
+      case Some(userCd) =>
+        val cc = new Axi4CC(
+          axiConfig  = axiConfig,
+          inputCd    = userCd,
+          outputCd   = coreDomain,
+          arFifoSize = 8,
+          awFifoSize = 8,
+          rFifoSize  = 16,
+          wFifoSize  = 16,
+          bFifoSize  = 8
+        )
+        cc.io.input   <> io.axi
+        bridge.io.axi <> cc.io.output
+    }
+
     bridge.io.init_done := ctrl.io.init_done
 
     // Bridge <-> Controller
@@ -76,4 +98,16 @@ class Ddr3Axi4(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Config())
     io.best_score       := ctrl.io.best_score
     io.dbg_state        := ctrl.io.dbg_state
   }
+}
+
+object Ddr3Axi4 {
+  def defaultAxiConfig(
+    dataWidth: Int    = 64,
+    addressWidth: Int = 32,
+    idWidth: Int      = 4
+  ): Axi4Config = Axi4Config(
+    addressWidth = addressWidth,
+    dataWidth    = dataWidth,
+    idWidth      = idWidth
+  )
 }

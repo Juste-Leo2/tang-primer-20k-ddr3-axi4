@@ -7,10 +7,9 @@ import spinal.lib.fsm._
 
 /**
  * Autonomous DDR3 Memtest Engine & UART Reporter.
- * 
- * Verifies DDR3 operations through native AXI4 bursts:
- * - Single-word sanity check
- * - Bulk burst-write and burst-read with pseudo-random pattern verification
+ * Supports 32-bit, 64-bit, and 128-bit AXI4 data widths:
+ * - Single-block (128-bit) sanity check
+ * - Bulk multi-beat AXI4 burst-write and burst-read with pattern verification
  * - Formatted status & error reporting to UART TX (115200 baud)
  * - LED status and heartbeat generation
  */
@@ -92,12 +91,12 @@ class Ddr3MemtestEngine(
   val errAddr       = Reg(UInt(32 bits)) init(0)
   val errExpected   = Reg(Bits(64 bits)) init(0)
   val errActual     = Reg(Bits(64 bits)) init(0)
-  val errActual1    = Reg(Bits(64 bits)) init(0) // 2nd beat (distinguishes dead path vs shifted window)
+  val errActual1    = Reg(Bits(64 bits)) init(0) // 2nd 64-bit half (128b mode or 2nd single beat)
 
   io.test_error := errorReg
   io.test_pass  := passReg
 
-  // Heartbeat counter (~2 Hz toggle at 100 MHz)
+  // Heartbeat counter (~2 Hz toggle at 75.94 MHz)
   val hbCounter = Reg(UInt(25 bits)) init(0)
   val hbReg     = RegInit(False)
   hbCounter := hbCounter + 1
@@ -106,17 +105,20 @@ class Ddr3MemtestEngine(
   }
   io.heartbeat := hbReg
 
-  val is128Bit = axiConfig.dataWidth == 128
-  require(axiConfig.dataWidth == 64 || axiConfig.dataWidth == 128, s"Unsupported AXI dataWidth: ${axiConfig.dataWidth}")
+  val dataWidth = axiConfig.dataWidth
+  require(dataWidth == 32 || dataWidth == 64 || dataWidth == 128, s"Unsupported AXI dataWidth: $dataWidth")
+  val beatsPerBlock     = 128 / dataWidth // 4 (32b), 2 (64b), 1 (128b)
+  val beatShift         = log2Up(beatsPerBlock)
+  val bytesPerBeatShift = log2Up(dataWidth / 8)
+  val is128Bit          = (beatsPerBlock == 1)
 
   // Default AXI Master outputs
-  io.axi.aw.valid := False
-  io.axi.aw.addr  := 0
-  io.axi.aw.len   := (if (is128Bit) 0 else 1) // 1 beat of 128-bit or 2 beats of 64-bit = 128-bit DDR3 burst
-  io.axi.aw.size  := (if (is128Bit) 4 else 3) // 16 bytes vs 8 bytes
-  io.axi.aw.burst := 1 // INCR
-  io.axi.aw.id    := 0
-  // Tie off unused sidebands (was undriven -> 30+ synth warnings, float risk)
+  io.axi.aw.valid  := False
+  io.axi.aw.addr   := 0
+  io.axi.aw.len    := beatsPerBlock - 1 // 1 DDR3 128-bit block
+  io.axi.aw.size   := bytesPerBeatShift
+  io.axi.aw.burst  := 1 // INCR
+  io.axi.aw.id     := 0
   io.axi.aw.region := 0
   io.axi.aw.lock   := 0
   io.axi.aw.cache  := 0
@@ -131,12 +133,12 @@ class Ddr3MemtestEngine(
 
   io.axi.b.ready  := True
 
-  io.axi.ar.valid := False
-  io.axi.ar.addr  := 0
-  io.axi.ar.len   := (if (is128Bit) 0 else 1) // 1 or 2 beats
-  io.axi.ar.size  := (if (is128Bit) 4 else 3) // 16 bytes vs 8 bytes
-  io.axi.ar.burst := 1 // INCR
-  io.axi.ar.id    := 0
+  io.axi.ar.valid  := False
+  io.axi.ar.addr   := 0
+  io.axi.ar.len    := beatsPerBlock - 1
+  io.axi.ar.size   := bytesPerBeatShift
+  io.axi.ar.burst  := 1 // INCR
+  io.axi.ar.id     := 0
   io.axi.ar.region := 0
   io.axi.ar.lock   := 0
   io.axi.ar.cache  := 0
@@ -145,24 +147,26 @@ class Ddr3MemtestEngine(
 
   io.axi.r.ready  := False
 
-  // Address and test pattern generators
+  // Address and test pattern generators (max 64 blocks * 4 beats = 256 beats -> AWLEN=255 fits AXI4)
   val axiBurstBlocks = if (testBursts >= 64) 64 else testBursts
-  val beatsPerBurst  = if (is128Bit) axiBurstBlocks else axiBurstBlocks * 2
+  val beatsPerBurst  = axiBurstBlocks * beatsPerBlock
   require(testBursts >= 1 && (testBursts % axiBurstBlocks) == 0, s"testBursts ($testBursts) must be a multiple of axiBurstBlocks ($axiBurstBlocks)")
 
   val burstIndex = Reg(UInt(log2Up(testBursts + 1) bits)) init(0)
   val beatIdx    = Reg(UInt(log2Up(beatsPerBurst + 1) bits)) init(0)
+  val singleIdx  = Reg(UInt(Math.max(1, beatShift) bits)) init(0)
   val wrCycleCnt = Reg(UInt(32 bits)) init(0)
   val rdCycleCnt = Reg(UInt(32 bits)) init(0)
   val currentByteAddr = (burstIndex << 4).resize(32) // 16 bytes per block
-  val beatBlockAddr   = currentByteAddr + ((if (is128Bit) beatIdx else (beatIdx >> 1)) << 4).resize(32)
+  val beatBlockAddr   = currentByteAddr + ((beatIdx >> beatShift) << 4).resize(32)
 
-  def makePattern0(addr: UInt): Bits = {
-    (addr.asBits ^ B(0x5AA55AA5, 32 bits)) ## (addr + 1).asBits
-  }
-  def makePattern1(addr: UInt): Bits = {
-    (addr.asBits ^ B(0x12345678, 32 bits)) ## (addr + 2).asBits
-  }
+  def makePattern0(addr: UInt): Bits = (addr.asBits ^ B(0x5AA55AA5, 32 bits)) ## (addr + 1).asBits
+  def makePattern1(addr: UInt): Bits = (addr.asBits ^ B(0x12345678, 32 bits)) ## (addr + 2).asBits
+
+  private def sliceWord(word128: Bits, idx: UInt): Bits =
+    if (is128Bit) word128 else word128.subdivideIn(beatsPerBlock slices)(idx.resize(beatShift))
+
+  val singlePat128 = B"64'hFEDCBA9876543210" ## B"64'h0123456789ABCDEF"
 
   // --- 3. Main Memtest FSM ---
   val passPrefix = Vec(
@@ -181,12 +185,10 @@ class Ddr3MemtestEngine(
     val sPrintCalib: State    = new State
     val sPrintBanner: State   = new State
     val sSingleWriteAW: State = new State
-    val sSingleWriteW0: State = new State
-    val sSingleWriteW1: State = new State
+    val sSingleWriteW: State  = new State
     val sSingleWriteB: State  = new State
     val sSingleReadAR: State  = new State
-    val sSingleReadR0: State  = new State
-    val sSingleReadR1: State  = new State
+    val sSingleReadR: State   = new State
     val sBulkWriteAW: State   = new State
     val sBulkWriteW: State    = new State
     val sBulkWriteB: State    = new State
@@ -241,9 +243,6 @@ class Ddr3MemtestEngine(
         msgIndex := 0
         goto(sPrintBanner)
       } otherwise {
-        // Every ~500ms, print a progress line instead of a bare dot, so a
-        // stuck calibration tells us WHERE it is stuck (controller state +
-        // write-leveling taps). Format: "[CAL s=X W=HH]\r\n".
         delayCounter := delayCounter + 1
         when(delayCounter === (clkFreqHz / 2)) {
           delayCounter := 0
@@ -253,8 +252,7 @@ class Ddr3MemtestEngine(
       }
     }
 
-    // Progress line while calibrating: "[CAL s=X W=HH]\r\n" (X = controller
-    // state 0-9, HH = write-leveling taps; W=FF means the WL watchdog fired).
+    // Progress line while calibrating: "[CAL s=X W=HH]\r\n"
     sPrintCalib.whenIsActive {
       when(canPrint) {
         switch(msgIndex) {
@@ -327,41 +325,27 @@ class Ddr3MemtestEngine(
       }
     }
 
-    // --- Phase 1: Single Burst RW at 0x00000000 ---
+    // --- Phase 1: Single Block RW at 0x00000000 (1, 2, or 4 AXI beats) ---
     sSingleWriteAW.whenIsActive {
       io.axi.aw.valid := True
       io.axi.aw.addr  := 0
       when(io.axi.aw.ready) {
-        goto(sSingleWriteW0)
+        singleIdx := 0
+        goto(sSingleWriteW)
       }
     }
 
-    sSingleWriteW0.whenIsActive {
+    sSingleWriteW.whenIsActive {
       io.axi.w.valid := True
       io.axi.w.strb  := fullStrb
-      if (is128Bit) {
-        io.axi.w.data := (B"64'hFEDCBA9876543210" ## B"64'h0123456789ABCDEF")
-        io.axi.w.last := True
-        when(io.axi.w.ready) {
+      io.axi.w.data  := sliceWord(singlePat128, singleIdx)
+      val isLast = if (is128Bit) True else (singleIdx === (beatsPerBlock - 1))
+      io.axi.w.last  := isLast
+      when(io.axi.w.ready) {
+        when(isLast) {
           goto(sSingleWriteB)
-        }
-      } else {
-        io.axi.w.data := B"64'h0123456789ABCDEF"
-        io.axi.w.last := False
-        when(io.axi.w.ready) {
-          goto(sSingleWriteW1)
-        }
-      }
-    }
-
-    if (!is128Bit) {
-      sSingleWriteW1.whenIsActive {
-        io.axi.w.valid := True
-        io.axi.w.data  := B"64'hFEDCBA9876543210"
-        io.axi.w.strb  := fullStrb
-        io.axi.w.last  := True
-        when(io.axi.w.ready) {
-          goto(sSingleWriteB)
+        } otherwise {
+          singleIdx := singleIdx + 1
         }
       }
     }
@@ -376,19 +360,23 @@ class Ddr3MemtestEngine(
       io.axi.ar.valid := True
       io.axi.ar.addr  := 0
       when(io.axi.ar.ready) {
-        goto(sSingleReadR0)
+        singleIdx := 0
+        goto(sSingleReadR)
       }
     }
 
-    sSingleReadR0.whenIsActive {
+    sSingleReadR.whenIsActive {
       io.axi.r.ready := True
       when(io.axi.r.valid) {
+        val expBeat  = sliceWord(singlePat128, singleIdx)
+        val mismatch = io.axi.r.data =/= expBeat
+        val isLast   = if (is128Bit) True else (singleIdx === (beatsPerBlock - 1))
+
         if (is128Bit) {
-          val exp128 = B"64'hFEDCBA9876543210" ## B"64'h0123456789ABCDEF"
-          when(io.axi.r.data =/= exp128) {
+          when(mismatch) {
             errorReg    := True
             errAddr     := 0
-            errExpected := B"64'h0123456789ABCDEF"
+            errExpected := expBeat(63 downto 0)
             errActual   := io.axi.r.data(63 downto 0)
             errActual1  := io.axi.r.data(127 downto 64)
             msgIndex    := 0
@@ -400,38 +388,27 @@ class Ddr3MemtestEngine(
             goto(sBulkWriteAW)
           }
         } else {
-          when(!errorReg && (io.axi.r.data =/= B"64'h0123456789ABCDEF")) {
+          when(errorReg && singleIdx === 1) {
+            errActual1 := io.axi.r.data.resized
+          }
+          when(!errorReg && mismatch) {
             errorReg    := True
-            errAddr     := 0
-            errExpected := B"64'h0123456789ABCDEF"
-            errActual   := io.axi.r.data
+            errAddr     := (singleIdx << bytesPerBeatShift).resize(32)
+            errExpected := expBeat.resized
+            errActual   := io.axi.r.data.resized
           }
-          goto(sSingleReadR1)
-        }
-      }
-    }
-
-    if (!is128Bit) {
-      sSingleReadR1.whenIsActive {
-        io.axi.r.ready := True
-        when(io.axi.r.valid) {
-          when(errorReg) {
-            errActual1 := io.axi.r.data // beat0 already failed: still record beat1 for debug
-          }
-          when(!errorReg && (io.axi.r.data =/= B"64'hFEDCBA9876543210")) {
-            errorReg    := True
-            errAddr     := 8
-            errExpected := B"64'hFEDCBA9876543210"
-            errActual   := io.axi.r.data
-          }
-          when(errorReg || (io.axi.r.data =/= B"64'hFEDCBA9876543210")) {
-            msgIndex := 0
-            goto(sReportFail)
+          when(isLast) {
+            when(errorReg || mismatch) {
+              msgIndex := 0
+              goto(sReportFail)
+            } otherwise {
+              burstIndex := 0
+              wrCycleCnt := 0
+              rdCycleCnt := 0
+              goto(sBulkWriteAW)
+            }
           } otherwise {
-            burstIndex := 0
-            wrCycleCnt := 0
-            rdCycleCnt := 0
-            goto(sBulkWriteAW)
+            singleIdx := singleIdx + 1
           }
         }
       }
@@ -451,8 +428,9 @@ class Ddr3MemtestEngine(
 
     sBulkWriteW.whenIsActive {
       wrCycleCnt     := wrCycleCnt + 1
+      val blockPat128 = makePattern1(beatBlockAddr) ## makePattern0(beatBlockAddr)
       io.axi.w.valid := True
-      io.axi.w.data  := (if (is128Bit) (makePattern1(beatBlockAddr) ## makePattern0(beatBlockAddr)) else (beatIdx(0) ? makePattern1(beatBlockAddr) | makePattern0(beatBlockAddr)))
+      io.axi.w.data  := sliceWord(blockPat128, beatIdx)
       io.axi.w.strb  := fullStrb
       io.axi.w.last  := (beatIdx === beatsPerBurst - 1)
       when(io.axi.w.ready) {
@@ -493,19 +471,20 @@ class Ddr3MemtestEngine(
       rdCycleCnt     := rdCycleCnt + 1
       io.axi.r.ready := True
       when(io.axi.r.valid) {
-        val exp = if (is128Bit) (makePattern1(beatBlockAddr) ## makePattern0(beatBlockAddr)) else (beatIdx(0) ? makePattern1(beatBlockAddr) | makePattern0(beatBlockAddr))
-        val mismatch = (io.axi.r.data =/= exp)
+        val blockPat128 = makePattern1(beatBlockAddr) ## makePattern0(beatBlockAddr)
+        val exp         = sliceWord(blockPat128, beatIdx)
+        val mismatch    = (io.axi.r.data =/= exp)
         when(!errorReg && mismatch) {
-          errorReg    := True
+          errorReg := True
           if (is128Bit) {
             errAddr     := beatBlockAddr
             errExpected := exp(63 downto 0)
             errActual   := io.axi.r.data(63 downto 0)
             errActual1  := io.axi.r.data(127 downto 64)
           } else {
-            errAddr     := beatBlockAddr + (beatIdx(0) ? U(8, 32 bits) | U(0, 32 bits))
-            errExpected := exp
-            errActual   := io.axi.r.data
+            errAddr     := beatBlockAddr + (beatIdx(beatShift - 1 downto 0) << bytesPerBeatShift).resize(32)
+            errExpected := exp.resized
+            errActual   := io.axi.r.data.resized
           }
         }
         when(errorReg || mismatch) {
@@ -608,10 +587,10 @@ class Ddr3MemtestEngine(
       }
     }
 
-    // Delay before next test loop (e.g. ~10ms in hardware, shorter in sim)
+    // Delay before next test loop (~10ms in hardware)
     sLoopDelay.whenIsActive {
       delayCounter := delayCounter + 1
-      when(delayCounter === (clkFreqHz / 100)) { // 10ms
+      when(delayCounter === (clkFreqHz / 100)) {
         burstIndex := 0
         wrCycleCnt := 0
         rdCycleCnt := 0

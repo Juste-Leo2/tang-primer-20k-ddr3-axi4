@@ -216,9 +216,12 @@ class Ddr3Axi4Test extends AnyFunSuite {
     }
   }
 
-  test("DDR3 AXI4 64-bit and 128-bit Burst Streaming Throughput") {
-    for (dataW <- Seq(64, 128)) {
+  test("DDR3 AXI4 32-bit, 64-bit, and 128-bit Burst Streaming Throughput") {
+    for (dataW <- Seq(32, 64, 128)) {
       val axiCfg = Axi4Config(addressWidth = 32, dataWidth = dataW, idWidth = 4)
+      val beatBytes = dataW / 8
+      val burstSize = Integer.numberOfTrailingZeros(beatBytes)
+      val fullMask  = (BigInt(1) << beatBytes) - 1
       SimConfig.compile(new Ddr3Axi4SimHarness(axiCfg, Ddr3Config(isSimulation = true))).doSim { dut =>
         dut.clockDomain.forkStimulus(period = 10)
         dut.io.axi.ar.valid #= false
@@ -267,7 +270,7 @@ class Ddr3Axi4Test extends AnyFunSuite {
         dut.io.axi.aw.valid #= true
         dut.io.axi.aw.payload.addr  #= 0x4000
         dut.io.axi.aw.payload.len   #= beats - 1
-        dut.io.axi.aw.payload.size  #= (if (dataW == 128) 4 else 3)
+        dut.io.axi.aw.payload.size  #= burstSize
         dut.io.axi.aw.payload.burst #= 1
         dut.io.axi.aw.payload.id    #= 1
         dut.clockDomain.waitSamplingWhere(50)(dut.io.axi.aw.ready.toBoolean)
@@ -277,7 +280,7 @@ class Ddr3Axi4Test extends AnyFunSuite {
         dut.io.axi.w.valid #= true
         for (b <- 0 until beats) {
           dut.io.axi.w.payload.data #= BigInt(b + 1)
-          dut.io.axi.w.payload.strb #= (if (dataW == 128) BigInt("FFFF", 16) else BigInt("FF", 16))
+          dut.io.axi.w.payload.strb #= fullMask
           dut.io.axi.w.payload.last #= (b == beats - 1)
           dut.clockDomain.waitSamplingWhere(50)(dut.io.axi.w.ready.toBoolean)
           dut.clockDomain.waitSampling()
@@ -306,7 +309,7 @@ class Ddr3Axi4Test extends AnyFunSuite {
         dut.io.axi.ar.valid #= true
         dut.io.axi.ar.payload.addr  #= 0x4000
         dut.io.axi.ar.payload.len   #= beats - 1
-        dut.io.axi.ar.payload.size  #= (if (dataW == 128) 4 else 3)
+        dut.io.axi.ar.payload.size  #= burstSize
         dut.io.axi.ar.payload.burst #= 1
         dut.io.axi.ar.payload.id    #= 2
         dut.clockDomain.waitSamplingWhere(50)(dut.io.axi.ar.ready.toBoolean)
@@ -320,6 +323,146 @@ class Ddr3Axi4Test extends AnyFunSuite {
         val rBw = (totalBytes * 75.9375) / rCycles
         println(f"[BENCH ${dataW}b] 512B Write=$wCycles cyc (${wBw}%.1f MB/s @75.94MHz), Read=$rCycles cyc (${rBw}%.1f MB/s @75.94MHz)")
       }
+    }
+  }
+
+  test("DDR3 AXI4 32-bit Async Clock-Domain Crossing (Axi4CC) + Unaligned Beat") {
+    class AsyncCdcHarness extends Component {
+      val axiCfg = Ddr3Axi4.defaultAxiConfig(dataWidth = 32)
+      val userCd = ClockDomain.external("userCd")
+      val io = new Bundle {
+        val axi       = slave(Axi4(axiCfg))
+        val init_done = out Bool()
+      }
+      val cfg    = Ddr3Config.simulation()
+      val coreCd = ClockDomain.current
+      val cc     = new Axi4CC(axiCfg, inputCd = userCd, outputCd = coreCd, 8, 8, 16, 16, 8)
+      val bridge = new Ddr3Axi4Bridge(axiCfg, cfg)
+      val core   = new Ddr3ControllerCore(cfg)
+
+      cc.io.input         <> io.axi
+      bridge.io.axi       <> cc.io.output
+      bridge.io.init_done := core.io.init_done
+      core.io.req         <> bridge.io.req
+      bridge.io.rsp       <> core.io.rsp
+      io.init_done        := core.io.init_done
+
+      core.io.phy.dlllock    := True
+      core.io.phy.rst_lock_n := True
+      val wlTimer = Reg(UInt(4 bits)) init(0)
+      when(core.io.phy.dqs_out === 0xAA || core.io.phy.dqs_out === 0x55) {
+        wlTimer := 12
+      } elsewhen(wlTimer > 0) {
+        wlTimer := wlTimer - 1
+      }
+      core.io.phy.dq_raw := (wlTimer > 0) ? B"16'h0101" | B"16'h0000"
+      core.io.phy.rburst := (core.io.phy.dqs_read === 0x0F) ? B"2'b11" | B"2'b00"
+
+      // Byte-strobe-aware 128-bit memory loopback
+      val mem = Mem(Bits(128 bits), 64)
+      val curWord = mem.readAsync(core.io.req.payload.addr(5 downto 0))
+      val nextWord = Bits(128 bits)
+      for (byteIdx <- 0 until 16) {
+        nextWord(byteIdx * 8 + 7 downto byteIdx * 8) :=
+          core.io.req.payload.wstrb(byteIdx) ?
+            core.io.req.payload.wdata(byteIdx * 8 + 7 downto byteIdx * 8) |
+            curWord(byteIdx * 8 + 7 downto byteIdx * 8)
+      }
+      when(core.io.req.fire && core.io.req.payload.write) {
+        mem.write(core.io.req.payload.addr(5 downto 0), nextWord)
+      }
+      val rdFifo = new StreamFifo(Bits(128 bits), 64)
+      rdFifo.io.push.valid   := core.io.req.fire && !core.io.req.payload.write
+      rdFifo.io.push.payload := curWord
+      rdFifo.io.pop.ready    := core.io.rsp.valid
+      val rOut = rdFifo.io.pop.valid ? rdFifo.io.pop.payload | B(0, 128 bits)
+      for (i <- 0 until 8) {
+        core.io.phy.dq_in(i) := rOut(i * 16 + 15 downto i * 16)
+      }
+    }
+
+    SimConfig.compile(new AsyncCdcHarness).doSim { dut =>
+      dut.clockDomain.forkStimulus(period = 10)
+      dut.userCd.forkStimulus(period = 14) // Async user clock (~71.4 MHz vs 100 MHz pclk)
+
+      dut.io.axi.aw.valid #= false
+      dut.io.axi.w.valid  #= false
+      dut.io.axi.b.ready  #= true
+      dut.io.axi.ar.valid #= false
+      dut.io.axi.r.ready  #= true
+
+      dut.clockDomain.waitSamplingWhere(120000)(dut.io.init_done.toBoolean)
+      assert(dut.io.init_done.toBoolean, "Async CDC harness failed to initialize")
+      dut.userCd.waitSampling(5)
+
+      def waitHandShake(ready: => Boolean): Unit = {
+        do { dut.userCd.waitSampling() } while (!ready)
+      }
+
+      // Write 4 aligned 32-bit beats at 0x0040
+      val expected4 = Seq(0x11112222L, 0x33334444L, 0x55556666L, 0x77778888L)
+      dut.io.axi.aw.valid #= true
+      dut.io.axi.aw.payload.addr  #= 0x0040
+      dut.io.axi.aw.payload.len   #= 3
+      dut.io.axi.aw.payload.size  #= 2
+      dut.io.axi.aw.payload.burst #= 1
+      dut.io.axi.aw.payload.id    #= 7
+      waitHandShake(dut.io.axi.aw.ready.toBoolean)
+      dut.io.axi.aw.valid #= false
+
+      dut.io.axi.w.valid #= true
+      for ((word, idx) <- expected4.zipWithIndex) {
+        dut.io.axi.w.payload.data #= word
+        dut.io.axi.w.payload.strb #= 0xF
+        dut.io.axi.w.payload.last #= (idx == 3)
+        waitHandShake(dut.io.axi.w.ready.toBoolean)
+      }
+      dut.io.axi.w.valid #= false
+      dut.userCd.waitSamplingWhere(100)(dut.io.axi.b.valid.toBoolean)
+      assert(dut.io.axi.b.valid.toBoolean, "32b CDC write B timeout")
+
+      // Overwrite only 32-bit lane 2 (addr 0x0048) via single-beat unaligned write
+      dut.io.axi.aw.valid #= true
+      dut.io.axi.aw.payload.addr  #= 0x0048
+      dut.io.axi.aw.payload.len   #= 0
+      dut.io.axi.aw.payload.size  #= 2
+      dut.io.axi.aw.payload.burst #= 1
+      dut.io.axi.aw.payload.id    #= 9
+      waitHandShake(dut.io.axi.aw.ready.toBoolean)
+      dut.io.axi.aw.valid #= false
+
+      dut.io.axi.w.valid #= true
+      dut.io.axi.w.payload.data #= 0xAABBCCDDL
+      dut.io.axi.w.payload.strb #= 0xF
+      dut.io.axi.w.payload.last #= true
+      waitHandShake(dut.io.axi.w.ready.toBoolean)
+      dut.io.axi.w.valid #= false
+      dut.userCd.waitSamplingWhere(100)(dut.io.axi.b.valid.toBoolean)
+      assert(dut.io.axi.b.valid.toBoolean, "32b CDC unaligned write B timeout")
+
+      // Read back all 4 beats via CDC and verify lane 2 was updated without corrupting siblings
+      val got = ArrayBuffer[Long]()
+      fork {
+        while (got.length < 4) {
+          if (dut.io.axi.r.valid.toBoolean && dut.io.axi.r.ready.toBoolean) {
+            got += dut.io.axi.r.payload.data.toLong
+          }
+          dut.userCd.waitSampling()
+        }
+      }
+      dut.io.axi.ar.valid #= true
+      dut.io.axi.ar.payload.addr  #= 0x0040
+      dut.io.axi.ar.payload.len   #= 3
+      dut.io.axi.ar.payload.size  #= 2
+      dut.io.axi.ar.payload.burst #= 1
+      dut.io.axi.ar.payload.id    #= 4
+      waitHandShake(dut.io.axi.ar.ready.toBoolean)
+      dut.io.axi.ar.valid #= false
+      dut.userCd.waitSamplingWhere(150)(got.length == 4)
+
+      val expectedAfter = Seq(0x11112222L, 0x33334444L, 0xAABBCCDDL, 0x77778888L)
+      assert(got.toSeq == expectedAfter, s"32b CDC mismatch: got=${got.map(_.toHexString)}, expected=${expectedAfter.map(_.toHexString)}")
+      println("[SIM 32b+CDC] Async Axi4CC + unaligned 32-bit lane write/read PASSED!")
     }
   }
 }

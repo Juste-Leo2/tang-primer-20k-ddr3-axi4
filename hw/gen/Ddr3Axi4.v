@@ -1,7 +1,7 @@
 // Generator : SpinalHDL v1.15.0    git head : 05a01af3d3345aa0afcaad8e0186dde13a359db2
 // Component : Ddr3Axi4
-// Git hash  : 99c3d5b596332371ea9ac284121f91f82495cc18
-// Date      : 27/11/2026, 15:09:58
+// Git hash  : da56c0c62d4e77f0778eb95bbfeec7578a416346
+// Date      : 27/11/2026, 15:59:48
 
 `timescale 1ns/1ps
 
@@ -24,8 +24,8 @@ module Ddr3Axi4 (
   input  wire [2:0]    io_axi_aw_payload_prot,
   input  wire          io_axi_w_valid,
   output wire          io_axi_w_ready,
-  input  wire [127:0]  io_axi_w_payload_data,
-  input  wire [15:0]   io_axi_w_payload_strb,
+  input  wire [63:0]   io_axi_w_payload_data,
+  input  wire [7:0]    io_axi_w_payload_strb,
   input  wire          io_axi_w_payload_last,
   output wire          io_axi_b_valid,
   input  wire          io_axi_b_ready,
@@ -45,7 +45,7 @@ module Ddr3Axi4 (
   input  wire [2:0]    io_axi_ar_payload_prot,
   output wire          io_axi_r_valid,
   input  wire          io_axi_r_ready,
-  output wire [127:0]  io_axi_r_payload_data,
+  output wire [63:0]   io_axi_r_payload_data,
   output wire [3:0]    io_axi_r_payload_id,
   output wire [1:0]    io_axi_r_payload_resp,
   output wire          io_axi_r_payload_last,
@@ -77,7 +77,7 @@ module Ddr3Axi4 (
   wire                area_bridge_io_axi_aw_ready;
   wire                area_bridge_io_axi_w_ready;
   wire                area_bridge_io_axi_r_valid;
-  wire       [127:0]  area_bridge_io_axi_r_payload_data;
+  wire       [63:0]   area_bridge_io_axi_r_payload_data;
   wire       [3:0]    area_bridge_io_axi_r_payload_id;
   wire       [1:0]    area_bridge_io_axi_r_payload_resp;
   wire                area_bridge_io_axi_r_payload_last;
@@ -115,56 +115,56 @@ module Ddr3Axi4 (
   wire                _zz_1;
 
   Ddr3Axi4Bridge area_bridge (
-    .io_axi_aw_valid          (io_axi_aw_valid                         ), //i
-    .io_axi_aw_ready          (area_bridge_io_axi_aw_ready             ), //o
-    .io_axi_aw_payload_addr   (io_axi_aw_payload_addr[31:0]            ), //i
-    .io_axi_aw_payload_id     (io_axi_aw_payload_id[3:0]               ), //i
-    .io_axi_aw_payload_region (io_axi_aw_payload_region[3:0]           ), //i
-    .io_axi_aw_payload_len    (io_axi_aw_payload_len[7:0]              ), //i
-    .io_axi_aw_payload_size   (io_axi_aw_payload_size[2:0]             ), //i
-    .io_axi_aw_payload_burst  (io_axi_aw_payload_burst[1:0]            ), //i
-    .io_axi_aw_payload_lock   (io_axi_aw_payload_lock                  ), //i
-    .io_axi_aw_payload_cache  (io_axi_aw_payload_cache[3:0]            ), //i
-    .io_axi_aw_payload_qos    (io_axi_aw_payload_qos[3:0]              ), //i
-    .io_axi_aw_payload_prot   (io_axi_aw_payload_prot[2:0]             ), //i
-    .io_axi_w_valid           (io_axi_w_valid                          ), //i
-    .io_axi_w_ready           (area_bridge_io_axi_w_ready              ), //o
-    .io_axi_w_payload_data    (io_axi_w_payload_data[127:0]            ), //i
-    .io_axi_w_payload_strb    (io_axi_w_payload_strb[15:0]             ), //i
-    .io_axi_w_payload_last    (io_axi_w_payload_last                   ), //i
-    .io_axi_b_valid           (area_bridge_io_axi_b_valid              ), //o
-    .io_axi_b_ready           (io_axi_b_ready                          ), //i
-    .io_axi_b_payload_id      (area_bridge_io_axi_b_payload_id[3:0]    ), //o
-    .io_axi_b_payload_resp    (area_bridge_io_axi_b_payload_resp[1:0]  ), //o
-    .io_axi_ar_valid          (io_axi_ar_valid                         ), //i
-    .io_axi_ar_ready          (area_bridge_io_axi_ar_ready             ), //o
-    .io_axi_ar_payload_addr   (io_axi_ar_payload_addr[31:0]            ), //i
-    .io_axi_ar_payload_id     (io_axi_ar_payload_id[3:0]               ), //i
-    .io_axi_ar_payload_region (io_axi_ar_payload_region[3:0]           ), //i
-    .io_axi_ar_payload_len    (io_axi_ar_payload_len[7:0]              ), //i
-    .io_axi_ar_payload_size   (io_axi_ar_payload_size[2:0]             ), //i
-    .io_axi_ar_payload_burst  (io_axi_ar_payload_burst[1:0]            ), //i
-    .io_axi_ar_payload_lock   (io_axi_ar_payload_lock                  ), //i
-    .io_axi_ar_payload_cache  (io_axi_ar_payload_cache[3:0]            ), //i
-    .io_axi_ar_payload_qos    (io_axi_ar_payload_qos[3:0]              ), //i
-    .io_axi_ar_payload_prot   (io_axi_ar_payload_prot[2:0]             ), //i
-    .io_axi_r_valid           (area_bridge_io_axi_r_valid              ), //o
-    .io_axi_r_ready           (io_axi_r_ready                          ), //i
-    .io_axi_r_payload_data    (area_bridge_io_axi_r_payload_data[127:0]), //o
-    .io_axi_r_payload_id      (area_bridge_io_axi_r_payload_id[3:0]    ), //o
-    .io_axi_r_payload_resp    (area_bridge_io_axi_r_payload_resp[1:0]  ), //o
-    .io_axi_r_payload_last    (area_bridge_io_axi_r_payload_last       ), //o
-    .io_init_done             (area_ctrl_io_init_done                  ), //i
-    .io_req_valid             (area_bridge_io_req_valid                ), //o
-    .io_req_ready             (area_ctrl_io_req_ready                  ), //i
-    .io_req_payload_write     (area_bridge_io_req_payload_write        ), //o
-    .io_req_payload_addr      (area_bridge_io_req_payload_addr[26:0]   ), //o
-    .io_req_payload_wdata     (area_bridge_io_req_payload_wdata[127:0] ), //o
-    .io_req_payload_wstrb     (area_bridge_io_req_payload_wstrb[15:0]  ), //o
-    .io_rsp_valid             (area_ctrl_io_rsp_valid                  ), //i
-    .io_rsp_payload_rdata     (area_ctrl_io_rsp_payload_rdata[127:0]   ), //i
-    .io_pclk                  (io_pclk                                 ), //i
-    ._zz_1                    (_zz_1                                   )  //i
+    .io_axi_aw_valid          (io_axi_aw_valid                        ), //i
+    .io_axi_aw_ready          (area_bridge_io_axi_aw_ready            ), //o
+    .io_axi_aw_payload_addr   (io_axi_aw_payload_addr[31:0]           ), //i
+    .io_axi_aw_payload_id     (io_axi_aw_payload_id[3:0]              ), //i
+    .io_axi_aw_payload_region (io_axi_aw_payload_region[3:0]          ), //i
+    .io_axi_aw_payload_len    (io_axi_aw_payload_len[7:0]             ), //i
+    .io_axi_aw_payload_size   (io_axi_aw_payload_size[2:0]            ), //i
+    .io_axi_aw_payload_burst  (io_axi_aw_payload_burst[1:0]           ), //i
+    .io_axi_aw_payload_lock   (io_axi_aw_payload_lock                 ), //i
+    .io_axi_aw_payload_cache  (io_axi_aw_payload_cache[3:0]           ), //i
+    .io_axi_aw_payload_qos    (io_axi_aw_payload_qos[3:0]             ), //i
+    .io_axi_aw_payload_prot   (io_axi_aw_payload_prot[2:0]            ), //i
+    .io_axi_w_valid           (io_axi_w_valid                         ), //i
+    .io_axi_w_ready           (area_bridge_io_axi_w_ready             ), //o
+    .io_axi_w_payload_data    (io_axi_w_payload_data[63:0]            ), //i
+    .io_axi_w_payload_strb    (io_axi_w_payload_strb[7:0]             ), //i
+    .io_axi_w_payload_last    (io_axi_w_payload_last                  ), //i
+    .io_axi_b_valid           (area_bridge_io_axi_b_valid             ), //o
+    .io_axi_b_ready           (io_axi_b_ready                         ), //i
+    .io_axi_b_payload_id      (area_bridge_io_axi_b_payload_id[3:0]   ), //o
+    .io_axi_b_payload_resp    (area_bridge_io_axi_b_payload_resp[1:0] ), //o
+    .io_axi_ar_valid          (io_axi_ar_valid                        ), //i
+    .io_axi_ar_ready          (area_bridge_io_axi_ar_ready            ), //o
+    .io_axi_ar_payload_addr   (io_axi_ar_payload_addr[31:0]           ), //i
+    .io_axi_ar_payload_id     (io_axi_ar_payload_id[3:0]              ), //i
+    .io_axi_ar_payload_region (io_axi_ar_payload_region[3:0]          ), //i
+    .io_axi_ar_payload_len    (io_axi_ar_payload_len[7:0]             ), //i
+    .io_axi_ar_payload_size   (io_axi_ar_payload_size[2:0]            ), //i
+    .io_axi_ar_payload_burst  (io_axi_ar_payload_burst[1:0]           ), //i
+    .io_axi_ar_payload_lock   (io_axi_ar_payload_lock                 ), //i
+    .io_axi_ar_payload_cache  (io_axi_ar_payload_cache[3:0]           ), //i
+    .io_axi_ar_payload_qos    (io_axi_ar_payload_qos[3:0]             ), //i
+    .io_axi_ar_payload_prot   (io_axi_ar_payload_prot[2:0]            ), //i
+    .io_axi_r_valid           (area_bridge_io_axi_r_valid             ), //o
+    .io_axi_r_ready           (io_axi_r_ready                         ), //i
+    .io_axi_r_payload_data    (area_bridge_io_axi_r_payload_data[63:0]), //o
+    .io_axi_r_payload_id      (area_bridge_io_axi_r_payload_id[3:0]   ), //o
+    .io_axi_r_payload_resp    (area_bridge_io_axi_r_payload_resp[1:0] ), //o
+    .io_axi_r_payload_last    (area_bridge_io_axi_r_payload_last      ), //o
+    .io_init_done             (area_ctrl_io_init_done                 ), //i
+    .io_req_valid             (area_bridge_io_req_valid               ), //o
+    .io_req_ready             (area_ctrl_io_req_ready                 ), //i
+    .io_req_payload_write     (area_bridge_io_req_payload_write       ), //o
+    .io_req_payload_addr      (area_bridge_io_req_payload_addr[26:0]  ), //o
+    .io_req_payload_wdata     (area_bridge_io_req_payload_wdata[127:0]), //o
+    .io_req_payload_wstrb     (area_bridge_io_req_payload_wstrb[15:0] ), //o
+    .io_rsp_valid             (area_ctrl_io_rsp_valid                 ), //i
+    .io_rsp_payload_rdata     (area_ctrl_io_rsp_payload_rdata[127:0]  ), //i
+    .io_pclk                  (io_pclk                                ), //i
+    ._zz_1                    (_zz_1                                  )  //i
   );
   Ddr3Controller area_ctrl (
     .io_pclk              (io_pclk                                ), //i
@@ -561,8 +561,8 @@ module Ddr3Axi4Bridge (
   input  wire [2:0]    io_axi_aw_payload_prot,
   input  wire          io_axi_w_valid,
   output wire          io_axi_w_ready,
-  input  wire [127:0]  io_axi_w_payload_data,
-  input  wire [15:0]   io_axi_w_payload_strb,
+  input  wire [63:0]   io_axi_w_payload_data,
+  input  wire [7:0]    io_axi_w_payload_strb,
   input  wire          io_axi_w_payload_last,
   output wire          io_axi_b_valid,
   input  wire          io_axi_b_ready,
@@ -582,7 +582,7 @@ module Ddr3Axi4Bridge (
   input  wire [2:0]    io_axi_ar_payload_prot,
   output wire          io_axi_r_valid,
   input  wire          io_axi_r_ready,
-  output wire [127:0]  io_axi_r_payload_data,
+  output wire [63:0]   io_axi_r_payload_data,
   output wire [3:0]    io_axi_r_payload_id,
   output wire [1:0]    io_axi_r_payload_resp,
   output wire          io_axi_r_payload_last,
@@ -617,8 +617,9 @@ module Ddr3Axi4Bridge (
   wire       [127:0]  wFifo_io_pop_payload_data;
   wire       [15:0]   wFifo_io_pop_payload_strb;
   wire       [4:0]    wFifo_io_occupancy;
-  wire       [8:0]    _zz_when_Ddr3Axi4Bridge_l102;
-  wire       [4:0]    _zz_when_Ddr3Axi4Bridge_l102_1;
+  reg        [63:0]   _zz_rOutData;
+  wire       [8:0]    _zz_when_Ddr3Axi4Bridge_l106;
+  wire       [4:0]    _zz_when_Ddr3Axi4Bridge_l106_1;
   wire       [27:0]   _zz_outReq_payload_addr;
   wire       [27:0]   _zz_outReq_payload_addr_1;
   wire       [27:0]   _zz_outReq_payload_addr_2;
@@ -633,6 +634,10 @@ module Ddr3Axi4Bridge (
   wire       [8:0]    _zz_wPendingBlks_3;
   wire       [0:0]    _zz_wPendingBlks_4;
   wire       [8:0]    _zz__zz_rCmdLeft;
+  wire       [7:0]    _zz_rCmdLeft_2;
+  wire       [8:0]    _zz_rCmdLeft_3;
+  wire       [8:0]    _zz_rCmdLeft_4;
+  wire       [8:0]    _zz_rCmdLeft_5;
   wire                outReq_valid;
   wire                outReq_ready;
   wire                outReq_payload_write;
@@ -670,54 +675,61 @@ module Ddr3Axi4Bridge (
   reg                 rIssuingChunk;
   reg        [3:0]    rId;
   reg        [8:0]    rBeatsLeft;
-  reg                 rPhase64;
+  reg        [0:0]    rPhase;
   reg                 rValidReg;
-  reg        [127:0]  rOutData;
+  reg        [63:0]   rOutData;
   reg                 rLastReg;
   wire                rConsume;
-  wire                when_Ddr3Axi4Bridge_l68;
-  wire                when_Ddr3Axi4Bridge_l73;
+  wire                when_Ddr3Axi4Bridge_l77;
+  wire                when_Ddr3Axi4Bridge_l82;
   wire       [8:0]    _zz_rBeatsLeft;
-  wire                when_Ddr3Axi4Bridge_l100;
-  wire                when_Ddr3Axi4Bridge_l101;
-  wire                when_Ddr3Axi4Bridge_l102;
+  wire                when_Ddr3Axi4Bridge_l94;
+  wire                when_Ddr3Axi4Bridge_l104;
+  wire                when_Ddr3Axi4Bridge_l105;
   wire                when_Ddr3Axi4Bridge_l106;
+  wire                when_Ddr3Axi4Bridge_l110;
   wire                rdReqValid;
   reg        [31:0]   wReqAddr;
   reg                 wIncr;
   reg        [3:0]    wId;
   reg        [127:0]  wAsmData;
   reg        [15:0]   wAsmStrb;
-  reg                 wPhase64;
+  reg        [0:0]    wPhase;
   reg                 wLastSeen;
   reg                 wBValidReg;
   reg                 wDraining;
   reg        [8:0]    wPendingBlks;
-  wire                when_Ddr3Axi4Bridge_l143;
-  wire                when_Ddr3Axi4Bridge_l178;
-  wire                when_Ddr3Axi4Bridge_l179;
-  wire                when_Ddr3Axi4Bridge_l180;
-  wire                when_Ddr3Axi4Bridge_l184;
+  wire                when_Ddr3Axi4Bridge_l147;
+  wire                when_Ddr3Axi4Bridge_l157;
+  wire                _zz_io_push_payload_data;
+  wire                _zz_io_push_payload_data_1;
+  wire                when_Ddr3Axi4Bridge_l174;
+  wire                when_Ddr3Axi4Bridge_l174_1;
+  wire                when_Ddr3Axi4Bridge_l185;
+  wire                when_Ddr3Axi4Bridge_l186;
+  wire                when_Ddr3Axi4Bridge_l187;
+  wire                when_Ddr3Axi4Bridge_l191;
   wire                wrReqValid;
   wire                rdSlotInc;
   wire                rdSlotDec;
   wire                wBlkInc;
   wire                wBlkDec;
-  wire                when_Ddr3Axi4Bridge_l226;
   wire                when_Ddr3Axi4Bridge_l233;
-  wire                when_Ddr3Axi4Bridge_l242;
+  wire                when_Ddr3Axi4Bridge_l240;
+  wire                when_Ddr3Axi4Bridge_l249;
   wire       [8:0]    _zz_rCmdLeft;
-  wire                when_Ddr3Axi4Bridge_l253;
-  wire                when_Ddr3Axi4Bridge_l272;
-  wire                when_Ddr3Axi4Bridge_l278;
-  wire                when_Ddr3Axi4Bridge_l281;
+  wire       [0:0]    _zz_rCmdLeft_1;
+  wire                when_Ddr3Axi4Bridge_l262;
+  wire                when_Ddr3Axi4Bridge_l282;
+  wire                when_Ddr3Axi4Bridge_l288;
+  wire                when_Ddr3Axi4Bridge_l291;
   `ifndef SYNTHESIS
   reg [39:0] mode_string;
   `endif
 
 
-  assign _zz_when_Ddr3Axi4Bridge_l102_1 = (5'h10 - rSlotsUsed);
-  assign _zz_when_Ddr3Axi4Bridge_l102 = {4'd0, _zz_when_Ddr3Axi4Bridge_l102_1};
+  assign _zz_when_Ddr3Axi4Bridge_l106_1 = (5'h10 - rSlotsUsed);
+  assign _zz_when_Ddr3Axi4Bridge_l106 = {4'd0, _zz_when_Ddr3Axi4Bridge_l106_1};
   assign _zz_outReq_payload_addr = ((mode == BridgeMode_WRITE) ? _zz_outReq_payload_addr_1 : _zz_outReq_payload_addr_2);
   assign _zz_outReq_payload_addr_1 = (wReqAddr >>> 3'd4);
   assign _zz_outReq_payload_addr_2 = (rReqAddr >>> 3'd4);
@@ -732,6 +744,10 @@ module Ddr3Axi4Bridge (
   assign _zz_wPendingBlks_4 = wBlkDec;
   assign _zz_wPendingBlks_3 = {8'd0, _zz_wPendingBlks_4};
   assign _zz__zz_rCmdLeft = {1'd0, io_axi_ar_payload_len};
+  assign _zz_rCmdLeft_2 = (_zz_rCmdLeft_3 >>> 1'd1);
+  assign _zz_rCmdLeft_3 = (_zz_rCmdLeft_4 + 9'h001);
+  assign _zz_rCmdLeft_4 = (_zz_rCmdLeft_5 + _zz_rCmdLeft);
+  assign _zz_rCmdLeft_5 = {8'd0, _zz_rCmdLeft_1};
   DistLowLatencyFifo rFifo (
     .io_push_valid   (rFifo_io_push_valid        ), //i
     .io_push_ready   (rFifo_io_push_ready        ), //o
@@ -756,6 +772,13 @@ module Ddr3Axi4Bridge (
     .io_pclk              (io_pclk                          ), //i
     ._zz_4                (_zz_1                            )  //i
   );
+  always @(*) begin
+    case(rPhase)
+      1'b0 : _zz_rOutData = rFifo_io_pop_payload[63 : 0];
+      default : _zz_rOutData = rFifo_io_pop_payload[127 : 64];
+    endcase
+  end
+
   `ifndef SYNTHESIS
   always @(*) begin
     case(mode)
@@ -796,46 +819,62 @@ module Ddr3Axi4Bridge (
   assign rConsume = ((! rValidReg) || io_axi_r_ready);
   always @(*) begin
     rFifo_io_pop_ready = 1'b0;
-    if(when_Ddr3Axi4Bridge_l73) begin
-      rFifo_io_pop_ready = 1'b1;
+    if(when_Ddr3Axi4Bridge_l82) begin
+      if(when_Ddr3Axi4Bridge_l94) begin
+        rFifo_io_pop_ready = 1'b1;
+      end
     end
   end
 
-  assign when_Ddr3Axi4Bridge_l68 = (io_axi_r_ready && rValidReg);
-  assign when_Ddr3Axi4Bridge_l73 = ((((mode == BridgeMode_READ) && (rBeatsLeft != 9'h0)) && rConsume) && rFifo_io_pop_valid);
+  assign when_Ddr3Axi4Bridge_l77 = (io_axi_r_ready && rValidReg);
+  assign when_Ddr3Axi4Bridge_l82 = ((((mode == BridgeMode_READ) && (rBeatsLeft != 9'h0)) && rConsume) && rFifo_io_pop_valid);
   assign _zz_rBeatsLeft = (rBeatsLeft - 9'h001);
-  assign when_Ddr3Axi4Bridge_l100 = (mode == BridgeMode_READ);
-  assign when_Ddr3Axi4Bridge_l101 = (! rIssuingChunk);
-  assign when_Ddr3Axi4Bridge_l102 = ((rCmdLeft != 9'h0) && ((rSlotsUsed <= 5'h08) || (rCmdLeft <= _zz_when_Ddr3Axi4Bridge_l102)));
-  assign when_Ddr3Axi4Bridge_l106 = ((rCmdLeft == 9'h0) || (5'h0f <= rSlotsUsed));
+  assign when_Ddr3Axi4Bridge_l94 = ((_zz_rBeatsLeft == 9'h0) || (rPhase == 1'b1));
+  assign when_Ddr3Axi4Bridge_l104 = (mode == BridgeMode_READ);
+  assign when_Ddr3Axi4Bridge_l105 = (! rIssuingChunk);
+  assign when_Ddr3Axi4Bridge_l106 = ((rCmdLeft != 9'h0) && ((rSlotsUsed <= 5'h08) || (rCmdLeft <= _zz_when_Ddr3Axi4Bridge_l106)));
+  assign when_Ddr3Axi4Bridge_l110 = ((rCmdLeft == 9'h0) || (5'h0f <= rSlotsUsed));
   assign rdReqValid = ((((mode == BridgeMode_READ) && rIssuingChunk) && (rCmdLeft != 9'h0)) && (rSlotsUsed < 5'h10));
   assign io_axi_w_ready = (((mode == BridgeMode_WRITE) && (! wLastSeen)) && wFifo_io_push_ready);
   always @(*) begin
     wFifo_io_push_valid = 1'b0;
-    if(when_Ddr3Axi4Bridge_l143) begin
-      wFifo_io_push_valid = 1'b1;
+    if(when_Ddr3Axi4Bridge_l147) begin
+      if(when_Ddr3Axi4Bridge_l157) begin
+        wFifo_io_push_valid = 1'b1;
+      end
     end
   end
 
   always @(*) begin
     wFifo_io_push_payload_data = 128'h0;
-    if(when_Ddr3Axi4Bridge_l143) begin
-      wFifo_io_push_payload_data = io_axi_w_payload_data;
+    if(when_Ddr3Axi4Bridge_l147) begin
+      if(when_Ddr3Axi4Bridge_l157) begin
+        wFifo_io_push_payload_data[63 : 0] = (_zz_io_push_payload_data ? io_axi_w_payload_data[63 : 0] : wAsmData[63 : 0]);
+        wFifo_io_push_payload_data[127 : 64] = (_zz_io_push_payload_data_1 ? io_axi_w_payload_data[63 : 0] : wAsmData[127 : 64]);
+      end
     end
   end
 
   always @(*) begin
     wFifo_io_push_payload_strb = 16'h0;
-    if(when_Ddr3Axi4Bridge_l143) begin
-      wFifo_io_push_payload_strb = io_axi_w_payload_strb;
+    if(when_Ddr3Axi4Bridge_l147) begin
+      if(when_Ddr3Axi4Bridge_l157) begin
+        wFifo_io_push_payload_strb[7 : 0] = (_zz_io_push_payload_data ? io_axi_w_payload_strb[7 : 0] : wAsmStrb[7 : 0]);
+        wFifo_io_push_payload_strb[15 : 8] = (_zz_io_push_payload_data_1 ? io_axi_w_payload_strb[7 : 0] : wAsmStrb[15 : 8]);
+      end
     end
   end
 
-  assign when_Ddr3Axi4Bridge_l143 = ((((mode == BridgeMode_WRITE) && (! wLastSeen)) && io_axi_w_valid) && wFifo_io_push_ready);
-  assign when_Ddr3Axi4Bridge_l178 = ((mode == BridgeMode_WRITE) && (! wBValidReg));
-  assign when_Ddr3Axi4Bridge_l179 = (! wDraining);
-  assign when_Ddr3Axi4Bridge_l180 = (wFifo_io_pop_valid && (wLastSeen || (5'h03 <= wFifo_io_occupancy)));
-  assign when_Ddr3Axi4Bridge_l184 = (! wFifo_io_pop_valid);
+  assign when_Ddr3Axi4Bridge_l147 = ((((mode == BridgeMode_WRITE) && (! wLastSeen)) && io_axi_w_valid) && wFifo_io_push_ready);
+  assign when_Ddr3Axi4Bridge_l157 = ((wPhase == 1'b1) || io_axi_w_payload_last);
+  assign _zz_io_push_payload_data = (wPhase == 1'b0);
+  assign _zz_io_push_payload_data_1 = (wPhase == 1'b1);
+  assign when_Ddr3Axi4Bridge_l174 = (wPhase == 1'b0);
+  assign when_Ddr3Axi4Bridge_l174_1 = (wPhase == 1'b1);
+  assign when_Ddr3Axi4Bridge_l185 = ((mode == BridgeMode_WRITE) && (! wBValidReg));
+  assign when_Ddr3Axi4Bridge_l186 = (! wDraining);
+  assign when_Ddr3Axi4Bridge_l187 = (wFifo_io_pop_valid && (wLastSeen || (5'h0c <= wFifo_io_occupancy)));
+  assign when_Ddr3Axi4Bridge_l191 = (! wFifo_io_pop_valid);
   assign wrReqValid = (((mode == BridgeMode_WRITE) && wDraining) && wFifo_io_pop_valid);
   assign wFifo_io_pop_ready = (((mode == BridgeMode_WRITE) && wDraining) && outReq_ready);
   assign outReq_valid = (rdReqValid || wrReqValid);
@@ -857,14 +896,15 @@ module Ddr3Axi4Bridge (
   assign rdSlotDec = (rFifo_io_pop_valid && rFifo_io_pop_ready);
   assign wBlkInc = (wFifo_io_push_valid && wFifo_io_push_ready);
   assign wBlkDec = (wrReqValid && outReq_ready);
-  assign when_Ddr3Axi4Bridge_l226 = (rdReqValid && outReq_ready);
-  assign when_Ddr3Axi4Bridge_l233 = (wrReqValid && outReq_ready);
-  assign when_Ddr3Axi4Bridge_l242 = (io_axi_aw_valid && io_axi_aw_ready);
+  assign when_Ddr3Axi4Bridge_l233 = (rdReqValid && outReq_ready);
+  assign when_Ddr3Axi4Bridge_l240 = (wrReqValid && outReq_ready);
+  assign when_Ddr3Axi4Bridge_l249 = (io_axi_aw_valid && io_axi_aw_ready);
   assign _zz_rCmdLeft = (_zz__zz_rCmdLeft + 9'h001);
-  assign when_Ddr3Axi4Bridge_l253 = (io_axi_ar_valid && io_axi_ar_ready);
-  assign when_Ddr3Axi4Bridge_l272 = ((((rBeatsLeft == 9'h0) && (! rValidReg)) && (rCmdLeft == 9'h0)) && (rSlotsUsed == 5'h0));
-  assign when_Ddr3Axi4Bridge_l278 = ((wLastSeen && (wPendingBlks == 9'h0)) && (! wBValidReg));
-  assign when_Ddr3Axi4Bridge_l281 = (wBValidReg && io_axi_b_ready);
+  assign _zz_rCmdLeft_1 = io_axi_ar_payload_addr[3 : 3];
+  assign when_Ddr3Axi4Bridge_l262 = (io_axi_ar_valid && io_axi_ar_ready);
+  assign when_Ddr3Axi4Bridge_l282 = ((((rBeatsLeft == 9'h0) && (! rValidReg)) && (rCmdLeft == 9'h0)) && (rSlotsUsed == 5'h0));
+  assign when_Ddr3Axi4Bridge_l288 = ((wLastSeen && (wPendingBlks == 9'h0)) && (! wBValidReg));
+  assign when_Ddr3Axi4Bridge_l291 = (wBValidReg && io_axi_b_ready);
   always @(posedge io_pclk or posedge _zz_1) begin
     if(_zz_1) begin
       outReq_rValidN <= 1'b1;
@@ -877,16 +917,16 @@ module Ddr3Axi4Bridge (
       rIssuingChunk <= 1'b0;
       rId <= 4'b0000;
       rBeatsLeft <= 9'h0;
-      rPhase64 <= 1'b0;
+      rPhase <= 1'b0;
       rValidReg <= 1'b0;
-      rOutData <= 128'h0;
+      rOutData <= 64'h0;
       rLastReg <= 1'b0;
       wReqAddr <= 32'h0;
       wIncr <= 1'b1;
       wId <= 4'b0000;
       wAsmData <= 128'h0;
       wAsmStrb <= 16'h0;
-      wPhase64 <= 1'b0;
+      wPhase <= 1'b0;
       wLastSeen <= 1'b0;
       wBValidReg <= 1'b0;
       wDraining <= 1'b0;
@@ -901,41 +941,61 @@ module Ddr3Axi4Bridge (
       if(outReq_s2mPipe_ready) begin
         outReq_s2mPipe_rValid <= outReq_s2mPipe_valid;
       end
-      if(when_Ddr3Axi4Bridge_l68) begin
+      if(when_Ddr3Axi4Bridge_l77) begin
         rValidReg <= 1'b0;
         rLastReg <= 1'b0;
       end
-      if(when_Ddr3Axi4Bridge_l73) begin
+      if(when_Ddr3Axi4Bridge_l82) begin
         rBeatsLeft <= _zz_rBeatsLeft;
         rValidReg <= 1'b1;
         rLastReg <= (_zz_rBeatsLeft == 9'h0);
-        rOutData <= rFifo_io_pop_payload;
+        rOutData <= _zz_rOutData;
+        if(when_Ddr3Axi4Bridge_l94) begin
+          rPhase <= 1'b0;
+        end else begin
+          rPhase <= (rPhase + 1'b1);
+        end
       end
-      if(when_Ddr3Axi4Bridge_l100) begin
-        if(when_Ddr3Axi4Bridge_l101) begin
-          if(when_Ddr3Axi4Bridge_l102) begin
+      if(when_Ddr3Axi4Bridge_l104) begin
+        if(when_Ddr3Axi4Bridge_l105) begin
+          if(when_Ddr3Axi4Bridge_l106) begin
             rIssuingChunk <= 1'b1;
           end
         end else begin
-          if(when_Ddr3Axi4Bridge_l106) begin
+          if(when_Ddr3Axi4Bridge_l110) begin
             rIssuingChunk <= 1'b0;
           end
         end
       end else begin
         rIssuingChunk <= 1'b0;
       end
-      if(when_Ddr3Axi4Bridge_l143) begin
-        if(io_axi_w_payload_last) begin
-          wLastSeen <= 1'b1;
+      if(when_Ddr3Axi4Bridge_l147) begin
+        if(when_Ddr3Axi4Bridge_l157) begin
+          wAsmData <= 128'h0;
+          wAsmStrb <= 16'h0;
+          wPhase <= 1'b0;
+          if(io_axi_w_payload_last) begin
+            wLastSeen <= 1'b1;
+          end
+        end else begin
+          if(when_Ddr3Axi4Bridge_l174) begin
+            wAsmData[63 : 0] <= io_axi_w_payload_data[63 : 0];
+            wAsmStrb[7 : 0] <= io_axi_w_payload_strb[7 : 0];
+          end
+          if(when_Ddr3Axi4Bridge_l174_1) begin
+            wAsmData[127 : 64] <= io_axi_w_payload_data[63 : 0];
+            wAsmStrb[15 : 8] <= io_axi_w_payload_strb[7 : 0];
+          end
+          wPhase <= (wPhase + 1'b1);
         end
       end
-      if(when_Ddr3Axi4Bridge_l178) begin
-        if(when_Ddr3Axi4Bridge_l179) begin
-          if(when_Ddr3Axi4Bridge_l180) begin
+      if(when_Ddr3Axi4Bridge_l185) begin
+        if(when_Ddr3Axi4Bridge_l186) begin
+          if(when_Ddr3Axi4Bridge_l187) begin
             wDraining <= 1'b1;
           end
         end else begin
-          if(when_Ddr3Axi4Bridge_l184) begin
+          if(when_Ddr3Axi4Bridge_l191) begin
             wDraining <= 1'b0;
           end
         end
@@ -944,24 +1004,24 @@ module Ddr3Axi4Bridge (
       end
       rSlotsUsed <= (_zz_rSlotsUsed - _zz_rSlotsUsed_3);
       wPendingBlks <= (_zz_wPendingBlks - _zz_wPendingBlks_3);
-      if(when_Ddr3Axi4Bridge_l226) begin
+      if(when_Ddr3Axi4Bridge_l233) begin
         rCmdLeft <= (rCmdLeft - 9'h001);
         if(rIncr) begin
           rReqAddr <= (rReqAddr + 32'h00000010);
         end
       end
-      if(when_Ddr3Axi4Bridge_l233) begin
+      if(when_Ddr3Axi4Bridge_l240) begin
         if(wIncr) begin
           wReqAddr <= (wReqAddr + 32'h00000010);
         end
       end
       case(mode)
         BridgeMode_IDLE : begin
-          if(when_Ddr3Axi4Bridge_l242) begin
+          if(when_Ddr3Axi4Bridge_l249) begin
             wReqAddr <= io_axi_aw_payload_addr;
             wIncr <= (io_axi_aw_payload_burst != 2'b00);
             wId <= io_axi_aw_payload_id;
-            wPhase64 <= (io_axi_aw_payload_addr[3] && 1'b0);
+            wPhase <= io_axi_aw_payload_addr[3 : 3];
             wAsmData <= 128'h0;
             wAsmStrb <= 16'h0;
             wLastSeen <= 1'b0;
@@ -969,28 +1029,28 @@ module Ddr3Axi4Bridge (
             wDraining <= 1'b0;
             mode <= BridgeMode_WRITE;
           end else begin
-            if(when_Ddr3Axi4Bridge_l253) begin
+            if(when_Ddr3Axi4Bridge_l262) begin
+              rPhase <= _zz_rCmdLeft_1;
               rReqAddr <= io_axi_ar_payload_addr;
               rIncr <= (io_axi_ar_payload_burst != 2'b00);
               rId <= io_axi_ar_payload_id;
               rBeatsLeft <= _zz_rCmdLeft;
-              rCmdLeft <= _zz_rCmdLeft;
-              rPhase64 <= (io_axi_ar_payload_addr[3] && 1'b0);
+              rCmdLeft <= {1'd0, _zz_rCmdLeft_2};
               rIssuingChunk <= 1'b0;
               mode <= BridgeMode_READ;
             end
           end
         end
         BridgeMode_READ : begin
-          if(when_Ddr3Axi4Bridge_l272) begin
+          if(when_Ddr3Axi4Bridge_l282) begin
             mode <= BridgeMode_IDLE;
           end
         end
         default : begin
-          if(when_Ddr3Axi4Bridge_l278) begin
+          if(when_Ddr3Axi4Bridge_l288) begin
             wBValidReg <= 1'b1;
           end
-          if(when_Ddr3Axi4Bridge_l281) begin
+          if(when_Ddr3Axi4Bridge_l291) begin
             wBValidReg <= 1'b0;
             mode <= BridgeMode_IDLE;
           end

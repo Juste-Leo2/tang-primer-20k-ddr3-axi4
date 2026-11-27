@@ -1,7 +1,7 @@
 // Generator : SpinalHDL v1.15.0    git head : 05a01af3d3345aa0afcaad8e0186dde13a359db2
 // Component : Ddr3TesterTop
-// Git hash  : 99c3d5b596332371ea9ac284121f91f82495cc18
-// Date      : 27/11/2026, 15:09:59
+// Git hash  : da56c0c62d4e77f0778eb95bbfeec7578a416346
+// Date      : 27/11/2026, 15:59:49
 
 `timescale 1ns/1ps
 
@@ -26,256 +26,230 @@ module Ddr3TesterTop (
   output wire          DDR3_ODT
 );
 
-  wire                pll_clkout;
-  wire                pll_clkoutp;
-  wire                pll_clkoutd;
-  wire                pll_lock;
-  wire                coreArea_ddr3_io_axi_ar_ready;
-  wire                coreArea_ddr3_io_axi_aw_ready;
-  wire                coreArea_ddr3_io_axi_w_ready;
-  wire                coreArea_ddr3_io_axi_r_valid;
-  wire       [63:0]   coreArea_ddr3_io_axi_r_payload_data;
-  wire       [3:0]    coreArea_ddr3_io_axi_r_payload_id;
-  wire       [1:0]    coreArea_ddr3_io_axi_r_payload_resp;
-  wire                coreArea_ddr3_io_axi_r_payload_last;
-  wire                coreArea_ddr3_io_axi_b_valid;
-  wire       [3:0]    coreArea_ddr3_io_axi_b_payload_id;
-  wire       [1:0]    coreArea_ddr3_io_axi_b_payload_resp;
-  wire                coreArea_ddr3_io_init_done;
-  wire                coreArea_ddr3_io_write_level_done;
-  wire                coreArea_ddr3_io_read_calib_done;
-  wire       [7:0]    coreArea_ddr3_io_wstep;
-  wire       [1:0]    coreArea_ddr3_io_rclkpos;
-  wire       [2:0]    coreArea_ddr3_io_rclksel;
-  wire       [2:0]    coreArea_ddr3_io_best_rot;
-  wire       [3:0]    coreArea_ddr3_io_best_score;
-  wire       [3:0]    coreArea_ddr3_io_dbg_state;
-  wire       [1:0]    coreArea_ddr3_io_pad_DDR3_DM;
-  wire       [13:0]   coreArea_ddr3_io_pad_DDR3_A;
-  wire       [2:0]    coreArea_ddr3_io_pad_DDR3_BA;
-  wire                coreArea_ddr3_io_pad_DDR3_nRAS;
-  wire                coreArea_ddr3_io_pad_DDR3_nCAS;
-  wire                coreArea_ddr3_io_pad_DDR3_nWE;
-  wire                coreArea_ddr3_io_pad_DDR3_nCS;
-  wire                coreArea_ddr3_io_pad_DDR3_CK;
-  wire                coreArea_ddr3_io_pad_DDR3_CKE;
-  wire                coreArea_ddr3_io_pad_DDR3_nRESET;
-  wire                coreArea_ddr3_io_pad_DDR3_ODT;
-  wire                coreArea_engine_io_axi_ar_valid;
-  wire       [31:0]   coreArea_engine_io_axi_ar_payload_addr;
-  wire       [3:0]    coreArea_engine_io_axi_ar_payload_id;
-  wire       [3:0]    coreArea_engine_io_axi_ar_payload_region;
-  wire       [7:0]    coreArea_engine_io_axi_ar_payload_len;
-  wire       [2:0]    coreArea_engine_io_axi_ar_payload_size;
-  wire       [1:0]    coreArea_engine_io_axi_ar_payload_burst;
-  wire       [0:0]    coreArea_engine_io_axi_ar_payload_lock;
-  wire       [3:0]    coreArea_engine_io_axi_ar_payload_cache;
-  wire       [3:0]    coreArea_engine_io_axi_ar_payload_qos;
-  wire       [2:0]    coreArea_engine_io_axi_ar_payload_prot;
-  wire                coreArea_engine_io_axi_aw_valid;
-  wire       [31:0]   coreArea_engine_io_axi_aw_payload_addr;
-  wire       [3:0]    coreArea_engine_io_axi_aw_payload_id;
-  wire       [3:0]    coreArea_engine_io_axi_aw_payload_region;
-  wire       [7:0]    coreArea_engine_io_axi_aw_payload_len;
-  wire       [2:0]    coreArea_engine_io_axi_aw_payload_size;
-  wire       [1:0]    coreArea_engine_io_axi_aw_payload_burst;
-  wire       [0:0]    coreArea_engine_io_axi_aw_payload_lock;
-  wire       [3:0]    coreArea_engine_io_axi_aw_payload_cache;
-  wire       [3:0]    coreArea_engine_io_axi_aw_payload_qos;
-  wire       [2:0]    coreArea_engine_io_axi_aw_payload_prot;
-  wire                coreArea_engine_io_axi_w_valid;
-  wire       [63:0]   coreArea_engine_io_axi_w_payload_data;
-  wire       [7:0]    coreArea_engine_io_axi_w_payload_strb;
-  wire                coreArea_engine_io_axi_w_payload_last;
-  wire                coreArea_engine_io_axi_r_ready;
-  wire                coreArea_engine_io_axi_b_ready;
-  wire                coreArea_engine_io_uart_tx;
-  wire                coreArea_engine_io_test_busy;
-  wire                coreArea_engine_io_test_pass;
-  wire                coreArea_engine_io_test_error;
-  wire                coreArea_engine_io_heartbeat;
-  reg        [15:0]   _zz_when_Ddr3TesterTop_l67;
-  wire                when_Ddr3TesterTop_l67;
-  wire                when_Ddr3TesterTop_l69;
-  wire                porDone;
-  wire                globalResetn;
-  wire                _zz_1;
+  wire                ddr3_io_clk_out;
+  wire                ddr3_io_rstn_out;
+  wire                ddr3_io_pll_lock;
+  wire                ddr3_io_init_done;
+  wire                ddr3_io_status_init_done;
+  wire                ddr3_io_status_write_level_done;
+  wire                ddr3_io_status_read_calib_done;
+  wire       [7:0]    ddr3_io_status_wstep;
+  wire       [1:0]    ddr3_io_status_rclkpos;
+  wire       [2:0]    ddr3_io_status_rclksel;
+  wire       [2:0]    ddr3_io_status_best_rot;
+  wire       [3:0]    ddr3_io_status_best_score;
+  wire       [3:0]    ddr3_io_status_dbg_state;
+  wire                ddr3_io_axi_ar_ready;
+  wire                ddr3_io_axi_aw_ready;
+  wire                ddr3_io_axi_w_ready;
+  wire                ddr3_io_axi_r_valid;
+  wire       [63:0]   ddr3_io_axi_r_payload_data;
+  wire       [3:0]    ddr3_io_axi_r_payload_id;
+  wire       [1:0]    ddr3_io_axi_r_payload_resp;
+  wire                ddr3_io_axi_r_payload_last;
+  wire                ddr3_io_axi_b_valid;
+  wire       [3:0]    ddr3_io_axi_b_payload_id;
+  wire       [1:0]    ddr3_io_axi_b_payload_resp;
+  wire       [1:0]    ddr3_io_pad_DDR3_DM;
+  wire       [13:0]   ddr3_io_pad_DDR3_A;
+  wire       [2:0]    ddr3_io_pad_DDR3_BA;
+  wire                ddr3_io_pad_DDR3_nRAS;
+  wire                ddr3_io_pad_DDR3_nCAS;
+  wire                ddr3_io_pad_DDR3_nWE;
+  wire                ddr3_io_pad_DDR3_nCS;
+  wire                ddr3_io_pad_DDR3_CK;
+  wire                ddr3_io_pad_DDR3_CKE;
+  wire                ddr3_io_pad_DDR3_nRESET;
+  wire                ddr3_io_pad_DDR3_ODT;
+  wire                ddr3_clkoutd;
+  wire                ddr3__zz_2;
+  wire                hostArea_engine_io_axi_ar_valid;
+  wire       [31:0]   hostArea_engine_io_axi_ar_payload_addr;
+  wire       [3:0]    hostArea_engine_io_axi_ar_payload_id;
+  wire       [3:0]    hostArea_engine_io_axi_ar_payload_region;
+  wire       [7:0]    hostArea_engine_io_axi_ar_payload_len;
+  wire       [2:0]    hostArea_engine_io_axi_ar_payload_size;
+  wire       [1:0]    hostArea_engine_io_axi_ar_payload_burst;
+  wire       [0:0]    hostArea_engine_io_axi_ar_payload_lock;
+  wire       [3:0]    hostArea_engine_io_axi_ar_payload_cache;
+  wire       [3:0]    hostArea_engine_io_axi_ar_payload_qos;
+  wire       [2:0]    hostArea_engine_io_axi_ar_payload_prot;
+  wire                hostArea_engine_io_axi_aw_valid;
+  wire       [31:0]   hostArea_engine_io_axi_aw_payload_addr;
+  wire       [3:0]    hostArea_engine_io_axi_aw_payload_id;
+  wire       [3:0]    hostArea_engine_io_axi_aw_payload_region;
+  wire       [7:0]    hostArea_engine_io_axi_aw_payload_len;
+  wire       [2:0]    hostArea_engine_io_axi_aw_payload_size;
+  wire       [1:0]    hostArea_engine_io_axi_aw_payload_burst;
+  wire       [0:0]    hostArea_engine_io_axi_aw_payload_lock;
+  wire       [3:0]    hostArea_engine_io_axi_aw_payload_cache;
+  wire       [3:0]    hostArea_engine_io_axi_aw_payload_qos;
+  wire       [2:0]    hostArea_engine_io_axi_aw_payload_prot;
+  wire                hostArea_engine_io_axi_w_valid;
+  wire       [63:0]   hostArea_engine_io_axi_w_payload_data;
+  wire       [7:0]    hostArea_engine_io_axi_w_payload_strb;
+  wire                hostArea_engine_io_axi_w_payload_last;
+  wire                hostArea_engine_io_axi_r_ready;
+  wire                hostArea_engine_io_axi_b_ready;
+  wire                hostArea_engine_io_uart_tx;
+  wire                hostArea_engine_io_test_busy;
+  wire                hostArea_engine_io_test_pass;
+  wire                hostArea_engine_io_test_error;
+  wire                hostArea_engine_io_heartbeat;
 
-  Gowin_rPLL pll (
-    .clkin   (sys_clk    ), //i
-    .clkout  (pll_clkout ), //o
-    .clkoutp (pll_clkoutp), //o
-    .clkoutd (pll_clkoutd), //o
-    .lock    (pll_lock   )  //o
+  TangPrimer20kDdr3 ddr3 (
+    .io_sys_clk                 (sys_clk                                      ), //i
+    .io_sys_resetn              (sys_resetn                                   ), //i
+    .io_clk_out                 (ddr3_io_clk_out                              ), //o
+    .io_rstn_out                (ddr3_io_rstn_out                             ), //o
+    .io_pll_lock                (ddr3_io_pll_lock                             ), //o
+    .io_init_done               (ddr3_io_init_done                            ), //o
+    .io_status_init_done        (ddr3_io_status_init_done                     ), //o
+    .io_status_write_level_done (ddr3_io_status_write_level_done              ), //o
+    .io_status_read_calib_done  (ddr3_io_status_read_calib_done               ), //o
+    .io_status_wstep            (ddr3_io_status_wstep[7:0]                    ), //o
+    .io_status_rclkpos          (ddr3_io_status_rclkpos[1:0]                  ), //o
+    .io_status_rclksel          (ddr3_io_status_rclksel[2:0]                  ), //o
+    .io_status_best_rot         (ddr3_io_status_best_rot[2:0]                 ), //o
+    .io_status_best_score       (ddr3_io_status_best_score[3:0]               ), //o
+    .io_status_dbg_state        (ddr3_io_status_dbg_state[3:0]                ), //o
+    .io_axi_aw_valid            (hostArea_engine_io_axi_aw_valid              ), //i
+    .io_axi_aw_ready            (ddr3_io_axi_aw_ready                         ), //o
+    .io_axi_aw_payload_addr     (hostArea_engine_io_axi_aw_payload_addr[31:0] ), //i
+    .io_axi_aw_payload_id       (hostArea_engine_io_axi_aw_payload_id[3:0]    ), //i
+    .io_axi_aw_payload_region   (hostArea_engine_io_axi_aw_payload_region[3:0]), //i
+    .io_axi_aw_payload_len      (hostArea_engine_io_axi_aw_payload_len[7:0]   ), //i
+    .io_axi_aw_payload_size     (hostArea_engine_io_axi_aw_payload_size[2:0]  ), //i
+    .io_axi_aw_payload_burst    (hostArea_engine_io_axi_aw_payload_burst[1:0] ), //i
+    .io_axi_aw_payload_lock     (hostArea_engine_io_axi_aw_payload_lock       ), //i
+    .io_axi_aw_payload_cache    (hostArea_engine_io_axi_aw_payload_cache[3:0] ), //i
+    .io_axi_aw_payload_qos      (hostArea_engine_io_axi_aw_payload_qos[3:0]   ), //i
+    .io_axi_aw_payload_prot     (hostArea_engine_io_axi_aw_payload_prot[2:0]  ), //i
+    .io_axi_w_valid             (hostArea_engine_io_axi_w_valid               ), //i
+    .io_axi_w_ready             (ddr3_io_axi_w_ready                          ), //o
+    .io_axi_w_payload_data      (hostArea_engine_io_axi_w_payload_data[63:0]  ), //i
+    .io_axi_w_payload_strb      (hostArea_engine_io_axi_w_payload_strb[7:0]   ), //i
+    .io_axi_w_payload_last      (hostArea_engine_io_axi_w_payload_last        ), //i
+    .io_axi_b_valid             (ddr3_io_axi_b_valid                          ), //o
+    .io_axi_b_ready             (hostArea_engine_io_axi_b_ready               ), //i
+    .io_axi_b_payload_id        (ddr3_io_axi_b_payload_id[3:0]                ), //o
+    .io_axi_b_payload_resp      (ddr3_io_axi_b_payload_resp[1:0]              ), //o
+    .io_axi_ar_valid            (hostArea_engine_io_axi_ar_valid              ), //i
+    .io_axi_ar_ready            (ddr3_io_axi_ar_ready                         ), //o
+    .io_axi_ar_payload_addr     (hostArea_engine_io_axi_ar_payload_addr[31:0] ), //i
+    .io_axi_ar_payload_id       (hostArea_engine_io_axi_ar_payload_id[3:0]    ), //i
+    .io_axi_ar_payload_region   (hostArea_engine_io_axi_ar_payload_region[3:0]), //i
+    .io_axi_ar_payload_len      (hostArea_engine_io_axi_ar_payload_len[7:0]   ), //i
+    .io_axi_ar_payload_size     (hostArea_engine_io_axi_ar_payload_size[2:0]  ), //i
+    .io_axi_ar_payload_burst    (hostArea_engine_io_axi_ar_payload_burst[1:0] ), //i
+    .io_axi_ar_payload_lock     (hostArea_engine_io_axi_ar_payload_lock       ), //i
+    .io_axi_ar_payload_cache    (hostArea_engine_io_axi_ar_payload_cache[3:0] ), //i
+    .io_axi_ar_payload_qos      (hostArea_engine_io_axi_ar_payload_qos[3:0]   ), //i
+    .io_axi_ar_payload_prot     (hostArea_engine_io_axi_ar_payload_prot[2:0]  ), //i
+    .io_axi_r_valid             (ddr3_io_axi_r_valid                          ), //o
+    .io_axi_r_ready             (hostArea_engine_io_axi_r_ready               ), //i
+    .io_axi_r_payload_data      (ddr3_io_axi_r_payload_data[63:0]             ), //o
+    .io_axi_r_payload_id        (ddr3_io_axi_r_payload_id[3:0]                ), //o
+    .io_axi_r_payload_resp      (ddr3_io_axi_r_payload_resp[1:0]              ), //o
+    .io_axi_r_payload_last      (ddr3_io_axi_r_payload_last                   ), //o
+    .io_pad_DDR3_DQ             (DDR3_DQ                                      ), //~
+    .io_pad_DDR3_DQS            (DDR3_DQS                                     ), //~
+    .io_pad_DDR3_DM             (ddr3_io_pad_DDR3_DM[1:0]                     ), //o
+    .io_pad_DDR3_A              (ddr3_io_pad_DDR3_A[13:0]                     ), //o
+    .io_pad_DDR3_BA             (ddr3_io_pad_DDR3_BA[2:0]                     ), //o
+    .io_pad_DDR3_nRAS           (ddr3_io_pad_DDR3_nRAS                        ), //o
+    .io_pad_DDR3_nCAS           (ddr3_io_pad_DDR3_nCAS                        ), //o
+    .io_pad_DDR3_nWE            (ddr3_io_pad_DDR3_nWE                         ), //o
+    .io_pad_DDR3_nCS            (ddr3_io_pad_DDR3_nCS                         ), //o
+    .io_pad_DDR3_CK             (ddr3_io_pad_DDR3_CK                          ), //o
+    .io_pad_DDR3_CKE            (ddr3_io_pad_DDR3_CKE                         ), //o
+    .io_pad_DDR3_nRESET         (ddr3_io_pad_DDR3_nRESET                      ), //o
+    .io_pad_DDR3_ODT            (ddr3_io_pad_DDR3_ODT                         ), //o
+    .clkoutd                    (ddr3_clkoutd                                 ), //o
+    ._zz_2                      (ddr3__zz_2                                   )  //o
   );
-  Ddr3Axi4 coreArea_ddr3 (
-    .io_pclk                  (pll_clkoutd                                  ), //i
-    .io_fclk                  (pll_clkout                                   ), //i
-    .io_ck                    (pll_clkoutp                                  ), //i
-    .io_resetn                (globalResetn                                 ), //i
-    .io_axi_aw_valid          (coreArea_engine_io_axi_aw_valid              ), //i
-    .io_axi_aw_ready          (coreArea_ddr3_io_axi_aw_ready                ), //o
-    .io_axi_aw_payload_addr   (coreArea_engine_io_axi_aw_payload_addr[31:0] ), //i
-    .io_axi_aw_payload_id     (coreArea_engine_io_axi_aw_payload_id[3:0]    ), //i
-    .io_axi_aw_payload_region (coreArea_engine_io_axi_aw_payload_region[3:0]), //i
-    .io_axi_aw_payload_len    (coreArea_engine_io_axi_aw_payload_len[7:0]   ), //i
-    .io_axi_aw_payload_size   (coreArea_engine_io_axi_aw_payload_size[2:0]  ), //i
-    .io_axi_aw_payload_burst  (coreArea_engine_io_axi_aw_payload_burst[1:0] ), //i
-    .io_axi_aw_payload_lock   (coreArea_engine_io_axi_aw_payload_lock       ), //i
-    .io_axi_aw_payload_cache  (coreArea_engine_io_axi_aw_payload_cache[3:0] ), //i
-    .io_axi_aw_payload_qos    (coreArea_engine_io_axi_aw_payload_qos[3:0]   ), //i
-    .io_axi_aw_payload_prot   (coreArea_engine_io_axi_aw_payload_prot[2:0]  ), //i
-    .io_axi_w_valid           (coreArea_engine_io_axi_w_valid               ), //i
-    .io_axi_w_ready           (coreArea_ddr3_io_axi_w_ready                 ), //o
-    .io_axi_w_payload_data    (coreArea_engine_io_axi_w_payload_data[63:0]  ), //i
-    .io_axi_w_payload_strb    (coreArea_engine_io_axi_w_payload_strb[7:0]   ), //i
-    .io_axi_w_payload_last    (coreArea_engine_io_axi_w_payload_last        ), //i
-    .io_axi_b_valid           (coreArea_ddr3_io_axi_b_valid                 ), //o
-    .io_axi_b_ready           (coreArea_engine_io_axi_b_ready               ), //i
-    .io_axi_b_payload_id      (coreArea_ddr3_io_axi_b_payload_id[3:0]       ), //o
-    .io_axi_b_payload_resp    (coreArea_ddr3_io_axi_b_payload_resp[1:0]     ), //o
-    .io_axi_ar_valid          (coreArea_engine_io_axi_ar_valid              ), //i
-    .io_axi_ar_ready          (coreArea_ddr3_io_axi_ar_ready                ), //o
-    .io_axi_ar_payload_addr   (coreArea_engine_io_axi_ar_payload_addr[31:0] ), //i
-    .io_axi_ar_payload_id     (coreArea_engine_io_axi_ar_payload_id[3:0]    ), //i
-    .io_axi_ar_payload_region (coreArea_engine_io_axi_ar_payload_region[3:0]), //i
-    .io_axi_ar_payload_len    (coreArea_engine_io_axi_ar_payload_len[7:0]   ), //i
-    .io_axi_ar_payload_size   (coreArea_engine_io_axi_ar_payload_size[2:0]  ), //i
-    .io_axi_ar_payload_burst  (coreArea_engine_io_axi_ar_payload_burst[1:0] ), //i
-    .io_axi_ar_payload_lock   (coreArea_engine_io_axi_ar_payload_lock       ), //i
-    .io_axi_ar_payload_cache  (coreArea_engine_io_axi_ar_payload_cache[3:0] ), //i
-    .io_axi_ar_payload_qos    (coreArea_engine_io_axi_ar_payload_qos[3:0]   ), //i
-    .io_axi_ar_payload_prot   (coreArea_engine_io_axi_ar_payload_prot[2:0]  ), //i
-    .io_axi_r_valid           (coreArea_ddr3_io_axi_r_valid                 ), //o
-    .io_axi_r_ready           (coreArea_engine_io_axi_r_ready               ), //i
-    .io_axi_r_payload_data    (coreArea_ddr3_io_axi_r_payload_data[63:0]    ), //o
-    .io_axi_r_payload_id      (coreArea_ddr3_io_axi_r_payload_id[3:0]       ), //o
-    .io_axi_r_payload_resp    (coreArea_ddr3_io_axi_r_payload_resp[1:0]     ), //o
-    .io_axi_r_payload_last    (coreArea_ddr3_io_axi_r_payload_last          ), //o
-    .io_init_done             (coreArea_ddr3_io_init_done                   ), //o
-    .io_write_level_done      (coreArea_ddr3_io_write_level_done            ), //o
-    .io_read_calib_done       (coreArea_ddr3_io_read_calib_done             ), //o
-    .io_wstep                 (coreArea_ddr3_io_wstep[7:0]                  ), //o
-    .io_rclkpos               (coreArea_ddr3_io_rclkpos[1:0]                ), //o
-    .io_rclksel               (coreArea_ddr3_io_rclksel[2:0]                ), //o
-    .io_best_rot              (coreArea_ddr3_io_best_rot[2:0]               ), //o
-    .io_best_score            (coreArea_ddr3_io_best_score[3:0]             ), //o
-    .io_dbg_state             (coreArea_ddr3_io_dbg_state[3:0]              ), //o
-    .io_pad_DDR3_DQ           (DDR3_DQ                                      ), //~
-    .io_pad_DDR3_DQS          (DDR3_DQS                                     ), //~
-    .io_pad_DDR3_DM           (coreArea_ddr3_io_pad_DDR3_DM[1:0]            ), //o
-    .io_pad_DDR3_A            (coreArea_ddr3_io_pad_DDR3_A[13:0]            ), //o
-    .io_pad_DDR3_BA           (coreArea_ddr3_io_pad_DDR3_BA[2:0]            ), //o
-    .io_pad_DDR3_nRAS         (coreArea_ddr3_io_pad_DDR3_nRAS               ), //o
-    .io_pad_DDR3_nCAS         (coreArea_ddr3_io_pad_DDR3_nCAS               ), //o
-    .io_pad_DDR3_nWE          (coreArea_ddr3_io_pad_DDR3_nWE                ), //o
-    .io_pad_DDR3_nCS          (coreArea_ddr3_io_pad_DDR3_nCS                ), //o
-    .io_pad_DDR3_CK           (coreArea_ddr3_io_pad_DDR3_CK                 ), //o
-    .io_pad_DDR3_CKE          (coreArea_ddr3_io_pad_DDR3_CKE                ), //o
-    .io_pad_DDR3_nRESET       (coreArea_ddr3_io_pad_DDR3_nRESET             ), //o
-    .io_pad_DDR3_ODT          (coreArea_ddr3_io_pad_DDR3_ODT                )  //o
+  Ddr3MemtestEngine hostArea_engine (
+    .io_axi_aw_valid          (hostArea_engine_io_axi_aw_valid              ), //o
+    .io_axi_aw_ready          (ddr3_io_axi_aw_ready                         ), //i
+    .io_axi_aw_payload_addr   (hostArea_engine_io_axi_aw_payload_addr[31:0] ), //o
+    .io_axi_aw_payload_id     (hostArea_engine_io_axi_aw_payload_id[3:0]    ), //o
+    .io_axi_aw_payload_region (hostArea_engine_io_axi_aw_payload_region[3:0]), //o
+    .io_axi_aw_payload_len    (hostArea_engine_io_axi_aw_payload_len[7:0]   ), //o
+    .io_axi_aw_payload_size   (hostArea_engine_io_axi_aw_payload_size[2:0]  ), //o
+    .io_axi_aw_payload_burst  (hostArea_engine_io_axi_aw_payload_burst[1:0] ), //o
+    .io_axi_aw_payload_lock   (hostArea_engine_io_axi_aw_payload_lock       ), //o
+    .io_axi_aw_payload_cache  (hostArea_engine_io_axi_aw_payload_cache[3:0] ), //o
+    .io_axi_aw_payload_qos    (hostArea_engine_io_axi_aw_payload_qos[3:0]   ), //o
+    .io_axi_aw_payload_prot   (hostArea_engine_io_axi_aw_payload_prot[2:0]  ), //o
+    .io_axi_w_valid           (hostArea_engine_io_axi_w_valid               ), //o
+    .io_axi_w_ready           (ddr3_io_axi_w_ready                          ), //i
+    .io_axi_w_payload_data    (hostArea_engine_io_axi_w_payload_data[63:0]  ), //o
+    .io_axi_w_payload_strb    (hostArea_engine_io_axi_w_payload_strb[7:0]   ), //o
+    .io_axi_w_payload_last    (hostArea_engine_io_axi_w_payload_last        ), //o
+    .io_axi_b_valid           (ddr3_io_axi_b_valid                          ), //i
+    .io_axi_b_ready           (hostArea_engine_io_axi_b_ready               ), //o
+    .io_axi_b_payload_id      (ddr3_io_axi_b_payload_id[3:0]                ), //i
+    .io_axi_b_payload_resp    (ddr3_io_axi_b_payload_resp[1:0]              ), //i
+    .io_axi_ar_valid          (hostArea_engine_io_axi_ar_valid              ), //o
+    .io_axi_ar_ready          (ddr3_io_axi_ar_ready                         ), //i
+    .io_axi_ar_payload_addr   (hostArea_engine_io_axi_ar_payload_addr[31:0] ), //o
+    .io_axi_ar_payload_id     (hostArea_engine_io_axi_ar_payload_id[3:0]    ), //o
+    .io_axi_ar_payload_region (hostArea_engine_io_axi_ar_payload_region[3:0]), //o
+    .io_axi_ar_payload_len    (hostArea_engine_io_axi_ar_payload_len[7:0]   ), //o
+    .io_axi_ar_payload_size   (hostArea_engine_io_axi_ar_payload_size[2:0]  ), //o
+    .io_axi_ar_payload_burst  (hostArea_engine_io_axi_ar_payload_burst[1:0] ), //o
+    .io_axi_ar_payload_lock   (hostArea_engine_io_axi_ar_payload_lock       ), //o
+    .io_axi_ar_payload_cache  (hostArea_engine_io_axi_ar_payload_cache[3:0] ), //o
+    .io_axi_ar_payload_qos    (hostArea_engine_io_axi_ar_payload_qos[3:0]   ), //o
+    .io_axi_ar_payload_prot   (hostArea_engine_io_axi_ar_payload_prot[2:0]  ), //o
+    .io_axi_r_valid           (ddr3_io_axi_r_valid                          ), //i
+    .io_axi_r_ready           (hostArea_engine_io_axi_r_ready               ), //o
+    .io_axi_r_payload_data    (ddr3_io_axi_r_payload_data[63:0]             ), //i
+    .io_axi_r_payload_id      (ddr3_io_axi_r_payload_id[3:0]                ), //i
+    .io_axi_r_payload_resp    (ddr3_io_axi_r_payload_resp[1:0]              ), //i
+    .io_axi_r_payload_last    (ddr3_io_axi_r_payload_last                   ), //i
+    .io_pll_lock              (ddr3_io_pll_lock                             ), //i
+    .io_init_done             (ddr3_io_status_init_done                     ), //i
+    .io_write_level_done      (ddr3_io_status_write_level_done              ), //i
+    .io_read_calib_done       (ddr3_io_status_read_calib_done               ), //i
+    .io_wstep                 (ddr3_io_status_wstep[7:0]                    ), //i
+    .io_rclkpos               (ddr3_io_status_rclkpos[1:0]                  ), //i
+    .io_rclksel               (ddr3_io_status_rclksel[2:0]                  ), //i
+    .io_best_rot              (ddr3_io_status_best_rot[2:0]                 ), //i
+    .io_best_score            (ddr3_io_status_best_score[3:0]               ), //i
+    .io_dbg_state             (ddr3_io_status_dbg_state[3:0]                ), //i
+    .io_uart_tx               (hostArea_engine_io_uart_tx                   ), //o
+    .io_test_busy             (hostArea_engine_io_test_busy                 ), //o
+    .io_test_pass             (hostArea_engine_io_test_pass                 ), //o
+    .io_test_error            (hostArea_engine_io_test_error                ), //o
+    .io_heartbeat             (hostArea_engine_io_heartbeat                 ), //o
+    .clkoutd                  (ddr3_clkoutd                                 ), //i
+    ._zz_1                    (ddr3__zz_2                                   )  //i
   );
-  Ddr3MemtestEngine coreArea_engine (
-    .io_axi_aw_valid          (coreArea_engine_io_axi_aw_valid              ), //o
-    .io_axi_aw_ready          (coreArea_ddr3_io_axi_aw_ready                ), //i
-    .io_axi_aw_payload_addr   (coreArea_engine_io_axi_aw_payload_addr[31:0] ), //o
-    .io_axi_aw_payload_id     (coreArea_engine_io_axi_aw_payload_id[3:0]    ), //o
-    .io_axi_aw_payload_region (coreArea_engine_io_axi_aw_payload_region[3:0]), //o
-    .io_axi_aw_payload_len    (coreArea_engine_io_axi_aw_payload_len[7:0]   ), //o
-    .io_axi_aw_payload_size   (coreArea_engine_io_axi_aw_payload_size[2:0]  ), //o
-    .io_axi_aw_payload_burst  (coreArea_engine_io_axi_aw_payload_burst[1:0] ), //o
-    .io_axi_aw_payload_lock   (coreArea_engine_io_axi_aw_payload_lock       ), //o
-    .io_axi_aw_payload_cache  (coreArea_engine_io_axi_aw_payload_cache[3:0] ), //o
-    .io_axi_aw_payload_qos    (coreArea_engine_io_axi_aw_payload_qos[3:0]   ), //o
-    .io_axi_aw_payload_prot   (coreArea_engine_io_axi_aw_payload_prot[2:0]  ), //o
-    .io_axi_w_valid           (coreArea_engine_io_axi_w_valid               ), //o
-    .io_axi_w_ready           (coreArea_ddr3_io_axi_w_ready                 ), //i
-    .io_axi_w_payload_data    (coreArea_engine_io_axi_w_payload_data[63:0]  ), //o
-    .io_axi_w_payload_strb    (coreArea_engine_io_axi_w_payload_strb[7:0]   ), //o
-    .io_axi_w_payload_last    (coreArea_engine_io_axi_w_payload_last        ), //o
-    .io_axi_b_valid           (coreArea_ddr3_io_axi_b_valid                 ), //i
-    .io_axi_b_ready           (coreArea_engine_io_axi_b_ready               ), //o
-    .io_axi_b_payload_id      (coreArea_ddr3_io_axi_b_payload_id[3:0]       ), //i
-    .io_axi_b_payload_resp    (coreArea_ddr3_io_axi_b_payload_resp[1:0]     ), //i
-    .io_axi_ar_valid          (coreArea_engine_io_axi_ar_valid              ), //o
-    .io_axi_ar_ready          (coreArea_ddr3_io_axi_ar_ready                ), //i
-    .io_axi_ar_payload_addr   (coreArea_engine_io_axi_ar_payload_addr[31:0] ), //o
-    .io_axi_ar_payload_id     (coreArea_engine_io_axi_ar_payload_id[3:0]    ), //o
-    .io_axi_ar_payload_region (coreArea_engine_io_axi_ar_payload_region[3:0]), //o
-    .io_axi_ar_payload_len    (coreArea_engine_io_axi_ar_payload_len[7:0]   ), //o
-    .io_axi_ar_payload_size   (coreArea_engine_io_axi_ar_payload_size[2:0]  ), //o
-    .io_axi_ar_payload_burst  (coreArea_engine_io_axi_ar_payload_burst[1:0] ), //o
-    .io_axi_ar_payload_lock   (coreArea_engine_io_axi_ar_payload_lock       ), //o
-    .io_axi_ar_payload_cache  (coreArea_engine_io_axi_ar_payload_cache[3:0] ), //o
-    .io_axi_ar_payload_qos    (coreArea_engine_io_axi_ar_payload_qos[3:0]   ), //o
-    .io_axi_ar_payload_prot   (coreArea_engine_io_axi_ar_payload_prot[2:0]  ), //o
-    .io_axi_r_valid           (coreArea_ddr3_io_axi_r_valid                 ), //i
-    .io_axi_r_ready           (coreArea_engine_io_axi_r_ready               ), //o
-    .io_axi_r_payload_data    (coreArea_ddr3_io_axi_r_payload_data[63:0]    ), //i
-    .io_axi_r_payload_id      (coreArea_ddr3_io_axi_r_payload_id[3:0]       ), //i
-    .io_axi_r_payload_resp    (coreArea_ddr3_io_axi_r_payload_resp[1:0]     ), //i
-    .io_axi_r_payload_last    (coreArea_ddr3_io_axi_r_payload_last          ), //i
-    .io_pll_lock              (pll_lock                                     ), //i
-    .io_init_done             (coreArea_ddr3_io_init_done                   ), //i
-    .io_write_level_done      (coreArea_ddr3_io_write_level_done            ), //i
-    .io_read_calib_done       (coreArea_ddr3_io_read_calib_done             ), //i
-    .io_wstep                 (coreArea_ddr3_io_wstep[7:0]                  ), //i
-    .io_rclkpos               (coreArea_ddr3_io_rclkpos[1:0]                ), //i
-    .io_rclksel               (coreArea_ddr3_io_rclksel[2:0]                ), //i
-    .io_best_rot              (coreArea_ddr3_io_best_rot[2:0]               ), //i
-    .io_best_score            (coreArea_ddr3_io_best_score[3:0]             ), //i
-    .io_dbg_state             (coreArea_ddr3_io_dbg_state[3:0]              ), //i
-    .io_uart_tx               (coreArea_engine_io_uart_tx                   ), //o
-    .io_test_busy             (coreArea_engine_io_test_busy                 ), //o
-    .io_test_pass             (coreArea_engine_io_test_pass                 ), //o
-    .io_test_error            (coreArea_engine_io_test_error                ), //o
-    .io_heartbeat             (coreArea_engine_io_heartbeat                 ), //o
-    .clkoutd                  (pll_clkoutd                                  ), //i
-    ._zz_1                    (_zz_1                                        )  //i
-  );
-  initial begin
-    _zz_when_Ddr3TesterTop_l67 = 16'h0;
-  end
-
-  assign when_Ddr3TesterTop_l67 = (pll_lock && (_zz_when_Ddr3TesterTop_l67 != 16'hffff));
-  assign when_Ddr3TesterTop_l69 = (! pll_lock);
-  assign porDone = (_zz_when_Ddr3TesterTop_l67 == 16'hffff);
-  assign globalResetn = (sys_resetn && porDone);
-  assign _zz_1 = (! globalResetn);
-  assign DDR3_DM = coreArea_ddr3_io_pad_DDR3_DM;
-  assign DDR3_A = coreArea_ddr3_io_pad_DDR3_A;
-  assign DDR3_BA = coreArea_ddr3_io_pad_DDR3_BA;
-  assign DDR3_nRAS = coreArea_ddr3_io_pad_DDR3_nRAS;
-  assign DDR3_nCAS = coreArea_ddr3_io_pad_DDR3_nCAS;
-  assign DDR3_nWE = coreArea_ddr3_io_pad_DDR3_nWE;
-  assign DDR3_nCS = coreArea_ddr3_io_pad_DDR3_nCS;
-  assign DDR3_CK = coreArea_ddr3_io_pad_DDR3_CK;
-  assign DDR3_CKE = coreArea_ddr3_io_pad_DDR3_CKE;
-  assign DDR3_nRESET = coreArea_ddr3_io_pad_DDR3_nRESET;
-  assign DDR3_ODT = coreArea_ddr3_io_pad_DDR3_ODT;
-  assign uart_txp = coreArea_engine_io_uart_tx;
+  assign DDR3_DM = ddr3_io_pad_DDR3_DM;
+  assign DDR3_A = ddr3_io_pad_DDR3_A;
+  assign DDR3_BA = ddr3_io_pad_DDR3_BA;
+  assign DDR3_nRAS = ddr3_io_pad_DDR3_nRAS;
+  assign DDR3_nCAS = ddr3_io_pad_DDR3_nCAS;
+  assign DDR3_nWE = ddr3_io_pad_DDR3_nWE;
+  assign DDR3_nCS = ddr3_io_pad_DDR3_nCS;
+  assign DDR3_CK = ddr3_io_pad_DDR3_CK;
+  assign DDR3_CKE = ddr3_io_pad_DDR3_CKE;
+  assign DDR3_nRESET = ddr3_io_pad_DDR3_nRESET;
+  assign DDR3_ODT = ddr3_io_pad_DDR3_ODT;
+  assign uart_txp = hostArea_engine_io_uart_tx;
   always @(*) begin
-    led[0] = (! pll_lock);
-    led[1] = (! coreArea_ddr3_io_init_done);
-    led[2] = (! coreArea_ddr3_io_write_level_done);
-    led[3] = (! coreArea_ddr3_io_read_calib_done);
-    led[4] = (! coreArea_engine_io_heartbeat);
-    led[5] = (! coreArea_engine_io_test_busy);
-    led[6] = (! coreArea_engine_io_test_error);
-    led[7] = (! coreArea_engine_io_test_pass);
+    led[0] = (! ddr3_io_pll_lock);
+    led[1] = (! ddr3_io_status_init_done);
+    led[2] = (! ddr3_io_status_write_level_done);
+    led[3] = (! ddr3_io_status_read_calib_done);
+    led[4] = (! hostArea_engine_io_heartbeat);
+    led[5] = (! hostArea_engine_io_test_busy);
+    led[6] = (! hostArea_engine_io_test_error);
+    led[7] = (! hostArea_engine_io_test_pass);
   end
 
-  assign led2 = (~ coreArea_ddr3_io_wstep);
-  always @(posedge pll_clkoutd) begin
-    if(when_Ddr3TesterTop_l67) begin
-      _zz_when_Ddr3TesterTop_l67 <= (_zz_when_Ddr3TesterTop_l67 + 16'h0001);
-    end else begin
-      if(when_Ddr3TesterTop_l69) begin
-        _zz_when_Ddr3TesterTop_l67 <= 16'h0;
-      end
-    end
-  end
-
+  assign led2 = (~ ddr3_io_status_wstep);
 
 endmodule
 
@@ -343,20 +317,18 @@ module Ddr3MemtestEngine (
   localparam fsm_sPrintCalib = 5'd3;
   localparam fsm_sPrintBanner = 5'd4;
   localparam fsm_sSingleWriteAW = 5'd5;
-  localparam fsm_sSingleWriteW0 = 5'd6;
-  localparam fsm_sSingleWriteW1 = 5'd7;
-  localparam fsm_sSingleWriteB = 5'd8;
-  localparam fsm_sSingleReadAR = 5'd9;
-  localparam fsm_sSingleReadR0 = 5'd10;
-  localparam fsm_sSingleReadR1 = 5'd11;
-  localparam fsm_sBulkWriteAW = 5'd12;
-  localparam fsm_sBulkWriteW = 5'd13;
-  localparam fsm_sBulkWriteB = 5'd14;
-  localparam fsm_sBulkReadAR = 5'd15;
-  localparam fsm_sBulkReadR = 5'd16;
-  localparam fsm_sReportPass = 5'd17;
-  localparam fsm_sReportFail = 5'd18;
-  localparam fsm_sLoopDelay = 5'd19;
+  localparam fsm_sSingleWriteW = 5'd6;
+  localparam fsm_sSingleWriteB = 5'd7;
+  localparam fsm_sSingleReadAR = 5'd8;
+  localparam fsm_sSingleReadR = 5'd9;
+  localparam fsm_sBulkWriteAW = 5'd10;
+  localparam fsm_sBulkWriteW = 5'd11;
+  localparam fsm_sBulkWriteB = 5'd12;
+  localparam fsm_sBulkReadAR = 5'd13;
+  localparam fsm_sBulkReadR = 5'd14;
+  localparam fsm_sReportPass = 5'd15;
+  localparam fsm_sReportFail = 5'd16;
+  localparam fsm_sLoopDelay = 5'd17;
 
   wire                uart_io_write_ready;
   wire                uart_io_txd;
@@ -389,12 +361,21 @@ module Ddr3MemtestEngine (
   wire       [2:0]    _zz_nextPrintChar_21;
   reg        [7:0]    _zz_nextPrintChar_22;
   wire       [3:0]    _zz_nextPrintChar_23;
-  wire       [31:0]   _zz_io_axi_w_payload_data;
-  wire       [31:0]   _zz_io_axi_w_payload_data_1;
-  wire       [10:0]   _zz_when_Ddr3MemtestEngine_l470;
-  wire       [31:0]   _zz__zz_errExpected;
+  reg        [63:0]   _zz_io_axi_w_payload_data_1;
+  reg        [63:0]   _zz__zz_errExpected;
+  wire       [3:0]    _zz_errAddr;
+  wire       [31:0]   _zz__zz_io_axi_w_payload_data;
+  wire       [31:0]   _zz__zz_io_axi_w_payload_data_1;
+  reg        [63:0]   _zz_io_axi_w_payload_data_2;
+  wire       [0:0]    _zz_io_axi_w_payload_data_3;
+  wire       [10:0]   _zz_when_Ddr3MemtestEngine_l448;
   wire       [31:0]   _zz__zz_errExpected_1;
-  wire       [10:0]   _zz_when_Ddr3MemtestEngine_l516;
+  wire       [31:0]   _zz__zz_errExpected_1_1;
+  reg        [63:0]   _zz__zz_errExpected_2;
+  wire       [0:0]    _zz__zz_errExpected_2_1;
+  wire       [31:0]   _zz_errAddr_1;
+  wire       [3:0]    _zz_errAddr_2;
+  wire       [10:0]   _zz_when_Ddr3MemtestEngine_l495;
   reg        [7:0]    _zz_nextPrintChar_24;
   reg        [3:0]    _zz_nextPrintNib;
   reg                 _zz_nextUseNib;
@@ -441,14 +422,16 @@ module Ddr3MemtestEngine (
   reg        [63:0]   errActual1;
   reg        [24:0]   hbCounter;
   reg                 hbReg;
-  wire                when_Ddr3MemtestEngine_l104;
+  wire                when_Ddr3MemtestEngine_l103;
   wire       [7:0]    fullStrb;
   reg        [10:0]   burstIndex;
   reg        [7:0]    beatIdx;
+  reg        [0:0]    singleIdx;
   reg        [31:0]   wrCycleCnt;
   reg        [31:0]   rdCycleCnt;
   wire       [31:0]   currentByteAddr;
   wire       [31:0]   beatBlockAddr;
+  wire       [127:0]  singlePat128;
   wire       [7:0]    passPrefix_0;
   wire       [7:0]    passPrefix_1;
   wire       [7:0]    passPrefix_2;
@@ -472,24 +455,30 @@ module Ddr3MemtestEngine (
   reg        [27:0]   fsm_delayCounter;
   reg        [4:0]    fsm_stateReg;
   reg        [4:0]    fsm_stateNext;
-  wire                when_Ddr3MemtestEngine_l240;
-  wire                when_Ddr3MemtestEngine_l248;
-  wire                when_Ddr3MemtestEngine_l403;
-  wire                when_Ddr3MemtestEngine_l421;
-  wire                when_Ddr3MemtestEngine_l427;
-  wire                when_Ddr3MemtestEngine_l459;
-  wire                when_Ddr3MemtestEngine_l470;
+  wire                when_Ddr3MemtestEngine_l242;
+  wire                when_Ddr3MemtestEngine_l247;
+  wire                when_Ddr3MemtestEngine_l345;
   wire       [63:0]   _zz_errExpected;
-  wire                _zz_when_Ddr3MemtestEngine_l498;
-  wire                when_Ddr3MemtestEngine_l498;
-  wire                when_Ddr3MemtestEngine_l511;
-  wire                when_Ddr3MemtestEngine_l515;
-  wire                when_Ddr3MemtestEngine_l516;
+  wire                _zz_when_Ddr3MemtestEngine_l394;
+  wire                when_Ddr3MemtestEngine_l400;
+  wire                when_Ddr3MemtestEngine_l391;
+  wire                when_Ddr3MemtestEngine_l394;
+  wire                when_Ddr3MemtestEngine_l401;
+  wire       [127:0]  _zz_io_axi_w_payload_data;
+  wire                when_Ddr3MemtestEngine_l437;
+  wire                when_Ddr3MemtestEngine_l448;
+  wire       [127:0]  _zz_errExpected_1;
+  wire       [63:0]   _zz_errExpected_2;
+  wire                _zz_when_Ddr3MemtestEngine_l477;
+  wire                when_Ddr3MemtestEngine_l477;
+  wire                when_Ddr3MemtestEngine_l490;
+  wire                when_Ddr3MemtestEngine_l494;
+  wire                when_Ddr3MemtestEngine_l495;
   wire       [5:0]    _zz_nextPrintChar;
-  wire                when_Ddr3MemtestEngine_l556;
+  wire                when_Ddr3MemtestEngine_l535;
   wire       [6:0]    _zz_nextPrintChar_1;
-  wire                when_Ddr3MemtestEngine_l601;
-  wire                when_Ddr3MemtestEngine_l614;
+  wire                when_Ddr3MemtestEngine_l580;
+  wire                when_Ddr3MemtestEngine_l593;
   `ifndef SYNTHESIS
   reg [111:0] fsm_stateReg_string;
   reg [111:0] fsm_stateNext_string;
@@ -504,12 +493,17 @@ module Ddr3MemtestEngine (
   assign _zz_nextPrintChar_17 = {1'd0, io_rclksel};
   assign _zz_nextPrintChar_21 = io_best_rot;
   assign _zz_nextPrintChar_20 = {1'd0, _zz_nextPrintChar_21};
-  assign _zz_io_axi_w_payload_data = (beatBlockAddr + 32'h00000002);
-  assign _zz_io_axi_w_payload_data_1 = (beatBlockAddr + 32'h00000001);
-  assign _zz_when_Ddr3MemtestEngine_l470 = (burstIndex + 11'h040);
-  assign _zz__zz_errExpected = (beatBlockAddr + 32'h00000002);
-  assign _zz__zz_errExpected_1 = (beatBlockAddr + 32'h00000001);
-  assign _zz_when_Ddr3MemtestEngine_l516 = (burstIndex + 11'h040);
+  assign _zz_errAddr = ({3'd0,singleIdx} <<< 2'd3);
+  assign _zz__zz_io_axi_w_payload_data = (beatBlockAddr + 32'h00000002);
+  assign _zz__zz_io_axi_w_payload_data_1 = (beatBlockAddr + 32'h00000001);
+  assign _zz_io_axi_w_payload_data_3 = beatIdx[0:0];
+  assign _zz_when_Ddr3MemtestEngine_l448 = (burstIndex + 11'h040);
+  assign _zz__zz_errExpected_1 = (beatBlockAddr + 32'h00000002);
+  assign _zz__zz_errExpected_1_1 = (beatBlockAddr + 32'h00000001);
+  assign _zz__zz_errExpected_2_1 = beatIdx[0:0];
+  assign _zz_errAddr_2 = ({3'd0,beatIdx[0 : 0]} <<< 2'd3);
+  assign _zz_errAddr_1 = {28'd0, _zz_errAddr_2};
+  assign _zz_when_Ddr3MemtestEngine_l495 = (burstIndex + 11'h040);
   assign _zz_printChar_1 = stageNib;
   assign _zz_nextPrintChar_3 = io_dbg_state;
   assign _zz_nextPrintChar_5 = io_wstep[7 : 4];
@@ -736,6 +730,33 @@ module Ddr3MemtestEngine (
       4'b1101 : _zz_nextPrintChar_22 = hexAsciiRom_13;
       4'b1110 : _zz_nextPrintChar_22 = hexAsciiRom_14;
       default : _zz_nextPrintChar_22 = hexAsciiRom_15;
+    endcase
+  end
+
+  always @(*) begin
+    case(singleIdx)
+      1'b0 : begin
+        _zz_io_axi_w_payload_data_1 = singlePat128[63 : 0];
+        _zz__zz_errExpected = singlePat128[63 : 0];
+      end
+      default : begin
+        _zz_io_axi_w_payload_data_1 = singlePat128[127 : 64];
+        _zz__zz_errExpected = singlePat128[127 : 64];
+      end
+    endcase
+  end
+
+  always @(*) begin
+    case(_zz_io_axi_w_payload_data_3)
+      1'b0 : _zz_io_axi_w_payload_data_2 = _zz_io_axi_w_payload_data[63 : 0];
+      default : _zz_io_axi_w_payload_data_2 = _zz_io_axi_w_payload_data[127 : 64];
+    endcase
+  end
+
+  always @(*) begin
+    case(_zz__zz_errExpected_2_1)
+      1'b0 : _zz__zz_errExpected_2 = _zz_errExpected_1[63 : 0];
+      default : _zz__zz_errExpected_2 = _zz_errExpected_1[127 : 64];
     endcase
   end
 
@@ -1313,12 +1334,10 @@ module Ddr3MemtestEngine (
       fsm_sPrintCalib : fsm_stateReg_string = "sPrintCalib   ";
       fsm_sPrintBanner : fsm_stateReg_string = "sPrintBanner  ";
       fsm_sSingleWriteAW : fsm_stateReg_string = "sSingleWriteAW";
-      fsm_sSingleWriteW0 : fsm_stateReg_string = "sSingleWriteW0";
-      fsm_sSingleWriteW1 : fsm_stateReg_string = "sSingleWriteW1";
+      fsm_sSingleWriteW : fsm_stateReg_string = "sSingleWriteW ";
       fsm_sSingleWriteB : fsm_stateReg_string = "sSingleWriteB ";
       fsm_sSingleReadAR : fsm_stateReg_string = "sSingleReadAR ";
-      fsm_sSingleReadR0 : fsm_stateReg_string = "sSingleReadR0 ";
-      fsm_sSingleReadR1 : fsm_stateReg_string = "sSingleReadR1 ";
+      fsm_sSingleReadR : fsm_stateReg_string = "sSingleReadR  ";
       fsm_sBulkWriteAW : fsm_stateReg_string = "sBulkWriteAW  ";
       fsm_sBulkWriteW : fsm_stateReg_string = "sBulkWriteW   ";
       fsm_sBulkWriteB : fsm_stateReg_string = "sBulkWriteB   ";
@@ -1338,12 +1357,10 @@ module Ddr3MemtestEngine (
       fsm_sPrintCalib : fsm_stateNext_string = "sPrintCalib   ";
       fsm_sPrintBanner : fsm_stateNext_string = "sPrintBanner  ";
       fsm_sSingleWriteAW : fsm_stateNext_string = "sSingleWriteAW";
-      fsm_sSingleWriteW0 : fsm_stateNext_string = "sSingleWriteW0";
-      fsm_sSingleWriteW1 : fsm_stateNext_string = "sSingleWriteW1";
+      fsm_sSingleWriteW : fsm_stateNext_string = "sSingleWriteW ";
       fsm_sSingleWriteB : fsm_stateNext_string = "sSingleWriteB ";
       fsm_sSingleReadAR : fsm_stateNext_string = "sSingleReadAR ";
-      fsm_sSingleReadR0 : fsm_stateNext_string = "sSingleReadR0 ";
-      fsm_sSingleReadR1 : fsm_stateNext_string = "sSingleReadR1 ";
+      fsm_sSingleReadR : fsm_stateNext_string = "sSingleReadR  ";
       fsm_sBulkWriteAW : fsm_stateNext_string = "sBulkWriteAW  ";
       fsm_sBulkWriteW : fsm_stateNext_string = "sBulkWriteW   ";
       fsm_sBulkWriteB : fsm_stateNext_string = "sBulkWriteB   ";
@@ -1613,17 +1630,13 @@ module Ddr3MemtestEngine (
       end
       fsm_sSingleWriteAW : begin
       end
-      fsm_sSingleWriteW0 : begin
-      end
-      fsm_sSingleWriteW1 : begin
+      fsm_sSingleWriteW : begin
       end
       fsm_sSingleWriteB : begin
       end
       fsm_sSingleReadAR : begin
       end
-      fsm_sSingleReadR0 : begin
-      end
-      fsm_sSingleReadR1 : begin
+      fsm_sSingleReadR : begin
       end
       fsm_sBulkWriteAW : begin
       end
@@ -1637,14 +1650,14 @@ module Ddr3MemtestEngine (
       end
       fsm_sReportPass : begin
         if(canPrint) begin
-          if(when_Ddr3MemtestEngine_l556) begin
+          if(when_Ddr3MemtestEngine_l535) begin
             nextPrintValid = 1'b1;
           end
         end
       end
       fsm_sReportFail : begin
         if(canPrint) begin
-          if(when_Ddr3MemtestEngine_l601) begin
+          if(when_Ddr3MemtestEngine_l580) begin
             nextPrintValid = 1'b1;
           end
         end
@@ -1894,17 +1907,13 @@ module Ddr3MemtestEngine (
       end
       fsm_sSingleWriteAW : begin
       end
-      fsm_sSingleWriteW0 : begin
-      end
-      fsm_sSingleWriteW1 : begin
+      fsm_sSingleWriteW : begin
       end
       fsm_sSingleWriteB : begin
       end
       fsm_sSingleReadAR : begin
       end
-      fsm_sSingleReadR0 : begin
-      end
-      fsm_sSingleReadR1 : begin
+      fsm_sSingleReadR : begin
       end
       fsm_sBulkWriteAW : begin
       end
@@ -1918,14 +1927,14 @@ module Ddr3MemtestEngine (
       end
       fsm_sReportPass : begin
         if(canPrint) begin
-          if(when_Ddr3MemtestEngine_l556) begin
+          if(when_Ddr3MemtestEngine_l535) begin
             nextPrintChar = _zz_nextPrintChar_24;
           end
         end
       end
       fsm_sReportFail : begin
         if(canPrint) begin
-          if(when_Ddr3MemtestEngine_l601) begin
+          if(when_Ddr3MemtestEngine_l580) begin
             nextPrintChar = _zz_nextPrintChar_25;
           end
         end
@@ -1950,17 +1959,13 @@ module Ddr3MemtestEngine (
       end
       fsm_sSingleWriteAW : begin
       end
-      fsm_sSingleWriteW0 : begin
-      end
-      fsm_sSingleWriteW1 : begin
+      fsm_sSingleWriteW : begin
       end
       fsm_sSingleWriteB : begin
       end
       fsm_sSingleReadAR : begin
       end
-      fsm_sSingleReadR0 : begin
-      end
-      fsm_sSingleReadR1 : begin
+      fsm_sSingleReadR : begin
       end
       fsm_sBulkWriteAW : begin
       end
@@ -1974,14 +1979,14 @@ module Ddr3MemtestEngine (
       end
       fsm_sReportPass : begin
         if(canPrint) begin
-          if(when_Ddr3MemtestEngine_l556) begin
+          if(when_Ddr3MemtestEngine_l535) begin
             nextUseNib = _zz_nextUseNib;
           end
         end
       end
       fsm_sReportFail : begin
         if(canPrint) begin
-          if(when_Ddr3MemtestEngine_l601) begin
+          if(when_Ddr3MemtestEngine_l580) begin
             nextUseNib = _zz_nextUseNib_1;
           end
         end
@@ -2006,17 +2011,13 @@ module Ddr3MemtestEngine (
       end
       fsm_sSingleWriteAW : begin
       end
-      fsm_sSingleWriteW0 : begin
-      end
-      fsm_sSingleWriteW1 : begin
+      fsm_sSingleWriteW : begin
       end
       fsm_sSingleWriteB : begin
       end
       fsm_sSingleReadAR : begin
       end
-      fsm_sSingleReadR0 : begin
-      end
-      fsm_sSingleReadR1 : begin
+      fsm_sSingleReadR : begin
       end
       fsm_sBulkWriteAW : begin
       end
@@ -2030,14 +2031,14 @@ module Ddr3MemtestEngine (
       end
       fsm_sReportPass : begin
         if(canPrint) begin
-          if(when_Ddr3MemtestEngine_l556) begin
+          if(when_Ddr3MemtestEngine_l535) begin
             nextPrintNib = _zz_nextPrintNib;
           end
         end
       end
       fsm_sReportFail : begin
         if(canPrint) begin
-          if(when_Ddr3MemtestEngine_l601) begin
+          if(when_Ddr3MemtestEngine_l580) begin
             nextPrintNib = _zz_nextPrintNib_1;
           end
         end
@@ -2055,7 +2056,7 @@ module Ddr3MemtestEngine (
   assign canPrint = ((! printValid) && (! stageValid));
   assign io_test_error = errorReg;
   assign io_test_pass = passReg;
-  assign when_Ddr3MemtestEngine_l104 = (hbCounter == 25'h0);
+  assign when_Ddr3MemtestEngine_l103 = (hbCounter == 25'h0);
   assign io_heartbeat = hbReg;
   always @(*) begin
     io_axi_aw_valid = 1'b0;
@@ -2071,17 +2072,13 @@ module Ddr3MemtestEngine (
       fsm_sSingleWriteAW : begin
         io_axi_aw_valid = 1'b1;
       end
-      fsm_sSingleWriteW0 : begin
-      end
-      fsm_sSingleWriteW1 : begin
+      fsm_sSingleWriteW : begin
       end
       fsm_sSingleWriteB : begin
       end
       fsm_sSingleReadAR : begin
       end
-      fsm_sSingleReadR0 : begin
-      end
-      fsm_sSingleReadR1 : begin
+      fsm_sSingleReadR : begin
       end
       fsm_sBulkWriteAW : begin
         io_axi_aw_valid = 1'b1;
@@ -2119,17 +2116,13 @@ module Ddr3MemtestEngine (
       fsm_sSingleWriteAW : begin
         io_axi_aw_payload_addr = 32'h0;
       end
-      fsm_sSingleWriteW0 : begin
-      end
-      fsm_sSingleWriteW1 : begin
+      fsm_sSingleWriteW : begin
       end
       fsm_sSingleWriteB : begin
       end
       fsm_sSingleReadAR : begin
       end
-      fsm_sSingleReadR0 : begin
-      end
-      fsm_sSingleReadR1 : begin
+      fsm_sSingleReadR : begin
       end
       fsm_sBulkWriteAW : begin
         io_axi_aw_payload_addr = currentByteAddr;
@@ -2166,17 +2159,13 @@ module Ddr3MemtestEngine (
       end
       fsm_sSingleWriteAW : begin
       end
-      fsm_sSingleWriteW0 : begin
-      end
-      fsm_sSingleWriteW1 : begin
+      fsm_sSingleWriteW : begin
       end
       fsm_sSingleWriteB : begin
       end
       fsm_sSingleReadAR : begin
       end
-      fsm_sSingleReadR0 : begin
-      end
-      fsm_sSingleReadR1 : begin
+      fsm_sSingleReadR : begin
       end
       fsm_sBulkWriteAW : begin
         io_axi_aw_payload_len = 8'h7f;
@@ -2222,19 +2211,14 @@ module Ddr3MemtestEngine (
       end
       fsm_sSingleWriteAW : begin
       end
-      fsm_sSingleWriteW0 : begin
-        io_axi_w_valid = 1'b1;
-      end
-      fsm_sSingleWriteW1 : begin
+      fsm_sSingleWriteW : begin
         io_axi_w_valid = 1'b1;
       end
       fsm_sSingleWriteB : begin
       end
       fsm_sSingleReadAR : begin
       end
-      fsm_sSingleReadR0 : begin
-      end
-      fsm_sSingleReadR1 : begin
+      fsm_sSingleReadR : begin
       end
       fsm_sBulkWriteAW : begin
       end
@@ -2271,24 +2255,19 @@ module Ddr3MemtestEngine (
       end
       fsm_sSingleWriteAW : begin
       end
-      fsm_sSingleWriteW0 : begin
-        io_axi_w_payload_data = 64'h0123456789abcdef;
-      end
-      fsm_sSingleWriteW1 : begin
-        io_axi_w_payload_data = 64'hfedcba9876543210;
+      fsm_sSingleWriteW : begin
+        io_axi_w_payload_data = _zz_io_axi_w_payload_data_1;
       end
       fsm_sSingleWriteB : begin
       end
       fsm_sSingleReadAR : begin
       end
-      fsm_sSingleReadR0 : begin
-      end
-      fsm_sSingleReadR1 : begin
+      fsm_sSingleReadR : begin
       end
       fsm_sBulkWriteAW : begin
       end
       fsm_sBulkWriteW : begin
-        io_axi_w_payload_data = (beatIdx[0] ? {(beatBlockAddr ^ 32'h12345678),_zz_io_axi_w_payload_data} : {(beatBlockAddr ^ 32'h5aa55aa5),_zz_io_axi_w_payload_data_1});
+        io_axi_w_payload_data = _zz_io_axi_w_payload_data_2;
       end
       fsm_sBulkWriteB : begin
       end
@@ -2320,19 +2299,14 @@ module Ddr3MemtestEngine (
       end
       fsm_sSingleWriteAW : begin
       end
-      fsm_sSingleWriteW0 : begin
-        io_axi_w_payload_strb = fullStrb;
-      end
-      fsm_sSingleWriteW1 : begin
+      fsm_sSingleWriteW : begin
         io_axi_w_payload_strb = fullStrb;
       end
       fsm_sSingleWriteB : begin
       end
       fsm_sSingleReadAR : begin
       end
-      fsm_sSingleReadR0 : begin
-      end
-      fsm_sSingleReadR1 : begin
+      fsm_sSingleReadR : begin
       end
       fsm_sBulkWriteAW : begin
       end
@@ -2369,19 +2343,14 @@ module Ddr3MemtestEngine (
       end
       fsm_sSingleWriteAW : begin
       end
-      fsm_sSingleWriteW0 : begin
-        io_axi_w_payload_last = 1'b0;
-      end
-      fsm_sSingleWriteW1 : begin
-        io_axi_w_payload_last = 1'b1;
+      fsm_sSingleWriteW : begin
+        io_axi_w_payload_last = when_Ddr3MemtestEngine_l345;
       end
       fsm_sSingleWriteB : begin
       end
       fsm_sSingleReadAR : begin
       end
-      fsm_sSingleReadR0 : begin
-      end
-      fsm_sSingleReadR1 : begin
+      fsm_sSingleReadR : begin
       end
       fsm_sBulkWriteAW : begin
       end
@@ -2419,18 +2388,14 @@ module Ddr3MemtestEngine (
       end
       fsm_sSingleWriteAW : begin
       end
-      fsm_sSingleWriteW0 : begin
-      end
-      fsm_sSingleWriteW1 : begin
+      fsm_sSingleWriteW : begin
       end
       fsm_sSingleWriteB : begin
       end
       fsm_sSingleReadAR : begin
         io_axi_ar_valid = 1'b1;
       end
-      fsm_sSingleReadR0 : begin
-      end
-      fsm_sSingleReadR1 : begin
+      fsm_sSingleReadR : begin
       end
       fsm_sBulkWriteAW : begin
       end
@@ -2467,18 +2432,14 @@ module Ddr3MemtestEngine (
       end
       fsm_sSingleWriteAW : begin
       end
-      fsm_sSingleWriteW0 : begin
-      end
-      fsm_sSingleWriteW1 : begin
+      fsm_sSingleWriteW : begin
       end
       fsm_sSingleWriteB : begin
       end
       fsm_sSingleReadAR : begin
         io_axi_ar_payload_addr = 32'h0;
       end
-      fsm_sSingleReadR0 : begin
-      end
-      fsm_sSingleReadR1 : begin
+      fsm_sSingleReadR : begin
       end
       fsm_sBulkWriteAW : begin
       end
@@ -2515,17 +2476,13 @@ module Ddr3MemtestEngine (
       end
       fsm_sSingleWriteAW : begin
       end
-      fsm_sSingleWriteW0 : begin
-      end
-      fsm_sSingleWriteW1 : begin
+      fsm_sSingleWriteW : begin
       end
       fsm_sSingleWriteB : begin
       end
       fsm_sSingleReadAR : begin
       end
-      fsm_sSingleReadR0 : begin
-      end
-      fsm_sSingleReadR1 : begin
+      fsm_sSingleReadR : begin
       end
       fsm_sBulkWriteAW : begin
       end
@@ -2570,18 +2527,13 @@ module Ddr3MemtestEngine (
       end
       fsm_sSingleWriteAW : begin
       end
-      fsm_sSingleWriteW0 : begin
-      end
-      fsm_sSingleWriteW1 : begin
+      fsm_sSingleWriteW : begin
       end
       fsm_sSingleWriteB : begin
       end
       fsm_sSingleReadAR : begin
       end
-      fsm_sSingleReadR0 : begin
-        io_axi_r_ready = 1'b1;
-      end
-      fsm_sSingleReadR1 : begin
+      fsm_sSingleReadR : begin
         io_axi_r_ready = 1'b1;
       end
       fsm_sBulkWriteAW : begin
@@ -2608,6 +2560,7 @@ module Ddr3MemtestEngine (
 
   assign currentByteAddr = {17'd0, _zz_currentByteAddr};
   assign beatBlockAddr = (currentByteAddr + _zz_beatBlockAddr);
+  assign singlePat128 = {64'hfedcba9876543210,64'h0123456789abcdef};
   assign passPrefix_0 = 8'h5b;
   assign passPrefix_1 = 8'h50;
   assign passPrefix_2 = 8'h41;
@@ -2638,17 +2591,13 @@ module Ddr3MemtestEngine (
       end
       fsm_sSingleWriteAW : begin
       end
-      fsm_sSingleWriteW0 : begin
-      end
-      fsm_sSingleWriteW1 : begin
+      fsm_sSingleWriteW : begin
       end
       fsm_sSingleWriteB : begin
       end
       fsm_sSingleReadAR : begin
       end
-      fsm_sSingleReadR0 : begin
-      end
-      fsm_sSingleReadR1 : begin
+      fsm_sSingleReadR : begin
       end
       fsm_sBulkWriteAW : begin
       end
@@ -2727,10 +2676,10 @@ module Ddr3MemtestEngine (
         end
       end
       fsm_sWaitCalib : begin
-        if(when_Ddr3MemtestEngine_l240) begin
+        if(when_Ddr3MemtestEngine_l242) begin
           fsm_stateNext = fsm_sPrintBanner;
         end else begin
-          if(when_Ddr3MemtestEngine_l248) begin
+          if(when_Ddr3MemtestEngine_l247) begin
             fsm_stateNext = fsm_sPrintCalib;
           end
         end
@@ -2853,17 +2802,14 @@ module Ddr3MemtestEngine (
       end
       fsm_sSingleWriteAW : begin
         if(io_axi_aw_ready) begin
-          fsm_stateNext = fsm_sSingleWriteW0;
+          fsm_stateNext = fsm_sSingleWriteW;
         end
       end
-      fsm_sSingleWriteW0 : begin
+      fsm_sSingleWriteW : begin
         if(io_axi_w_ready) begin
-          fsm_stateNext = fsm_sSingleWriteW1;
-        end
-      end
-      fsm_sSingleWriteW1 : begin
-        if(io_axi_w_ready) begin
-          fsm_stateNext = fsm_sSingleWriteB;
+          if(when_Ddr3MemtestEngine_l345) begin
+            fsm_stateNext = fsm_sSingleWriteB;
+          end
         end
       end
       fsm_sSingleWriteB : begin
@@ -2873,20 +2819,17 @@ module Ddr3MemtestEngine (
       end
       fsm_sSingleReadAR : begin
         if(io_axi_ar_ready) begin
-          fsm_stateNext = fsm_sSingleReadR0;
+          fsm_stateNext = fsm_sSingleReadR;
         end
       end
-      fsm_sSingleReadR0 : begin
+      fsm_sSingleReadR : begin
         if(io_axi_r_valid) begin
-          fsm_stateNext = fsm_sSingleReadR1;
-        end
-      end
-      fsm_sSingleReadR1 : begin
-        if(io_axi_r_valid) begin
-          if(when_Ddr3MemtestEngine_l427) begin
-            fsm_stateNext = fsm_sReportFail;
-          end else begin
-            fsm_stateNext = fsm_sBulkWriteAW;
+          if(when_Ddr3MemtestEngine_l400) begin
+            if(when_Ddr3MemtestEngine_l401) begin
+              fsm_stateNext = fsm_sReportFail;
+            end else begin
+              fsm_stateNext = fsm_sBulkWriteAW;
+            end
           end
         end
       end
@@ -2897,14 +2840,14 @@ module Ddr3MemtestEngine (
       end
       fsm_sBulkWriteW : begin
         if(io_axi_w_ready) begin
-          if(when_Ddr3MemtestEngine_l459) begin
+          if(when_Ddr3MemtestEngine_l437) begin
             fsm_stateNext = fsm_sBulkWriteB;
           end
         end
       end
       fsm_sBulkWriteB : begin
         if(io_axi_b_valid) begin
-          if(when_Ddr3MemtestEngine_l470) begin
+          if(when_Ddr3MemtestEngine_l448) begin
             fsm_stateNext = fsm_sBulkReadAR;
           end else begin
             fsm_stateNext = fsm_sBulkWriteAW;
@@ -2918,11 +2861,11 @@ module Ddr3MemtestEngine (
       end
       fsm_sBulkReadR : begin
         if(io_axi_r_valid) begin
-          if(when_Ddr3MemtestEngine_l511) begin
+          if(when_Ddr3MemtestEngine_l490) begin
             fsm_stateNext = fsm_sReportFail;
           end else begin
-            if(when_Ddr3MemtestEngine_l515) begin
-              if(when_Ddr3MemtestEngine_l516) begin
+            if(when_Ddr3MemtestEngine_l494) begin
+              if(when_Ddr3MemtestEngine_l495) begin
                 fsm_stateNext = fsm_sReportPass;
               end else begin
                 fsm_stateNext = fsm_sBulkReadAR;
@@ -2933,7 +2876,7 @@ module Ddr3MemtestEngine (
       end
       fsm_sReportPass : begin
         if(canPrint) begin
-          if(!when_Ddr3MemtestEngine_l556) begin
+          if(!when_Ddr3MemtestEngine_l535) begin
             fsm_stateNext = fsm_sLoopDelay;
           end
         end
@@ -2941,7 +2884,7 @@ module Ddr3MemtestEngine (
       fsm_sReportFail : begin
       end
       fsm_sLoopDelay : begin
-        if(when_Ddr3MemtestEngine_l614) begin
+        if(when_Ddr3MemtestEngine_l593) begin
           fsm_stateNext = fsm_sBulkWriteAW;
         end
       end
@@ -2956,24 +2899,30 @@ module Ddr3MemtestEngine (
     end
   end
 
-  assign when_Ddr3MemtestEngine_l240 = (((io_pll_lock && io_init_done) && io_write_level_done) && io_read_calib_done);
-  assign when_Ddr3MemtestEngine_l248 = (fsm_delayCounter == 28'h2435b6e);
-  assign when_Ddr3MemtestEngine_l403 = ((! errorReg) && (io_axi_r_payload_data != 64'h0123456789abcdef));
-  assign when_Ddr3MemtestEngine_l421 = ((! errorReg) && (io_axi_r_payload_data != 64'hfedcba9876543210));
-  assign when_Ddr3MemtestEngine_l427 = (errorReg || (io_axi_r_payload_data != 64'hfedcba9876543210));
-  assign when_Ddr3MemtestEngine_l459 = (beatIdx == 8'h7f);
-  assign when_Ddr3MemtestEngine_l470 = (11'h400 <= _zz_when_Ddr3MemtestEngine_l470);
-  assign _zz_errExpected = (beatIdx[0] ? {(beatBlockAddr ^ 32'h12345678),_zz__zz_errExpected} : {(beatBlockAddr ^ 32'h5aa55aa5),_zz__zz_errExpected_1});
-  assign _zz_when_Ddr3MemtestEngine_l498 = (io_axi_r_payload_data != _zz_errExpected);
-  assign when_Ddr3MemtestEngine_l498 = ((! errorReg) && _zz_when_Ddr3MemtestEngine_l498);
-  assign when_Ddr3MemtestEngine_l511 = (errorReg || _zz_when_Ddr3MemtestEngine_l498);
-  assign when_Ddr3MemtestEngine_l515 = (beatIdx == 8'h7f);
-  assign when_Ddr3MemtestEngine_l516 = (11'h400 <= _zz_when_Ddr3MemtestEngine_l516);
+  assign when_Ddr3MemtestEngine_l242 = (((io_pll_lock && io_init_done) && io_write_level_done) && io_read_calib_done);
+  assign when_Ddr3MemtestEngine_l247 = (fsm_delayCounter == 28'h2435b6e);
+  assign when_Ddr3MemtestEngine_l345 = (singleIdx == 1'b1);
+  assign _zz_errExpected = _zz__zz_errExpected;
+  assign _zz_when_Ddr3MemtestEngine_l394 = (io_axi_r_payload_data != _zz_errExpected);
+  assign when_Ddr3MemtestEngine_l400 = (singleIdx == 1'b1);
+  assign when_Ddr3MemtestEngine_l391 = (errorReg && (singleIdx == 1'b1));
+  assign when_Ddr3MemtestEngine_l394 = ((! errorReg) && _zz_when_Ddr3MemtestEngine_l394);
+  assign when_Ddr3MemtestEngine_l401 = (errorReg || _zz_when_Ddr3MemtestEngine_l394);
+  assign _zz_io_axi_w_payload_data = {{(beatBlockAddr ^ 32'h12345678),_zz__zz_io_axi_w_payload_data},{(beatBlockAddr ^ 32'h5aa55aa5),_zz__zz_io_axi_w_payload_data_1}};
+  assign when_Ddr3MemtestEngine_l437 = (beatIdx == 8'h7f);
+  assign when_Ddr3MemtestEngine_l448 = (11'h400 <= _zz_when_Ddr3MemtestEngine_l448);
+  assign _zz_errExpected_1 = {{(beatBlockAddr ^ 32'h12345678),_zz__zz_errExpected_1},{(beatBlockAddr ^ 32'h5aa55aa5),_zz__zz_errExpected_1_1}};
+  assign _zz_errExpected_2 = _zz__zz_errExpected_2;
+  assign _zz_when_Ddr3MemtestEngine_l477 = (io_axi_r_payload_data != _zz_errExpected_2);
+  assign when_Ddr3MemtestEngine_l477 = ((! errorReg) && _zz_when_Ddr3MemtestEngine_l477);
+  assign when_Ddr3MemtestEngine_l490 = (errorReg || _zz_when_Ddr3MemtestEngine_l477);
+  assign when_Ddr3MemtestEngine_l494 = (beatIdx == 8'h7f);
+  assign when_Ddr3MemtestEngine_l495 = (11'h400 <= _zz_when_Ddr3MemtestEngine_l495);
   assign _zz_nextPrintChar = fsm_msgIndex[5:0];
-  assign when_Ddr3MemtestEngine_l556 = (fsm_msgIndex < 7'h23);
+  assign when_Ddr3MemtestEngine_l535 = (fsm_msgIndex < 7'h23);
   assign _zz_nextPrintChar_1 = fsm_msgIndex;
-  assign when_Ddr3MemtestEngine_l601 = (fsm_msgIndex < 7'h4c);
-  assign when_Ddr3MemtestEngine_l614 = (fsm_delayCounter == 28'h00b964f);
+  assign when_Ddr3MemtestEngine_l580 = (fsm_msgIndex < 7'h4c);
+  assign when_Ddr3MemtestEngine_l593 = (fsm_delayCounter == 28'h00b964f);
   always @(posedge clkoutd or posedge _zz_1) begin
     if(_zz_1) begin
       stageValid <= 1'b0;
@@ -2993,6 +2942,7 @@ module Ddr3MemtestEngine (
       hbReg <= 1'b0;
       burstIndex <= 11'h0;
       beatIdx <= 8'h0;
+      singleIdx <= 1'b0;
       wrCycleCnt <= 32'h0;
       rdCycleCnt <= 32'h0;
       fsm_msgIndex <= 7'h0;
@@ -3011,7 +2961,7 @@ module Ddr3MemtestEngine (
         printValid <= 1'b1;
       end
       hbCounter <= (hbCounter + 25'h0000001);
-      if(when_Ddr3MemtestEngine_l104) begin
+      if(when_Ddr3MemtestEngine_l103) begin
         hbReg <= (! hbReg);
       end
       fsm_stateReg <= fsm_stateNext;
@@ -3087,11 +3037,11 @@ module Ddr3MemtestEngine (
           end
         end
         fsm_sWaitCalib : begin
-          if(when_Ddr3MemtestEngine_l240) begin
+          if(when_Ddr3MemtestEngine_l242) begin
             fsm_msgIndex <= 7'h0;
           end else begin
             fsm_delayCounter <= (fsm_delayCounter + 28'h0000001);
-            if(when_Ddr3MemtestEngine_l248) begin
+            if(when_Ddr3MemtestEngine_l247) begin
               fsm_delayCounter <= 28'h0;
               fsm_msgIndex <= 7'h0;
             end
@@ -3263,42 +3213,45 @@ module Ddr3MemtestEngine (
           end
         end
         fsm_sSingleWriteAW : begin
+          if(io_axi_aw_ready) begin
+            singleIdx <= 1'b0;
+          end
         end
-        fsm_sSingleWriteW0 : begin
-        end
-        fsm_sSingleWriteW1 : begin
+        fsm_sSingleWriteW : begin
+          if(io_axi_w_ready) begin
+            if(!when_Ddr3MemtestEngine_l345) begin
+              singleIdx <= (singleIdx + 1'b1);
+            end
+          end
         end
         fsm_sSingleWriteB : begin
         end
         fsm_sSingleReadAR : begin
-        end
-        fsm_sSingleReadR0 : begin
-          if(io_axi_r_valid) begin
-            if(when_Ddr3MemtestEngine_l403) begin
-              errorReg <= 1'b1;
-              errAddr <= 32'h0;
-              errExpected <= 64'h0123456789abcdef;
-              errActual <= io_axi_r_payload_data;
-            end
+          if(io_axi_ar_ready) begin
+            singleIdx <= 1'b0;
           end
         end
-        fsm_sSingleReadR1 : begin
+        fsm_sSingleReadR : begin
           if(io_axi_r_valid) begin
-            if(errorReg) begin
+            if(when_Ddr3MemtestEngine_l391) begin
               errActual1 <= io_axi_r_payload_data;
             end
-            if(when_Ddr3MemtestEngine_l421) begin
+            if(when_Ddr3MemtestEngine_l394) begin
               errorReg <= 1'b1;
-              errAddr <= 32'h00000008;
-              errExpected <= 64'hfedcba9876543210;
+              errAddr <= {28'd0, _zz_errAddr};
+              errExpected <= _zz_errExpected;
               errActual <= io_axi_r_payload_data;
             end
-            if(when_Ddr3MemtestEngine_l427) begin
-              fsm_msgIndex <= 7'h0;
+            if(when_Ddr3MemtestEngine_l400) begin
+              if(when_Ddr3MemtestEngine_l401) begin
+                fsm_msgIndex <= 7'h0;
+              end else begin
+                burstIndex <= 11'h0;
+                wrCycleCnt <= 32'h0;
+                rdCycleCnt <= 32'h0;
+              end
             end else begin
-              burstIndex <= 11'h0;
-              wrCycleCnt <= 32'h0;
-              rdCycleCnt <= 32'h0;
+              singleIdx <= (singleIdx + 1'b1);
             end
           end
         end
@@ -3311,7 +3264,7 @@ module Ddr3MemtestEngine (
         fsm_sBulkWriteW : begin
           wrCycleCnt <= (wrCycleCnt + 32'h00000001);
           if(io_axi_w_ready) begin
-            if(!when_Ddr3MemtestEngine_l459) begin
+            if(!when_Ddr3MemtestEngine_l437) begin
               beatIdx <= (beatIdx + 8'h01);
             end
           end
@@ -3319,7 +3272,7 @@ module Ddr3MemtestEngine (
         fsm_sBulkWriteB : begin
           wrCycleCnt <= (wrCycleCnt + 32'h00000001);
           if(io_axi_b_valid) begin
-            if(when_Ddr3MemtestEngine_l470) begin
+            if(when_Ddr3MemtestEngine_l448) begin
               burstIndex <= 11'h0;
               rdCycleCnt <= 32'h0;
             end else begin
@@ -3336,17 +3289,17 @@ module Ddr3MemtestEngine (
         fsm_sBulkReadR : begin
           rdCycleCnt <= (rdCycleCnt + 32'h00000001);
           if(io_axi_r_valid) begin
-            if(when_Ddr3MemtestEngine_l498) begin
+            if(when_Ddr3MemtestEngine_l477) begin
               errorReg <= 1'b1;
-              errAddr <= (beatBlockAddr + (beatIdx[0] ? 32'h00000008 : 32'h0));
-              errExpected <= _zz_errExpected;
+              errAddr <= (beatBlockAddr + _zz_errAddr_1);
+              errExpected <= _zz_errExpected_2;
               errActual <= io_axi_r_payload_data;
             end
-            if(when_Ddr3MemtestEngine_l511) begin
+            if(when_Ddr3MemtestEngine_l490) begin
               fsm_msgIndex <= 7'h0;
             end else begin
-              if(when_Ddr3MemtestEngine_l515) begin
-                if(when_Ddr3MemtestEngine_l516) begin
+              if(when_Ddr3MemtestEngine_l494) begin
+                if(when_Ddr3MemtestEngine_l495) begin
                   fsm_msgIndex <= 7'h0;
                 end else begin
                   burstIndex <= (burstIndex + 11'h040);
@@ -3360,7 +3313,7 @@ module Ddr3MemtestEngine (
         fsm_sReportPass : begin
           passReg <= 1'b1;
           if(canPrint) begin
-            if(when_Ddr3MemtestEngine_l556) begin
+            if(when_Ddr3MemtestEngine_l535) begin
               fsm_msgIndex <= (fsm_msgIndex + 7'h01);
             end else begin
               passCount <= (passCount + 16'h0001);
@@ -3370,14 +3323,14 @@ module Ddr3MemtestEngine (
         end
         fsm_sReportFail : begin
           if(canPrint) begin
-            if(when_Ddr3MemtestEngine_l601) begin
+            if(when_Ddr3MemtestEngine_l580) begin
               fsm_msgIndex <= (fsm_msgIndex + 7'h01);
             end
           end
         end
         fsm_sLoopDelay : begin
           fsm_delayCounter <= (fsm_delayCounter + 28'h0000001);
-          if(when_Ddr3MemtestEngine_l614) begin
+          if(when_Ddr3MemtestEngine_l593) begin
             burstIndex <= 11'h0;
             wrCycleCnt <= 32'h0;
             rdCycleCnt <= 32'h0;
@@ -3386,6 +3339,348 @@ module Ddr3MemtestEngine (
         default : begin
         end
       endcase
+    end
+  end
+
+
+endmodule
+
+module TangPrimer20kDdr3 (
+  input  wire          io_sys_clk,
+  input  wire          io_sys_resetn,
+  output wire          io_clk_out,
+  output wire          io_rstn_out,
+  output wire          io_pll_lock,
+  output wire          io_init_done,
+  output wire          io_status_init_done,
+  output wire          io_status_write_level_done,
+  output wire          io_status_read_calib_done,
+  output wire [7:0]    io_status_wstep,
+  output wire [1:0]    io_status_rclkpos,
+  output wire [2:0]    io_status_rclksel,
+  output wire [2:0]    io_status_best_rot,
+  output wire [3:0]    io_status_best_score,
+  output wire [3:0]    io_status_dbg_state,
+  input  wire          io_axi_aw_valid,
+  output wire          io_axi_aw_ready,
+  input  wire [31:0]   io_axi_aw_payload_addr,
+  input  wire [3:0]    io_axi_aw_payload_id,
+  input  wire [3:0]    io_axi_aw_payload_region,
+  input  wire [7:0]    io_axi_aw_payload_len,
+  input  wire [2:0]    io_axi_aw_payload_size,
+  input  wire [1:0]    io_axi_aw_payload_burst,
+  input  wire [0:0]    io_axi_aw_payload_lock,
+  input  wire [3:0]    io_axi_aw_payload_cache,
+  input  wire [3:0]    io_axi_aw_payload_qos,
+  input  wire [2:0]    io_axi_aw_payload_prot,
+  input  wire          io_axi_w_valid,
+  output wire          io_axi_w_ready,
+  input  wire [63:0]   io_axi_w_payload_data,
+  input  wire [7:0]    io_axi_w_payload_strb,
+  input  wire          io_axi_w_payload_last,
+  output wire          io_axi_b_valid,
+  input  wire          io_axi_b_ready,
+  output wire [3:0]    io_axi_b_payload_id,
+  output wire [1:0]    io_axi_b_payload_resp,
+  input  wire          io_axi_ar_valid,
+  output wire          io_axi_ar_ready,
+  input  wire [31:0]   io_axi_ar_payload_addr,
+  input  wire [3:0]    io_axi_ar_payload_id,
+  input  wire [3:0]    io_axi_ar_payload_region,
+  input  wire [7:0]    io_axi_ar_payload_len,
+  input  wire [2:0]    io_axi_ar_payload_size,
+  input  wire [1:0]    io_axi_ar_payload_burst,
+  input  wire [0:0]    io_axi_ar_payload_lock,
+  input  wire [3:0]    io_axi_ar_payload_cache,
+  input  wire [3:0]    io_axi_ar_payload_qos,
+  input  wire [2:0]    io_axi_ar_payload_prot,
+  output wire          io_axi_r_valid,
+  input  wire          io_axi_r_ready,
+  output wire [63:0]   io_axi_r_payload_data,
+  output wire [3:0]    io_axi_r_payload_id,
+  output wire [1:0]    io_axi_r_payload_resp,
+  output wire          io_axi_r_payload_last,
+  inout  wire [15:0]   io_pad_DDR3_DQ,
+  inout  wire [1:0]    io_pad_DDR3_DQS,
+  output wire [1:0]    io_pad_DDR3_DM,
+  output wire [13:0]   io_pad_DDR3_A,
+  output wire [2:0]    io_pad_DDR3_BA,
+  output wire          io_pad_DDR3_nRAS,
+  output wire          io_pad_DDR3_nCAS,
+  output wire          io_pad_DDR3_nWE,
+  output wire          io_pad_DDR3_nCS,
+  output wire          io_pad_DDR3_CK,
+  output wire          io_pad_DDR3_CKE,
+  output wire          io_pad_DDR3_nRESET,
+  output wire          io_pad_DDR3_ODT,
+  output wire          clkoutd,
+  output wire          _zz_2
+);
+
+  wire                pll_clkout;
+  wire                pll_clkoutp;
+  wire                pll_clkoutd;
+  wire                pll_lock;
+  wire                ddr3_io_axi_ar_ready;
+  wire                ddr3_io_axi_aw_ready;
+  wire                ddr3_io_axi_w_ready;
+  wire                ddr3_io_axi_r_valid;
+  wire       [63:0]   ddr3_io_axi_r_payload_data;
+  wire       [3:0]    ddr3_io_axi_r_payload_id;
+  wire       [1:0]    ddr3_io_axi_r_payload_resp;
+  wire                ddr3_io_axi_r_payload_last;
+  wire                ddr3_io_axi_b_valid;
+  wire       [3:0]    ddr3_io_axi_b_payload_id;
+  wire       [1:0]    ddr3_io_axi_b_payload_resp;
+  wire                ddr3_io_init_done;
+  wire                ddr3_io_write_level_done;
+  wire                ddr3_io_read_calib_done;
+  wire       [7:0]    ddr3_io_wstep;
+  wire       [1:0]    ddr3_io_rclkpos;
+  wire       [2:0]    ddr3_io_rclksel;
+  wire       [2:0]    ddr3_io_best_rot;
+  wire       [3:0]    ddr3_io_best_score;
+  wire       [3:0]    ddr3_io_dbg_state;
+  wire       [1:0]    ddr3_io_pad_DDR3_DM;
+  wire       [13:0]   ddr3_io_pad_DDR3_A;
+  wire       [2:0]    ddr3_io_pad_DDR3_BA;
+  wire                ddr3_io_pad_DDR3_nRAS;
+  wire                ddr3_io_pad_DDR3_nCAS;
+  wire                ddr3_io_pad_DDR3_nWE;
+  wire                ddr3_io_pad_DDR3_nCS;
+  wire                ddr3_io_pad_DDR3_CK;
+  wire                ddr3_io_pad_DDR3_CKE;
+  wire                ddr3_io_pad_DDR3_nRESET;
+  wire                ddr3_io_pad_DDR3_ODT;
+  reg        [15:0]   _zz_when_TangPrimer20kDdr3_l58;
+  wire                when_TangPrimer20kDdr3_l58;
+  wire                when_TangPrimer20kDdr3_l60;
+  wire                porDone;
+  wire                globalResetn;
+  wire                _zz_1;
+
+  Gowin_rPLL pll (
+    .clkin   (io_sys_clk ), //i
+    .clkout  (pll_clkout ), //o
+    .clkoutp (pll_clkoutp), //o
+    .clkoutd (pll_clkoutd), //o
+    .lock    (pll_lock   )  //o
+  );
+  Ddr3Axi4 ddr3 (
+    .io_pclk                  (pll_clkoutd                     ), //i
+    .io_fclk                  (pll_clkout                      ), //i
+    .io_ck                    (pll_clkoutp                     ), //i
+    .io_resetn                (globalResetn                    ), //i
+    .io_axi_aw_valid          (io_axi_aw_valid                 ), //i
+    .io_axi_aw_ready          (ddr3_io_axi_aw_ready            ), //o
+    .io_axi_aw_payload_addr   (io_axi_aw_payload_addr[31:0]    ), //i
+    .io_axi_aw_payload_id     (io_axi_aw_payload_id[3:0]       ), //i
+    .io_axi_aw_payload_region (io_axi_aw_payload_region[3:0]   ), //i
+    .io_axi_aw_payload_len    (io_axi_aw_payload_len[7:0]      ), //i
+    .io_axi_aw_payload_size   (io_axi_aw_payload_size[2:0]     ), //i
+    .io_axi_aw_payload_burst  (io_axi_aw_payload_burst[1:0]    ), //i
+    .io_axi_aw_payload_lock   (io_axi_aw_payload_lock          ), //i
+    .io_axi_aw_payload_cache  (io_axi_aw_payload_cache[3:0]    ), //i
+    .io_axi_aw_payload_qos    (io_axi_aw_payload_qos[3:0]      ), //i
+    .io_axi_aw_payload_prot   (io_axi_aw_payload_prot[2:0]     ), //i
+    .io_axi_w_valid           (io_axi_w_valid                  ), //i
+    .io_axi_w_ready           (ddr3_io_axi_w_ready             ), //o
+    .io_axi_w_payload_data    (io_axi_w_payload_data[63:0]     ), //i
+    .io_axi_w_payload_strb    (io_axi_w_payload_strb[7:0]      ), //i
+    .io_axi_w_payload_last    (io_axi_w_payload_last           ), //i
+    .io_axi_b_valid           (ddr3_io_axi_b_valid             ), //o
+    .io_axi_b_ready           (io_axi_b_ready                  ), //i
+    .io_axi_b_payload_id      (ddr3_io_axi_b_payload_id[3:0]   ), //o
+    .io_axi_b_payload_resp    (ddr3_io_axi_b_payload_resp[1:0] ), //o
+    .io_axi_ar_valid          (io_axi_ar_valid                 ), //i
+    .io_axi_ar_ready          (ddr3_io_axi_ar_ready            ), //o
+    .io_axi_ar_payload_addr   (io_axi_ar_payload_addr[31:0]    ), //i
+    .io_axi_ar_payload_id     (io_axi_ar_payload_id[3:0]       ), //i
+    .io_axi_ar_payload_region (io_axi_ar_payload_region[3:0]   ), //i
+    .io_axi_ar_payload_len    (io_axi_ar_payload_len[7:0]      ), //i
+    .io_axi_ar_payload_size   (io_axi_ar_payload_size[2:0]     ), //i
+    .io_axi_ar_payload_burst  (io_axi_ar_payload_burst[1:0]    ), //i
+    .io_axi_ar_payload_lock   (io_axi_ar_payload_lock          ), //i
+    .io_axi_ar_payload_cache  (io_axi_ar_payload_cache[3:0]    ), //i
+    .io_axi_ar_payload_qos    (io_axi_ar_payload_qos[3:0]      ), //i
+    .io_axi_ar_payload_prot   (io_axi_ar_payload_prot[2:0]     ), //i
+    .io_axi_r_valid           (ddr3_io_axi_r_valid             ), //o
+    .io_axi_r_ready           (io_axi_r_ready                  ), //i
+    .io_axi_r_payload_data    (ddr3_io_axi_r_payload_data[63:0]), //o
+    .io_axi_r_payload_id      (ddr3_io_axi_r_payload_id[3:0]   ), //o
+    .io_axi_r_payload_resp    (ddr3_io_axi_r_payload_resp[1:0] ), //o
+    .io_axi_r_payload_last    (ddr3_io_axi_r_payload_last      ), //o
+    .io_init_done             (ddr3_io_init_done               ), //o
+    .io_write_level_done      (ddr3_io_write_level_done        ), //o
+    .io_read_calib_done       (ddr3_io_read_calib_done         ), //o
+    .io_wstep                 (ddr3_io_wstep[7:0]              ), //o
+    .io_rclkpos               (ddr3_io_rclkpos[1:0]            ), //o
+    .io_rclksel               (ddr3_io_rclksel[2:0]            ), //o
+    .io_best_rot              (ddr3_io_best_rot[2:0]           ), //o
+    .io_best_score            (ddr3_io_best_score[3:0]         ), //o
+    .io_dbg_state             (ddr3_io_dbg_state[3:0]          ), //o
+    .io_pad_DDR3_DQ           (io_pad_DDR3_DQ                  ), //~
+    .io_pad_DDR3_DQS          (io_pad_DDR3_DQS                 ), //~
+    .io_pad_DDR3_DM           (ddr3_io_pad_DDR3_DM[1:0]        ), //o
+    .io_pad_DDR3_A            (ddr3_io_pad_DDR3_A[13:0]        ), //o
+    .io_pad_DDR3_BA           (ddr3_io_pad_DDR3_BA[2:0]        ), //o
+    .io_pad_DDR3_nRAS         (ddr3_io_pad_DDR3_nRAS           ), //o
+    .io_pad_DDR3_nCAS         (ddr3_io_pad_DDR3_nCAS           ), //o
+    .io_pad_DDR3_nWE          (ddr3_io_pad_DDR3_nWE            ), //o
+    .io_pad_DDR3_nCS          (ddr3_io_pad_DDR3_nCS            ), //o
+    .io_pad_DDR3_CK           (ddr3_io_pad_DDR3_CK             ), //o
+    .io_pad_DDR3_CKE          (ddr3_io_pad_DDR3_CKE            ), //o
+    .io_pad_DDR3_nRESET       (ddr3_io_pad_DDR3_nRESET         ), //o
+    .io_pad_DDR3_ODT          (ddr3_io_pad_DDR3_ODT            )  //o
+  );
+  initial begin
+    _zz_when_TangPrimer20kDdr3_l58 = 16'h0;
+  end
+
+  assign when_TangPrimer20kDdr3_l58 = (pll_lock && (_zz_when_TangPrimer20kDdr3_l58 != 16'hffff));
+  assign when_TangPrimer20kDdr3_l60 = (! pll_lock);
+  assign porDone = (_zz_when_TangPrimer20kDdr3_l58 == 16'hffff);
+  assign globalResetn = (io_sys_resetn && porDone);
+  assign io_clk_out = pll_clkoutd;
+  assign io_rstn_out = globalResetn;
+  assign io_pll_lock = pll_lock;
+  assign _zz_1 = (! globalResetn);
+  assign io_axi_aw_ready = ddr3_io_axi_aw_ready;
+  assign io_axi_w_ready = ddr3_io_axi_w_ready;
+  assign io_axi_b_valid = ddr3_io_axi_b_valid;
+  assign io_axi_b_payload_id = ddr3_io_axi_b_payload_id;
+  assign io_axi_b_payload_resp = ddr3_io_axi_b_payload_resp;
+  assign io_axi_ar_ready = ddr3_io_axi_ar_ready;
+  assign io_axi_r_valid = ddr3_io_axi_r_valid;
+  assign io_axi_r_payload_data = ddr3_io_axi_r_payload_data;
+  assign io_axi_r_payload_id = ddr3_io_axi_r_payload_id;
+  assign io_axi_r_payload_resp = ddr3_io_axi_r_payload_resp;
+  assign io_axi_r_payload_last = ddr3_io_axi_r_payload_last;
+  assign io_pad_DDR3_DM = ddr3_io_pad_DDR3_DM;
+  assign io_pad_DDR3_A = ddr3_io_pad_DDR3_A;
+  assign io_pad_DDR3_BA = ddr3_io_pad_DDR3_BA;
+  assign io_pad_DDR3_nRAS = ddr3_io_pad_DDR3_nRAS;
+  assign io_pad_DDR3_nCAS = ddr3_io_pad_DDR3_nCAS;
+  assign io_pad_DDR3_nWE = ddr3_io_pad_DDR3_nWE;
+  assign io_pad_DDR3_nCS = ddr3_io_pad_DDR3_nCS;
+  assign io_pad_DDR3_CK = ddr3_io_pad_DDR3_CK;
+  assign io_pad_DDR3_CKE = ddr3_io_pad_DDR3_CKE;
+  assign io_pad_DDR3_nRESET = ddr3_io_pad_DDR3_nRESET;
+  assign io_pad_DDR3_ODT = ddr3_io_pad_DDR3_ODT;
+  assign io_init_done = ddr3_io_init_done;
+  assign io_status_init_done = ddr3_io_init_done;
+  assign io_status_write_level_done = ddr3_io_write_level_done;
+  assign io_status_read_calib_done = ddr3_io_read_calib_done;
+  assign io_status_wstep = ddr3_io_wstep;
+  assign io_status_rclkpos = ddr3_io_rclkpos;
+  assign io_status_rclksel = ddr3_io_rclksel;
+  assign io_status_best_rot = ddr3_io_best_rot;
+  assign io_status_best_score = ddr3_io_best_score;
+  assign io_status_dbg_state = ddr3_io_dbg_state;
+  assign clkoutd = pll_clkoutd;
+  assign _zz_2 = _zz_1;
+  always @(posedge pll_clkoutd) begin
+    if(when_TangPrimer20kDdr3_l58) begin
+      _zz_when_TangPrimer20kDdr3_l58 <= (_zz_when_TangPrimer20kDdr3_l58 + 16'h0001);
+    end else begin
+      if(when_TangPrimer20kDdr3_l60) begin
+        _zz_when_TangPrimer20kDdr3_l58 <= 16'h0;
+      end
+    end
+  end
+
+
+endmodule
+
+module UartTx (
+  input  wire          io_write_valid,
+  output wire          io_write_ready,
+  input  wire [7:0]    io_write_payload,
+  output wire          io_txd,
+  output wire          io_busy,
+  input  wire          clkoutd,
+  input  wire          _zz_1
+);
+
+  reg        [9:0]    bitCounter;
+  wire                bitTick;
+  reg        [3:0]    state;
+  reg        [7:0]    shiftReg;
+  reg                 txdReg;
+  wire                when_UartTx_l40;
+
+  assign bitTick = (bitCounter == 10'h292);
+  assign io_busy = (state != 4'b0000);
+  assign io_write_ready = (state == 4'b0000);
+  assign io_txd = txdReg;
+  assign when_UartTx_l40 = (state == 4'b0000);
+  always @(posedge clkoutd or posedge _zz_1) begin
+    if(_zz_1) begin
+      bitCounter <= 10'h0;
+      state <= 4'b0000;
+      shiftReg <= 8'h0;
+      txdReg <= 1'b1;
+    end else begin
+      if(bitTick) begin
+        bitCounter <= 10'h0;
+      end else begin
+        bitCounter <= (bitCounter + 10'h001);
+      end
+      if(when_UartTx_l40) begin
+        txdReg <= 1'b1;
+        if(io_write_valid) begin
+          shiftReg <= io_write_payload;
+          state <= 4'b0001;
+          bitCounter <= 10'h0;
+        end
+      end else begin
+        if(bitTick) begin
+          case(state)
+            4'b0001 : begin
+              txdReg <= 1'b0;
+              state <= 4'b0010;
+            end
+            4'b0010 : begin
+              txdReg <= shiftReg[0];
+              state <= 4'b0011;
+            end
+            4'b0011 : begin
+              txdReg <= shiftReg[1];
+              state <= 4'b0100;
+            end
+            4'b0100 : begin
+              txdReg <= shiftReg[2];
+              state <= 4'b0101;
+            end
+            4'b0101 : begin
+              txdReg <= shiftReg[3];
+              state <= 4'b0110;
+            end
+            4'b0110 : begin
+              txdReg <= shiftReg[4];
+              state <= 4'b0111;
+            end
+            4'b0111 : begin
+              txdReg <= shiftReg[5];
+              state <= 4'b1000;
+            end
+            4'b1000 : begin
+              txdReg <= shiftReg[6];
+              state <= 4'b1001;
+            end
+            4'b1001 : begin
+              txdReg <= shiftReg[7];
+              state <= 4'b1010;
+            end
+            4'b1010 : begin
+              txdReg <= 1'b1;
+              state <= 4'b0000;
+            end
+            default : begin
+            end
+          endcase
+        end
+      end
     end
   end
 
@@ -3621,101 +3916,6 @@ module Ddr3Axi4 (
   assign io_best_rot = area_ctrl_io_best_rot;
   assign io_best_score = area_ctrl_io_best_score;
   assign io_dbg_state = area_ctrl_io_dbg_state;
-
-endmodule
-
-module UartTx (
-  input  wire          io_write_valid,
-  output wire          io_write_ready,
-  input  wire [7:0]    io_write_payload,
-  output wire          io_txd,
-  output wire          io_busy,
-  input  wire          clkoutd,
-  input  wire          _zz_1
-);
-
-  reg        [9:0]    bitCounter;
-  wire                bitTick;
-  reg        [3:0]    state;
-  reg        [7:0]    shiftReg;
-  reg                 txdReg;
-  wire                when_UartTx_l40;
-
-  assign bitTick = (bitCounter == 10'h292);
-  assign io_busy = (state != 4'b0000);
-  assign io_write_ready = (state == 4'b0000);
-  assign io_txd = txdReg;
-  assign when_UartTx_l40 = (state == 4'b0000);
-  always @(posedge clkoutd or posedge _zz_1) begin
-    if(_zz_1) begin
-      bitCounter <= 10'h0;
-      state <= 4'b0000;
-      shiftReg <= 8'h0;
-      txdReg <= 1'b1;
-    end else begin
-      if(bitTick) begin
-        bitCounter <= 10'h0;
-      end else begin
-        bitCounter <= (bitCounter + 10'h001);
-      end
-      if(when_UartTx_l40) begin
-        txdReg <= 1'b1;
-        if(io_write_valid) begin
-          shiftReg <= io_write_payload;
-          state <= 4'b0001;
-          bitCounter <= 10'h0;
-        end
-      end else begin
-        if(bitTick) begin
-          case(state)
-            4'b0001 : begin
-              txdReg <= 1'b0;
-              state <= 4'b0010;
-            end
-            4'b0010 : begin
-              txdReg <= shiftReg[0];
-              state <= 4'b0011;
-            end
-            4'b0011 : begin
-              txdReg <= shiftReg[1];
-              state <= 4'b0100;
-            end
-            4'b0100 : begin
-              txdReg <= shiftReg[2];
-              state <= 4'b0101;
-            end
-            4'b0101 : begin
-              txdReg <= shiftReg[3];
-              state <= 4'b0110;
-            end
-            4'b0110 : begin
-              txdReg <= shiftReg[4];
-              state <= 4'b0111;
-            end
-            4'b0111 : begin
-              txdReg <= shiftReg[5];
-              state <= 4'b1000;
-            end
-            4'b1000 : begin
-              txdReg <= shiftReg[6];
-              state <= 4'b1001;
-            end
-            4'b1001 : begin
-              txdReg <= shiftReg[7];
-              state <= 4'b1010;
-            end
-            4'b1010 : begin
-              txdReg <= 1'b1;
-              state <= 4'b0000;
-            end
-            default : begin
-            end
-          endcase
-        end
-      end
-    end
-  end
-
 
 endmodule
 
@@ -4099,8 +4299,9 @@ module Ddr3Axi4Bridge (
   wire       [127:0]  wFifo_io_pop_payload_data;
   wire       [15:0]   wFifo_io_pop_payload_strb;
   wire       [4:0]    wFifo_io_occupancy;
-  wire       [8:0]    _zz_when_Ddr3Axi4Bridge_l102;
-  wire       [4:0]    _zz_when_Ddr3Axi4Bridge_l102_1;
+  reg        [63:0]   _zz_rOutData;
+  wire       [8:0]    _zz_when_Ddr3Axi4Bridge_l106;
+  wire       [4:0]    _zz_when_Ddr3Axi4Bridge_l106_1;
   wire       [27:0]   _zz_outReq_payload_addr;
   wire       [27:0]   _zz_outReq_payload_addr_1;
   wire       [27:0]   _zz_outReq_payload_addr_2;
@@ -4115,11 +4316,10 @@ module Ddr3Axi4Bridge (
   wire       [8:0]    _zz_wPendingBlks_3;
   wire       [0:0]    _zz_wPendingBlks_4;
   wire       [8:0]    _zz__zz_rCmdLeft;
-  wire       [7:0]    _zz_rCmdLeft_1;
-  wire       [8:0]    _zz_rCmdLeft_2;
+  wire       [7:0]    _zz_rCmdLeft_2;
   wire       [8:0]    _zz_rCmdLeft_3;
   wire       [8:0]    _zz_rCmdLeft_4;
-  wire       [0:0]    _zz_rCmdLeft_5;
+  wire       [8:0]    _zz_rCmdLeft_5;
   wire                outReq_valid;
   wire                outReq_ready;
   wire                outReq_payload_write;
@@ -4157,57 +4357,61 @@ module Ddr3Axi4Bridge (
   reg                 rIssuingChunk;
   reg        [3:0]    rId;
   reg        [8:0]    rBeatsLeft;
-  reg                 rPhase64;
+  reg        [0:0]    rPhase;
   reg                 rValidReg;
   reg        [63:0]   rOutData;
   reg                 rLastReg;
   wire                rConsume;
-  wire                when_Ddr3Axi4Bridge_l68;
-  wire                when_Ddr3Axi4Bridge_l73;
+  wire                when_Ddr3Axi4Bridge_l77;
+  wire                when_Ddr3Axi4Bridge_l82;
   wire       [8:0]    _zz_rBeatsLeft;
-  wire                when_Ddr3Axi4Bridge_l83;
-  wire                when_Ddr3Axi4Bridge_l85;
-  wire                when_Ddr3Axi4Bridge_l100;
-  wire                when_Ddr3Axi4Bridge_l101;
-  wire                when_Ddr3Axi4Bridge_l102;
+  wire                when_Ddr3Axi4Bridge_l94;
+  wire                when_Ddr3Axi4Bridge_l104;
+  wire                when_Ddr3Axi4Bridge_l105;
   wire                when_Ddr3Axi4Bridge_l106;
+  wire                when_Ddr3Axi4Bridge_l110;
   wire                rdReqValid;
   reg        [31:0]   wReqAddr;
   reg                 wIncr;
   reg        [3:0]    wId;
   reg        [127:0]  wAsmData;
   reg        [15:0]   wAsmStrb;
-  reg                 wPhase64;
+  reg        [0:0]    wPhase;
   reg                 wLastSeen;
   reg                 wBValidReg;
   reg                 wDraining;
   reg        [8:0]    wPendingBlks;
-  wire                when_Ddr3Axi4Bridge_l143;
-  wire                when_Ddr3Axi4Bridge_l152;
-  wire                when_Ddr3Axi4Bridge_l178;
-  wire                when_Ddr3Axi4Bridge_l179;
-  wire                when_Ddr3Axi4Bridge_l180;
-  wire                when_Ddr3Axi4Bridge_l184;
+  wire                when_Ddr3Axi4Bridge_l147;
+  wire                when_Ddr3Axi4Bridge_l157;
+  wire                _zz_io_push_payload_data;
+  wire                _zz_io_push_payload_data_1;
+  wire                when_Ddr3Axi4Bridge_l174;
+  wire                when_Ddr3Axi4Bridge_l174_1;
+  wire                when_Ddr3Axi4Bridge_l185;
+  wire                when_Ddr3Axi4Bridge_l186;
+  wire                when_Ddr3Axi4Bridge_l187;
+  wire                when_Ddr3Axi4Bridge_l191;
   wire                wrReqValid;
   wire                rdSlotInc;
   wire                rdSlotDec;
   wire                wBlkInc;
   wire                wBlkDec;
-  wire                when_Ddr3Axi4Bridge_l226;
   wire                when_Ddr3Axi4Bridge_l233;
-  wire                when_Ddr3Axi4Bridge_l242;
+  wire                when_Ddr3Axi4Bridge_l240;
+  wire                when_Ddr3Axi4Bridge_l249;
   wire       [8:0]    _zz_rCmdLeft;
-  wire                when_Ddr3Axi4Bridge_l253;
-  wire                when_Ddr3Axi4Bridge_l272;
-  wire                when_Ddr3Axi4Bridge_l278;
-  wire                when_Ddr3Axi4Bridge_l281;
+  wire       [0:0]    _zz_rCmdLeft_1;
+  wire                when_Ddr3Axi4Bridge_l262;
+  wire                when_Ddr3Axi4Bridge_l282;
+  wire                when_Ddr3Axi4Bridge_l288;
+  wire                when_Ddr3Axi4Bridge_l291;
   `ifndef SYNTHESIS
   reg [39:0] mode_string;
   `endif
 
 
-  assign _zz_when_Ddr3Axi4Bridge_l102_1 = (5'h10 - rSlotsUsed);
-  assign _zz_when_Ddr3Axi4Bridge_l102 = {4'd0, _zz_when_Ddr3Axi4Bridge_l102_1};
+  assign _zz_when_Ddr3Axi4Bridge_l106_1 = (5'h10 - rSlotsUsed);
+  assign _zz_when_Ddr3Axi4Bridge_l106 = {4'd0, _zz_when_Ddr3Axi4Bridge_l106_1};
   assign _zz_outReq_payload_addr = ((mode == BridgeMode_WRITE) ? _zz_outReq_payload_addr_1 : _zz_outReq_payload_addr_2);
   assign _zz_outReq_payload_addr_1 = (wReqAddr >>> 3'd4);
   assign _zz_outReq_payload_addr_2 = (rReqAddr >>> 3'd4);
@@ -4222,11 +4426,10 @@ module Ddr3Axi4Bridge (
   assign _zz_wPendingBlks_4 = wBlkDec;
   assign _zz_wPendingBlks_3 = {8'd0, _zz_wPendingBlks_4};
   assign _zz__zz_rCmdLeft = {1'd0, io_axi_ar_payload_len};
-  assign _zz_rCmdLeft_1 = (_zz_rCmdLeft_2 >>> 1'd1);
-  assign _zz_rCmdLeft_2 = (_zz_rCmdLeft_3 + 9'h001);
-  assign _zz_rCmdLeft_3 = (_zz_rCmdLeft_4 + _zz_rCmdLeft);
-  assign _zz_rCmdLeft_5 = io_axi_ar_payload_addr[3];
-  assign _zz_rCmdLeft_4 = {8'd0, _zz_rCmdLeft_5};
+  assign _zz_rCmdLeft_2 = (_zz_rCmdLeft_3 >>> 1'd1);
+  assign _zz_rCmdLeft_3 = (_zz_rCmdLeft_4 + 9'h001);
+  assign _zz_rCmdLeft_4 = (_zz_rCmdLeft_5 + _zz_rCmdLeft);
+  assign _zz_rCmdLeft_5 = {8'd0, _zz_rCmdLeft_1};
   DistLowLatencyFifo rFifo (
     .io_push_valid   (rFifo_io_push_valid        ), //i
     .io_push_ready   (rFifo_io_push_ready        ), //o
@@ -4251,6 +4454,13 @@ module Ddr3Axi4Bridge (
     .io_pclk              (io_pclk                          ), //i
     ._zz_4                (_zz_1                            )  //i
   );
+  always @(*) begin
+    case(rPhase)
+      1'b0 : _zz_rOutData = rFifo_io_pop_payload[63 : 0];
+      default : _zz_rOutData = rFifo_io_pop_payload[127 : 64];
+    endcase
+  end
+
   `ifndef SYNTHESIS
   always @(*) begin
     case(mode)
@@ -4291,36 +4501,27 @@ module Ddr3Axi4Bridge (
   assign rConsume = ((! rValidReg) || io_axi_r_ready);
   always @(*) begin
     rFifo_io_pop_ready = 1'b0;
-    if(when_Ddr3Axi4Bridge_l73) begin
-      if(when_Ddr3Axi4Bridge_l83) begin
-        if(when_Ddr3Axi4Bridge_l85) begin
-          rFifo_io_pop_ready = 1'b1;
-        end
-      end else begin
+    if(when_Ddr3Axi4Bridge_l82) begin
+      if(when_Ddr3Axi4Bridge_l94) begin
         rFifo_io_pop_ready = 1'b1;
       end
     end
   end
 
-  assign when_Ddr3Axi4Bridge_l68 = (io_axi_r_ready && rValidReg);
-  assign when_Ddr3Axi4Bridge_l73 = ((((mode == BridgeMode_READ) && (rBeatsLeft != 9'h0)) && rConsume) && rFifo_io_pop_valid);
+  assign when_Ddr3Axi4Bridge_l77 = (io_axi_r_ready && rValidReg);
+  assign when_Ddr3Axi4Bridge_l82 = ((((mode == BridgeMode_READ) && (rBeatsLeft != 9'h0)) && rConsume) && rFifo_io_pop_valid);
   assign _zz_rBeatsLeft = (rBeatsLeft - 9'h001);
-  assign when_Ddr3Axi4Bridge_l83 = (! rPhase64);
-  assign when_Ddr3Axi4Bridge_l85 = (_zz_rBeatsLeft == 9'h0);
-  assign when_Ddr3Axi4Bridge_l100 = (mode == BridgeMode_READ);
-  assign when_Ddr3Axi4Bridge_l101 = (! rIssuingChunk);
-  assign when_Ddr3Axi4Bridge_l102 = ((rCmdLeft != 9'h0) && ((rSlotsUsed <= 5'h08) || (rCmdLeft <= _zz_when_Ddr3Axi4Bridge_l102)));
-  assign when_Ddr3Axi4Bridge_l106 = ((rCmdLeft == 9'h0) || (5'h0f <= rSlotsUsed));
+  assign when_Ddr3Axi4Bridge_l94 = ((_zz_rBeatsLeft == 9'h0) || (rPhase == 1'b1));
+  assign when_Ddr3Axi4Bridge_l104 = (mode == BridgeMode_READ);
+  assign when_Ddr3Axi4Bridge_l105 = (! rIssuingChunk);
+  assign when_Ddr3Axi4Bridge_l106 = ((rCmdLeft != 9'h0) && ((rSlotsUsed <= 5'h08) || (rCmdLeft <= _zz_when_Ddr3Axi4Bridge_l106)));
+  assign when_Ddr3Axi4Bridge_l110 = ((rCmdLeft == 9'h0) || (5'h0f <= rSlotsUsed));
   assign rdReqValid = ((((mode == BridgeMode_READ) && rIssuingChunk) && (rCmdLeft != 9'h0)) && (rSlotsUsed < 5'h10));
   assign io_axi_w_ready = (((mode == BridgeMode_WRITE) && (! wLastSeen)) && wFifo_io_push_ready);
   always @(*) begin
     wFifo_io_push_valid = 1'b0;
-    if(when_Ddr3Axi4Bridge_l143) begin
-      if(when_Ddr3Axi4Bridge_l152) begin
-        if(io_axi_w_payload_last) begin
-          wFifo_io_push_valid = 1'b1;
-        end
-      end else begin
+    if(when_Ddr3Axi4Bridge_l147) begin
+      if(when_Ddr3Axi4Bridge_l157) begin
         wFifo_io_push_valid = 1'b1;
       end
     end
@@ -4328,36 +4529,34 @@ module Ddr3Axi4Bridge (
 
   always @(*) begin
     wFifo_io_push_payload_data = 128'h0;
-    if(when_Ddr3Axi4Bridge_l143) begin
-      if(when_Ddr3Axi4Bridge_l152) begin
-        if(io_axi_w_payload_last) begin
-          wFifo_io_push_payload_data = {64'h0,io_axi_w_payload_data[63 : 0]};
-        end
-      end else begin
-        wFifo_io_push_payload_data = {io_axi_w_payload_data[63 : 0],wAsmData[63 : 0]};
+    if(when_Ddr3Axi4Bridge_l147) begin
+      if(when_Ddr3Axi4Bridge_l157) begin
+        wFifo_io_push_payload_data[63 : 0] = (_zz_io_push_payload_data ? io_axi_w_payload_data[63 : 0] : wAsmData[63 : 0]);
+        wFifo_io_push_payload_data[127 : 64] = (_zz_io_push_payload_data_1 ? io_axi_w_payload_data[63 : 0] : wAsmData[127 : 64]);
       end
     end
   end
 
   always @(*) begin
     wFifo_io_push_payload_strb = 16'h0;
-    if(when_Ddr3Axi4Bridge_l143) begin
-      if(when_Ddr3Axi4Bridge_l152) begin
-        if(io_axi_w_payload_last) begin
-          wFifo_io_push_payload_strb = {8'h0,io_axi_w_payload_strb[7 : 0]};
-        end
-      end else begin
-        wFifo_io_push_payload_strb = {io_axi_w_payload_strb[7 : 0],wAsmStrb[7 : 0]};
+    if(when_Ddr3Axi4Bridge_l147) begin
+      if(when_Ddr3Axi4Bridge_l157) begin
+        wFifo_io_push_payload_strb[7 : 0] = (_zz_io_push_payload_data ? io_axi_w_payload_strb[7 : 0] : wAsmStrb[7 : 0]);
+        wFifo_io_push_payload_strb[15 : 8] = (_zz_io_push_payload_data_1 ? io_axi_w_payload_strb[7 : 0] : wAsmStrb[15 : 8]);
       end
     end
   end
 
-  assign when_Ddr3Axi4Bridge_l143 = ((((mode == BridgeMode_WRITE) && (! wLastSeen)) && io_axi_w_valid) && wFifo_io_push_ready);
-  assign when_Ddr3Axi4Bridge_l152 = (! wPhase64);
-  assign when_Ddr3Axi4Bridge_l178 = ((mode == BridgeMode_WRITE) && (! wBValidReg));
-  assign when_Ddr3Axi4Bridge_l179 = (! wDraining);
-  assign when_Ddr3Axi4Bridge_l180 = (wFifo_io_pop_valid && (wLastSeen || (5'h0c <= wFifo_io_occupancy)));
-  assign when_Ddr3Axi4Bridge_l184 = (! wFifo_io_pop_valid);
+  assign when_Ddr3Axi4Bridge_l147 = ((((mode == BridgeMode_WRITE) && (! wLastSeen)) && io_axi_w_valid) && wFifo_io_push_ready);
+  assign when_Ddr3Axi4Bridge_l157 = ((wPhase == 1'b1) || io_axi_w_payload_last);
+  assign _zz_io_push_payload_data = (wPhase == 1'b0);
+  assign _zz_io_push_payload_data_1 = (wPhase == 1'b1);
+  assign when_Ddr3Axi4Bridge_l174 = (wPhase == 1'b0);
+  assign when_Ddr3Axi4Bridge_l174_1 = (wPhase == 1'b1);
+  assign when_Ddr3Axi4Bridge_l185 = ((mode == BridgeMode_WRITE) && (! wBValidReg));
+  assign when_Ddr3Axi4Bridge_l186 = (! wDraining);
+  assign when_Ddr3Axi4Bridge_l187 = (wFifo_io_pop_valid && (wLastSeen || (5'h0c <= wFifo_io_occupancy)));
+  assign when_Ddr3Axi4Bridge_l191 = (! wFifo_io_pop_valid);
   assign wrReqValid = (((mode == BridgeMode_WRITE) && wDraining) && wFifo_io_pop_valid);
   assign wFifo_io_pop_ready = (((mode == BridgeMode_WRITE) && wDraining) && outReq_ready);
   assign outReq_valid = (rdReqValid || wrReqValid);
@@ -4379,14 +4578,15 @@ module Ddr3Axi4Bridge (
   assign rdSlotDec = (rFifo_io_pop_valid && rFifo_io_pop_ready);
   assign wBlkInc = (wFifo_io_push_valid && wFifo_io_push_ready);
   assign wBlkDec = (wrReqValid && outReq_ready);
-  assign when_Ddr3Axi4Bridge_l226 = (rdReqValid && outReq_ready);
-  assign when_Ddr3Axi4Bridge_l233 = (wrReqValid && outReq_ready);
-  assign when_Ddr3Axi4Bridge_l242 = (io_axi_aw_valid && io_axi_aw_ready);
+  assign when_Ddr3Axi4Bridge_l233 = (rdReqValid && outReq_ready);
+  assign when_Ddr3Axi4Bridge_l240 = (wrReqValid && outReq_ready);
+  assign when_Ddr3Axi4Bridge_l249 = (io_axi_aw_valid && io_axi_aw_ready);
   assign _zz_rCmdLeft = (_zz__zz_rCmdLeft + 9'h001);
-  assign when_Ddr3Axi4Bridge_l253 = (io_axi_ar_valid && io_axi_ar_ready);
-  assign when_Ddr3Axi4Bridge_l272 = ((((rBeatsLeft == 9'h0) && (! rValidReg)) && (rCmdLeft == 9'h0)) && (rSlotsUsed == 5'h0));
-  assign when_Ddr3Axi4Bridge_l278 = ((wLastSeen && (wPendingBlks == 9'h0)) && (! wBValidReg));
-  assign when_Ddr3Axi4Bridge_l281 = (wBValidReg && io_axi_b_ready);
+  assign _zz_rCmdLeft_1 = io_axi_ar_payload_addr[3 : 3];
+  assign when_Ddr3Axi4Bridge_l262 = (io_axi_ar_valid && io_axi_ar_ready);
+  assign when_Ddr3Axi4Bridge_l282 = ((((rBeatsLeft == 9'h0) && (! rValidReg)) && (rCmdLeft == 9'h0)) && (rSlotsUsed == 5'h0));
+  assign when_Ddr3Axi4Bridge_l288 = ((wLastSeen && (wPendingBlks == 9'h0)) && (! wBValidReg));
+  assign when_Ddr3Axi4Bridge_l291 = (wBValidReg && io_axi_b_ready);
   always @(posedge io_pclk or posedge _zz_1) begin
     if(_zz_1) begin
       outReq_rValidN <= 1'b1;
@@ -4399,7 +4599,7 @@ module Ddr3Axi4Bridge (
       rIssuingChunk <= 1'b0;
       rId <= 4'b0000;
       rBeatsLeft <= 9'h0;
-      rPhase64 <= 1'b0;
+      rPhase <= 1'b0;
       rValidReg <= 1'b0;
       rOutData <= 64'h0;
       rLastReg <= 1'b0;
@@ -4408,7 +4608,7 @@ module Ddr3Axi4Bridge (
       wId <= 4'b0000;
       wAsmData <= 128'h0;
       wAsmStrb <= 16'h0;
-      wPhase64 <= 1'b0;
+      wPhase <= 1'b0;
       wLastSeen <= 1'b0;
       wBValidReg <= 1'b0;
       wDraining <= 1'b0;
@@ -4423,64 +4623,61 @@ module Ddr3Axi4Bridge (
       if(outReq_s2mPipe_ready) begin
         outReq_s2mPipe_rValid <= outReq_s2mPipe_valid;
       end
-      if(when_Ddr3Axi4Bridge_l68) begin
+      if(when_Ddr3Axi4Bridge_l77) begin
         rValidReg <= 1'b0;
         rLastReg <= 1'b0;
       end
-      if(when_Ddr3Axi4Bridge_l73) begin
+      if(when_Ddr3Axi4Bridge_l82) begin
         rBeatsLeft <= _zz_rBeatsLeft;
         rValidReg <= 1'b1;
         rLastReg <= (_zz_rBeatsLeft == 9'h0);
-        if(when_Ddr3Axi4Bridge_l83) begin
-          rOutData <= rFifo_io_pop_payload[63 : 0];
-          if(when_Ddr3Axi4Bridge_l85) begin
-            rPhase64 <= 1'b0;
-          end else begin
-            rPhase64 <= 1'b1;
-          end
+        rOutData <= _zz_rOutData;
+        if(when_Ddr3Axi4Bridge_l94) begin
+          rPhase <= 1'b0;
         end else begin
-          rOutData <= rFifo_io_pop_payload[127 : 64];
-          rPhase64 <= 1'b0;
+          rPhase <= (rPhase + 1'b1);
         end
       end
-      if(when_Ddr3Axi4Bridge_l100) begin
-        if(when_Ddr3Axi4Bridge_l101) begin
-          if(when_Ddr3Axi4Bridge_l102) begin
+      if(when_Ddr3Axi4Bridge_l104) begin
+        if(when_Ddr3Axi4Bridge_l105) begin
+          if(when_Ddr3Axi4Bridge_l106) begin
             rIssuingChunk <= 1'b1;
           end
         end else begin
-          if(when_Ddr3Axi4Bridge_l106) begin
+          if(when_Ddr3Axi4Bridge_l110) begin
             rIssuingChunk <= 1'b0;
           end
         end
       end else begin
         rIssuingChunk <= 1'b0;
       end
-      if(when_Ddr3Axi4Bridge_l143) begin
-        if(when_Ddr3Axi4Bridge_l152) begin
+      if(when_Ddr3Axi4Bridge_l147) begin
+        if(when_Ddr3Axi4Bridge_l157) begin
+          wAsmData <= 128'h0;
+          wAsmStrb <= 16'h0;
+          wPhase <= 1'b0;
           if(io_axi_w_payload_last) begin
             wLastSeen <= 1'b1;
-          end else begin
-            wAsmData[63 : 0] <= io_axi_w_payload_data[63 : 0];
-            wAsmStrb[7 : 0] <= io_axi_w_payload_strb[7 : 0];
-            wAsmData[127 : 64] <= 64'h0;
-            wAsmStrb[15 : 8] <= 8'h0;
-            wPhase64 <= 1'b1;
           end
         end else begin
-          wPhase64 <= 1'b0;
-          if(io_axi_w_payload_last) begin
-            wLastSeen <= 1'b1;
+          if(when_Ddr3Axi4Bridge_l174) begin
+            wAsmData[63 : 0] <= io_axi_w_payload_data[63 : 0];
+            wAsmStrb[7 : 0] <= io_axi_w_payload_strb[7 : 0];
           end
+          if(when_Ddr3Axi4Bridge_l174_1) begin
+            wAsmData[127 : 64] <= io_axi_w_payload_data[63 : 0];
+            wAsmStrb[15 : 8] <= io_axi_w_payload_strb[7 : 0];
+          end
+          wPhase <= (wPhase + 1'b1);
         end
       end
-      if(when_Ddr3Axi4Bridge_l178) begin
-        if(when_Ddr3Axi4Bridge_l179) begin
-          if(when_Ddr3Axi4Bridge_l180) begin
+      if(when_Ddr3Axi4Bridge_l185) begin
+        if(when_Ddr3Axi4Bridge_l186) begin
+          if(when_Ddr3Axi4Bridge_l187) begin
             wDraining <= 1'b1;
           end
         end else begin
-          if(when_Ddr3Axi4Bridge_l184) begin
+          if(when_Ddr3Axi4Bridge_l191) begin
             wDraining <= 1'b0;
           end
         end
@@ -4489,24 +4686,24 @@ module Ddr3Axi4Bridge (
       end
       rSlotsUsed <= (_zz_rSlotsUsed - _zz_rSlotsUsed_3);
       wPendingBlks <= (_zz_wPendingBlks - _zz_wPendingBlks_3);
-      if(when_Ddr3Axi4Bridge_l226) begin
+      if(when_Ddr3Axi4Bridge_l233) begin
         rCmdLeft <= (rCmdLeft - 9'h001);
         if(rIncr) begin
           rReqAddr <= (rReqAddr + 32'h00000010);
         end
       end
-      if(when_Ddr3Axi4Bridge_l233) begin
+      if(when_Ddr3Axi4Bridge_l240) begin
         if(wIncr) begin
           wReqAddr <= (wReqAddr + 32'h00000010);
         end
       end
       case(mode)
         BridgeMode_IDLE : begin
-          if(when_Ddr3Axi4Bridge_l242) begin
+          if(when_Ddr3Axi4Bridge_l249) begin
             wReqAddr <= io_axi_aw_payload_addr;
             wIncr <= (io_axi_aw_payload_burst != 2'b00);
             wId <= io_axi_aw_payload_id;
-            wPhase64 <= (io_axi_aw_payload_addr[3] && 1'b1);
+            wPhase <= io_axi_aw_payload_addr[3 : 3];
             wAsmData <= 128'h0;
             wAsmStrb <= 16'h0;
             wLastSeen <= 1'b0;
@@ -4514,28 +4711,28 @@ module Ddr3Axi4Bridge (
             wDraining <= 1'b0;
             mode <= BridgeMode_WRITE;
           end else begin
-            if(when_Ddr3Axi4Bridge_l253) begin
+            if(when_Ddr3Axi4Bridge_l262) begin
+              rPhase <= _zz_rCmdLeft_1;
               rReqAddr <= io_axi_ar_payload_addr;
               rIncr <= (io_axi_ar_payload_burst != 2'b00);
               rId <= io_axi_ar_payload_id;
               rBeatsLeft <= _zz_rCmdLeft;
-              rCmdLeft <= {1'd0, _zz_rCmdLeft_1};
-              rPhase64 <= (io_axi_ar_payload_addr[3] && 1'b1);
+              rCmdLeft <= {1'd0, _zz_rCmdLeft_2};
               rIssuingChunk <= 1'b0;
               mode <= BridgeMode_READ;
             end
           end
         end
         BridgeMode_READ : begin
-          if(when_Ddr3Axi4Bridge_l272) begin
+          if(when_Ddr3Axi4Bridge_l282) begin
             mode <= BridgeMode_IDLE;
           end
         end
         default : begin
-          if(when_Ddr3Axi4Bridge_l278) begin
+          if(when_Ddr3Axi4Bridge_l288) begin
             wBValidReg <= 1'b1;
           end
-          if(when_Ddr3Axi4Bridge_l281) begin
+          if(when_Ddr3Axi4Bridge_l291) begin
             wBValidReg <= 1'b0;
             mode <= BridgeMode_IDLE;
           end

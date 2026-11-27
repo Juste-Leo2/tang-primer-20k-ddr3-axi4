@@ -6,10 +6,10 @@ import spinal.lib.bus.amba4.axi._
 
 /**
  * AXI4 Slave to DDR3 Controller Request/Response Bridge (Pipelined Burst Edition).
- * Supports full AXI4 bursts (len 0..255) for both 64-bit and 128-bit AXI data widths,
- * using 16-entry low-latency FIFOs, registered io.req output slice (.stage()) for timing
- * closure, and registered AXI R outputs.
- * Pure digital logic - 100% simulatable with Verilator.
+ * Supports full AXI4 bursts (len 0..255) for 32-bit, 64-bit, and 128-bit AXI data widths
+ * against the native 128-bit (16-bit DQ x BL8) DDR3 controller interface,
+ * using 16-entry low-latency LUTRAM FIFOs, a registered io.req output slice, and
+ * registered AXI R/B outputs. Pure digital logic - 100% Verilator simulatable.
  */
 class Ddr3Axi4Bridge(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Config()) extends Component {
   val io = new Bundle {
@@ -20,9 +20,18 @@ class Ddr3Axi4Bridge(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Con
     val rsp       = slave Flow(Ddr3Rsp())
   }
 
-  val is64Bit  = axiConfig.dataWidth == 64
-  val is128Bit = axiConfig.dataWidth == 128
-  require(is64Bit || is128Bit, s"Ddr3Axi4Bridge only supports 64-bit or 128-bit AXI4, got ${axiConfig.dataWidth}")
+  val dataWidth = axiConfig.dataWidth
+  require(
+    dataWidth == 32 || dataWidth == 64 || dataWidth == 128,
+    s"Ddr3Axi4Bridge only supports 32-bit, 64-bit, or 128-bit AXI4, got $dataWidth"
+  )
+
+  val beatsPerWord = 128 / dataWidth // 4 (32b), 2 (64b), 1 (128b)
+  val phaseBits    = log2Up(beatsPerWord)
+  val strbWidth    = dataWidth / 8
+  val is128Bit     = (beatsPerWord == 1)
+
+  private def subWordPhase(addr: UInt): UInt = addr(3 downto 4 - phaseBits)
 
   val fifoDepth = 16
   val chunkTrig = 8
@@ -51,10 +60,10 @@ class Ddr3Axi4Bridge(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Con
 
   val rId           = Reg(UInt(axiConfig.idWidth bits)) init(0)
   val rBeatsLeft    = Reg(UInt(9 bits)) init(0)
-  val rPhase64      = RegInit(False)
+  val rPhase        = if (is128Bit) null else Reg(UInt(phaseBits bits)) init(0)
 
   val rValidReg     = RegInit(False)
-  val rOutData      = Reg(Bits(axiConfig.dataWidth bits)) init(0)
+  val rOutData      = Reg(Bits(dataWidth bits)) init(0)
   val rLastReg      = RegInit(False)
 
   // Read FIFO push from controller RSP (guaranteed never to overflow by rSlotsUsed < fifoDepth)
@@ -80,18 +89,13 @@ class Ddr3Axi4Bridge(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Con
       rOutData           := rFifo.io.pop.payload
       rFifo.io.pop.ready := True
     } else {
-      when(!rPhase64) {
-        rOutData := rFifo.io.pop.payload(63 downto 0)
-        when(nextBeats === 0) {
-          rFifo.io.pop.ready := True
-          rPhase64           := False
-        } otherwise {
-          rPhase64 := True
-        }
-      } otherwise {
-        rOutData           := rFifo.io.pop.payload(127 downto 64)
+      val slices = rFifo.io.pop.payload.subdivideIn(beatsPerWord slices)
+      rOutData := slices(rPhase)
+      when(nextBeats === 0 || rPhase === (beatsPerWord - 1)) {
         rFifo.io.pop.ready := True
-        rPhase64           := False
+        rPhase             := 0
+      } otherwise {
+        rPhase := rPhase + 1
       }
     }
   }
@@ -126,7 +130,7 @@ class Ddr3Axi4Bridge(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Con
   val wId          = Reg(UInt(axiConfig.idWidth bits)) init(0)
   val wAsmData     = Reg(Bits(128 bits)) init(0)
   val wAsmStrb     = Reg(Bits(16 bits)) init(0)
-  val wPhase64     = RegInit(False)
+  val wPhase       = if (is128Bit) null else Reg(UInt(phaseBits bits)) init(0)
   val wLastSeen    = RegInit(False)
   val wBValidReg   = RegInit(False)
   val wDraining    = RegInit(False)
@@ -149,27 +153,30 @@ class Ddr3Axi4Bridge(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Con
         wLastSeen := True
       }
     } else {
-      when(!wPhase64) {
-        when(io.axi.w.payload.last) {
-          wFifo.io.push.valid        := True
-          wFifo.io.push.payload.data := B(0, 64 bits) ## io.axi.w.payload.data(63 downto 0)
-          wFifo.io.push.payload.strb := B(0, 8 bits)  ## io.axi.w.payload.strb(7 downto 0)
-          wLastSeen                  := True
-        } otherwise {
-          wAsmData(63 downto 0)   := io.axi.w.payload.data(63 downto 0)
-          wAsmStrb(7 downto 0)   := io.axi.w.payload.strb(7 downto 0)
-          wAsmData(127 downto 64) := 0
-          wAsmStrb(15 downto 8)  := 0
-          wPhase64                := True
+      val flushWord = (wPhase === (beatsPerWord - 1)) || io.axi.w.payload.last
+      when(flushWord) {
+        wFifo.io.push.valid := True
+        for (i <- 0 until beatsPerWord) {
+          val inSlot = (wPhase === i)
+          wFifo.io.push.payload.data(i * dataWidth + dataWidth - 1 downto i * dataWidth) :=
+            inSlot ? io.axi.w.payload.data(dataWidth - 1 downto 0) | wAsmData(i * dataWidth + dataWidth - 1 downto i * dataWidth)
+          wFifo.io.push.payload.strb(i * strbWidth + strbWidth - 1 downto i * strbWidth) :=
+            inSlot ? io.axi.w.payload.strb(strbWidth - 1 downto 0) | wAsmStrb(i * strbWidth + strbWidth - 1 downto i * strbWidth)
         }
-      } otherwise {
-        wFifo.io.push.valid        := True
-        wFifo.io.push.payload.data := io.axi.w.payload.data(63 downto 0) ## wAsmData(63 downto 0)
-        wFifo.io.push.payload.strb := io.axi.w.payload.strb(7 downto 0)  ## wAsmStrb(7 downto 0)
-        wPhase64                   := False
+        wAsmData := 0
+        wAsmStrb := 0
+        wPhase   := 0
         when(io.axi.w.payload.last) {
           wLastSeen := True
         }
+      } otherwise {
+        for (i <- 0 until beatsPerWord) {
+          when(wPhase === i) {
+            wAsmData(i * dataWidth + dataWidth - 1 downto i * dataWidth) := io.axi.w.payload.data(dataWidth - 1 downto 0)
+            wAsmStrb(i * strbWidth + strbWidth - 1 downto i * strbWidth) := io.axi.w.payload.strb(strbWidth - 1 downto 0)
+          }
+        }
+        wPhase := wPhase + 1
       }
     }
   }
@@ -243,7 +250,9 @@ class Ddr3Axi4Bridge(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Con
         wReqAddr   := io.axi.aw.payload.addr
         wIncr      := (io.axi.aw.payload.burst =/= B"2'b00")
         wId        := io.axi.aw.payload.id
-        wPhase64   := io.axi.aw.payload.addr(3) && Bool(is64Bit)
+        if (!is128Bit) {
+          wPhase   := subWordPhase(io.axi.aw.payload.addr)
+        }
         wAsmData   := 0
         wAsmStrb   := 0
         wLastSeen  := False
@@ -251,18 +260,19 @@ class Ddr3Axi4Bridge(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Con
         wDraining  := False
         mode       := BridgeMode.WRITE
       } elsewhen(io.axi.ar.valid && io.axi.ar.ready) {
-        val totalBeats = (io.axi.ar.payload.len.resize(9) + 1)
+        val totalBeats = io.axi.ar.payload.len.resize(9) + 1
         val totalBlocks = if (is128Bit) {
           totalBeats
         } else {
-          ((io.axi.ar.payload.addr(3).asUInt.resize(9) + totalBeats + 1) >> 1).resize(9)
+          val initPhase = subWordPhase(io.axi.ar.payload.addr)
+          rPhase := initPhase
+          ((initPhase.resize(9) + totalBeats + (beatsPerWord - 1)) >> phaseBits).resize(9)
         }
         rReqAddr      := io.axi.ar.payload.addr
         rIncr         := (io.axi.ar.payload.burst =/= B"2'b00")
         rId           := io.axi.ar.payload.id
         rBeatsLeft    := totalBeats
         rCmdLeft      := totalBlocks
-        rPhase64      := io.axi.ar.payload.addr(3) && Bool(is64Bit)
         rIssuingChunk := False
         mode          := BridgeMode.READ
       }

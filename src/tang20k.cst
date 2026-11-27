@@ -138,15 +138,15 @@ IO_LOC "uart_txp" M11;
 IO_PORT "uart_txp" IO_TYPE=LVCMOS33 PULL_MODE=UP DRIVE=8;
 
 // Fix location of PLL as it impacts write/read leveling timing
-INS_LOC "pll/rpll_inst" PLL_L[0];
+INS_LOC "*pll/rpll_inst" PLL_L[0];
 
 // Pin command reset FFs comfortably away from BA[0]/A[7] and lock each IO
 // reset FF in its own dedicated Row-44 CLB (rst_dq1b sole occupant of R44C27).
-INS_LOC "coreArea_ddr3/area_ctrl/phy/fclkRstArea_rst_cmd_a_s1" R44C24;
-INS_LOC "coreArea_ddr3/area_ctrl/phy/fclkRstArea_rst_cmd_b_s1" R38C20;
-INS_LOC "coreArea_ddr3/area_ctrl/phy/fclkRstArea_rst_dqs0_s1" R44C23;
-INS_LOC "coreArea_ddr3/area_ctrl/phy/fclkRstArea_rst_dq0b_s1" R44C25;
-INS_LOC "coreArea_ddr3/area_ctrl/phy/fclkRstArea_rst_dq0a_s1" R44C26;
-INS_LOC "coreArea_ddr3/area_ctrl/phy/fclkRstArea_rst_dq1b_s1" R44C27;
-INS_LOC "coreArea_ddr3/area_ctrl/phy/fclkRstArea_rst_dq1a_s1" R44C28;
-INS_LOC "coreArea_ddr3/area_ctrl/phy/fclkRstArea_rst_dqs1_s1" R43C27;
+INS_LOC "*fclkRstArea_rst_cmd_a_s1" R44C24;
+INS_LOC "*fclkRstArea_rst_cmd_b_s1" R38C20;
+INS_LOC "*fclkRstArea_rst_dqs0_s1" R44C23;
+INS_LOC "*fclkRstArea_rst_dq0b_s1" R44C25;
+INS_LOC "*fclkRstArea_rst_dq0a_s1" R44C26;
+INS_LOC "*fclkRstArea_rst_dq1b_s1" R44C27;
+INS_LOC "*fclkRstArea_rst_dq1a_s1" R44C28;
+INS_LOC "*fclkRstArea_rst_dqs1_s1" R43C27;
