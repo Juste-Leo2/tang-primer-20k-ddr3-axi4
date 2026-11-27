@@ -4,88 +4,6 @@ import spinal.core._
 import spinal.lib._
 
 /**
- * DDR3 timing and configuration parameters.
- * Default is DDR3-800 timing (tCK = 2.5ns, pclk = 100MHz).
- */
-case class Ddr3Config(
-  rowWidth: Int       = 14,
-  colWidth: Int       = 10,
-  bankWidth: Int      = 3,
-  isSimulation: Boolean = false
-) {
-  def addrWidth: Int = rowWidth + colWidth + bankWidth
-
-  // Timing constants in CK cycles (DDR3-800, tCK = 2.5ns)
-  val CAS    = 6
-  val CWL    = 5
-  val WR     = 6
-  val MRD    = 8
-  val RP     = 6
-  val RCD    = 6
-  val RC     = 20
-  val MOD    = 12
-  val RFC    = 64 // tRFC in CK cycles: 64 x 2.5ns = 160ns, covers 1Gb (110ns) and 2Gb (160ns).
-                 // The auto-refresh state must wait RFC before the next ACT,
-                 // otherwise the refreshed rows (incl. the row under test) get corrupted.
-  val WLMRD  = 44
-  val SERDES = 16
-
-  // Delays in pclk cycles
-  val usec = if (isSimulation) 100 else 76 // 1 microsecond in pclk cycles (75.94 MHz HW)
-
-  // Iteration counts for calibration
-  // HW also requires 2 consecutive WL matches now: a single-hit lock
-  // proved marginal on silicon (W=0A, n=01 glitch, sweep C=4).
-  val wlevelCount = 2
-  // Majority vote: strobes per wstep and hits needed for a verdict.
-  // TH=2/4: with a flickering echo (~50% hits in-window) P(verdict)
-  // is ~69% (vs ~31% at 3/4, which filtered everything on HW).
-  // Consecutive-verdict lock + warmup still reject isolated glitches.
-  val WL_VOTES = 4
-  val WL_VOTE_TH = 2
-  // Lock offset added to the count-complete wstep at lock time.
-  // Verdict-true rounds restrobe the same wstep (HEAD-like confirm),
-  // so the lock lands on the first verdict; the write eye may sit a
-  // few steps away (sim: good-write below echo start; HW: C=6 at -1
-  // vs C=4 at 0). -1 = current best working point.
-  val WL_LOCK_OFF = 0
-  // Read-delay sweep range, RELATIVE taps around the DLL lock: plus side mag
-  // 0..RANGE, then minus side mag 1..RANGE (mag 0 measured once), pos
-  // innermost. The DLL already lands near the window (HW locks at C=6, not
-  // 0), so a relative sweep beats an absolute scan and stays clear of the
-  // tap rails. Stepped with the DQS dynamic steppers (RLOADN/RMOVE/RDIR,
-  // placer-legal where a fabric adder on DLLSTEP is not (PR0015)). Early
-  // exit on a perfect 8/8. Predicted exits: STEP=25 -> +0, STEP=20 -> +5,
-  // STEP=40 -> -15, STEP=60 -> -4 (sign = side).
-  val dllSweepRange = 64
-  // Anchor-base scan (outer loop around the DLL sweep, full-sweep mode
-  // only): sweep scores proved history-dependent (a survey at a bad anchor
-  // poisons every offset, even the physically-good tap), so calibration
-  // surveys grids held at successive bases around the live lock and sweeps
-  // at the best one. Grid: plus side STEP..RANGE, then minus side (mag 0
-  // surveyed once, at plus). Any 2-tap-wide good zone contains a grid
-  // point. Sim uses a small window around the lock for wall-clock reasons.
-  val anchorScanStep = 2
-  val anchorScanRange = if (isSimulation) 8 else 64
-  val rcalibCount = if (isSimulation) 2 else 8
-}
-
-object Ddr3State extends SpinalEnum {
-  val RST_WAIT, CKE_WAIT, CONFIG, ZQCL, WRITE_LEVELING, READ_CALIB, IDLE, READ, WRITE, PRECHARGE, REFRESH = newElement()
-}
-
-case class Ddr3Req(config: Ddr3Config) extends Bundle {
-  val write = Bool()
-  val addr  = UInt(config.addrWidth bits)
-  val wdata = Bits(128 bits)
-  val wstrb = Bits(16 bits)
-}
-
-case class Ddr3Rsp() extends Bundle {
-  val rdata = Bits(128 bits)
-}
-
-/**
  * DDR3 Controller Core logic:
  * - Initialization sequence (Reset, CKE, MRS MR0..MR3, ZQCL)
  * - Auto-calibration (Write Leveling + Read Calibration)
@@ -98,56 +16,19 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     val req = slave Stream(Ddr3Req(config))
     val rsp = master Flow(Ddr3Rsp())
 
-    // Autonomous refresh forced externally if needed, or status
-    val init_done   = out Bool()
+    // Status and calibration outputs
+    val init_done        = out Bool()
     val write_level_done = out Bool()
     val read_calib_done  = out Bool()
-    val wstep       = out Bits(8 bits)
-    val rclkpos     = out Bits(2 bits)
-    val rclksel     = out Bits(3 bits)
-    val best_rot    = out UInt(3 bits)
-    val best_score  = out UInt(4 bits)
-    val dbg_state   = out Bits(4 bits)
+    val wstep            = out Bits(8 bits)
+    val rclkpos          = out Bits(2 bits)
+    val rclksel          = out Bits(3 bits)
+    val best_rot         = out UInt(3 bits)
+    val best_score       = out UInt(4 bits)
+    val dbg_state        = out Bits(4 bits)
 
     // Direct interface to GowinDdr3Phy
-    val phy = new Bundle {
-      val dlllock     = in Bool()
-      val rst_lock_n  = in Bool()
-      val rburst      = in Bits(2 bits)
-      val rvalid      = if (!config.isSimulation) (in Bits(2 bits)) else null
-      val wpoint      = if (!config.isSimulation) (in Vec(Bits(3 bits), 2)) else null
-      val rpoint      = if (!config.isSimulation) (in Vec(Bits(3 bits), 2)) else null
-      val dq_in       = in Vec(Bits(16 bits), 8)
-      val dq_raw      = in Bits(16 bits)
-
-      val dqs_hold    = out Bool()
-      val wstep       = out Bits(8 bits)
-      // Dynamic read-delay steppers to the PHY (sweep below). RLOADN=0
-      // reloads rstep from the live DLL (anchor); RLOADN=1 holds the swept
-      // value -- asserted from the first anchor through functional traffic,
-      // because re-tracking would silently drop the winner. RMOVE pulses
-      // step +-1 tap (RDIR selects the side).
-      val rloadn      = out Bool()
-      val rmove       = out Bool()
-      val rdir        = out Bool()
-      val rclkpos     = out Bits(2 bits)
-      val rclksel     = out Bits(3 bits)
-      val dqs_read    = out Bits(4 bits)
-      val dq_out      = out Vec(Bits(16 bits), 8)
-      val dq_oen      = out Bits(4 bits)
-      val dqs_out     = out Bits(8 bits)
-      val dqs_oen     = out Bits(4 bits)
-      val dm_out      = out Bits(8 bits)
-
-      val nRAS        = out Vec(Bool(), 4)
-      val nCAS        = out Vec(Bool(), 4)
-      val nWE         = out Vec(Bool(), 4)
-      val A           = out Vec(Bits(config.rowWidth bits), 4)
-      val BA          = out Vec(Bits(config.bankWidth bits), 4)
-      val CKE         = out Bool()
-      val resetn_delay = out Bool()
-      val wser_rst    = if (!config.isSimulation) (out Bool()) else null
-    }
+    val phy = Ddr3CorePhyIo(config)
   }
 
   // DDR3 Command definitions: {nRAS, nCAS, nWE}
@@ -249,65 +130,11 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   val training  = RegInit(True)
   val trainDone = RegInit(False)
   val needPoison = RegInit(False)
-  // Latched copy of the 128-bit assembly, captured at the exact
-  // functional data_ready cycle (RCD/4+10). The IDES read pointer
-  // free-runs on FCLK, so a live compare one cycle later would sample a
-  // different FIFO rotation than the functional path uses.
-  val trainLatch = Reg(Bits(128 bits)) init(0)
-  // Beat slices of the latched capture and of the expected pattern.
-  val latchBeats = Vec(Bits(16 bits), 8)
-  val patBeats = Vec(Bits(16 bits), 8)
-  for (i <- 0 until 8) {
-    latchBeats(i) := trainLatch(i * 16 + 15 downto i * 16)
-    patBeats(i) := trainPat(i * 16 + 15 downto i * 16)
-  }
-  // Rotation search: the double-burst fill order is a deterministic rotation
-  // of the 8 beats (sim measures rot=6 on most settings). Score all 8
-  // rotations (X-hostile ===: stale/partial captures never match) and keep
-  // the best. The locked rotation is applied to the functional readout, so
-  // the design self-adapts instead of assuming a fixed assembly order.
-  val rotScores = Vec(UInt(4 bits), 8)
-  for (r <- 0 until 8) {
-    var acc: UInt = U(0, 4 bits)
-    for (i <- 0 until 8) {
-      acc = acc + (latchBeats(i) === patBeats((i + r) % 8)).asUInt.resize(4)
-    }
-    rotScores(r) := acc
-  }
-  val rotScoresReg = Vec(Reg(UInt(4 bits)) init(0), 8)
-  // Max over rotations (balanced 3-level tree), lowest index wins ties (deterministic).
-  val rotScoreW = Vec(UInt(4 bits), 8)
-  val rotIdxW = Vec(UInt(3 bits), 8)
-  val treeS1 = Vec(UInt(4 bits), 4)
-  val treeI1 = Vec(UInt(3 bits), 4)
-  for (k <- 0 until 4) {
-    val better = rotScoresReg(2 * k + 1) > rotScoresReg(2 * k)
-    treeS1(k) := better ? rotScoresReg(2 * k + 1) | rotScoresReg(2 * k)
-    treeI1(k) := better ? U(2 * k + 1, 3 bits) | U(2 * k, 3 bits)
-  }
-  val treeS2 = Vec(UInt(4 bits), 2)
-  val treeI2 = Vec(UInt(3 bits), 2)
-  for (k <- 0 until 2) {
-    val better = treeS1(2 * k + 1) > treeS1(2 * k)
-    treeS2(k) := better ? treeS1(2 * k + 1) | treeS1(2 * k)
-    treeI2(k) := better ? treeI1(2 * k + 1) | treeI1(2 * k)
-  }
-  for (r <- 0 until 8) {
-    if (r < 7) {
-      rotScoreW(r) := 0
-      rotIdxW(r) := 0
-    } else {
-      val better = treeS2(1) > treeS2(0)
-      rotScoreW(7) := better ? treeS2(1) | treeS2(0)
-      rotIdxW(7) := better ? treeI2(1) | treeI2(0)
-    }
-  }
-  val sweepScoreReg = Reg(UInt(4 bits)) init(0)
-  val sweepRotReg   = Reg(UInt(3 bits)) init(0)
-  val wserRstCnt    = if (!config.isSimulation) Reg(UInt(3 bits)) init(0) else null
-  val wser_rst      = if (!config.isSimulation) RegInit(False) else null
-  val sweepScore = sweepScoreReg
-  val sweepRot = sweepRotReg
+  val rotScorer = new Ddr3RotationScorer(trainPat)
+  val wserRstCnt = if (!config.isSimulation) Reg(UInt(3 bits)) init(0) else null
+  val wser_rst   = if (!config.isSimulation) RegInit(False) else null
+  val sweepScore = rotScorer.sweepScore
+  val sweepRot   = rotScorer.sweepRot
   val bestCnt = Reg(UInt(4 bits)) init(0)
   val bestPos = Reg(Bits(2 bits)) init(B"2'd0")
   val bestSel = Reg(Bits(3 bits)) init(B"3'd0")
@@ -446,7 +273,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
 
   // Autonomous Refresh timer (every 7.8 us = 592 cycles @ 75.94MHz)
   // Sim uses a shorter period so iverilog runs cover several refreshes.
-  val refreshPeriod = if (config.isSimulation) 200 else 592
+  val refreshPeriod = config.refreshPeriod
   val refresh_timer = Reg(UInt(11 bits)) init(0)
   val refresh_due   = RegInit(False)
 
@@ -862,17 +689,16 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
           }
           is(if (config.isSimulation) (config.RCD / 4 + 10) else (config.RCD / 4 + 9)) {
             // Latch at the functional data_ready cycle (same RPOINT phase).
-            trainLatch := (io.phy.dq_in(7) ## io.phy.dq_in(6) ## io.phy.dq_in(5) ## io.phy.dq_in(4) ##
-                           io.phy.dq_in(3) ## io.phy.dq_in(2) ## io.phy.dq_in(1) ## io.phy.dq_in(0))
+            rotScorer.trainLatch := (io.phy.dq_in(7) ## io.phy.dq_in(6) ## io.phy.dq_in(5) ## io.phy.dq_in(4) ##
+                                     io.phy.dq_in(3) ## io.phy.dq_in(2) ## io.phy.dq_in(1) ## io.phy.dq_in(0))
           }
           is(config.RCD / 4 + 11) {
             // Pipeline stage 1: register 8x128b rotation popcounts.
-            rotScoresReg := rotScores
+            rotScorer.captureStage1()
           }
           is(config.RCD / 4 + 12) {
             // Pipeline stage 2: register 8-way max rotation score/index.
-            sweepScoreReg := rotScoreW(7)
-            sweepRotReg   := rotIdxW(7)
+            rotScorer.captureStage2()
           }
           is(config.RCD / 4 + 13) {
             // $display is simulation-only: the formal backend lowers
@@ -884,7 +710,7 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
             // tries===40 exit is unaffected.
             if (!GenerationFlags.formal) {
               when(!aligning && (anchorLeft === 0) && (settleLeft === 0) && (pinLeft === 0)) {
-                report(L"RCALIB chk pos=$rclkpos sel=$rclksel seen=$rburst_seen score=$sweepScore rot=$sweepRot latch=$trainLatch best=$bestCnt tries=$rcalib_tries")
+                report(L"RCALIB chk pos=$rclkpos sel=$rclksel seen=$rburst_seen score=$sweepScore rot=$sweepRot latch=${rotScorer.trainLatch} best=$bestCnt tries=$rcalib_tries")
               }
             }
             rcalib_cnt := 0
@@ -2087,15 +1913,10 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
     bestWSel := 0
     bestWRot := 0
     bestWMode := 0
-    for (r <- 0 until 8) {
-      rotScoresReg(r) := 0
-    }
-    sweepScoreReg := 0
-    sweepRotReg := 0
+    rotScorer.resetScorer()
     training := True
     trainDone := False
     needPoison := False
-    trainLatch := 0
     rclkpos := (if (config.isSimulation) B"2'd0" else B"2'd0")
     rclksel := (if (config.isSimulation) B"3'd0" else B"3'd0")
     init_done_latched := False
@@ -2186,107 +2007,5 @@ class Ddr3ControllerCore(val config: Ddr3Config = Ddr3Config()) extends Componen
   io.best_score       := bestCnt
   io.dbg_state        := state.asBits
 
-  // Formal properties (SymbiYosys). Only elaborated under the formal
-  // backend: zero impact on Ddr3Gen Verilog output.
-  // pastValidAfterReset() excludes the X-valued reset-entry cycles so the
-  // solver only sees defined states.
-  if (GenerationFlags.formal) {
-    import spinal.core.formal._
-    when(pastValidAfterReset()) {
-    // P1: accept in IDLE (idle, no refresh) or during active same-row stream
-    assert(io.req.ready === acceptReq)
-    // P2: response handshake mirrors data_ready
-    assert(io.rsp.valid === data_ready)
-    // P3: 128-bit assembly wiring with locked de-rotation + cross-cycle split reassembly
-    for (j <- 0 until 8) {
-      val slot = derot(j)
-      val expBeat = (needRotSplit && U(j, 3 bits) < bestRot) ? dqPrevVec(slot) | dqVec(slot)
-      assert(io.rsp.rdata(j * 16 + 15 downto j * 16) === expBeat.asBits)
-    }
-    // P4: data_ready implies busy (cleared together)
-    assert(!data_ready || busy)
-    // P5: init_done implies both calibrations done
-    assert(!io.init_done || (wlevel_done && rcalib_done))
-    // P6: DQS read strobe is all lanes or nothing
-    assert(io.phy.dqs_read === B"4'b0000" || io.phy.dqs_read === B"4'b1111")
-    // P7: functional READs carry BL8 (A12) WITHOUT auto-precharge (A10=0).
-    // P8: calibration WRITEs keep auto-precharge (A10=1); functional WRITEs keep row open (A10=0).
-    // setCmd fires at cycle RCD/4 (+1 for burst 2) on subcycle RCD%4: visible next cycle.
-    when(state === Ddr3State.READ && cycle === config.RCD / 4 + 1) {
-      assert(A(config.RCD % 4)(12) && !A(config.RCD % 4)(10))
-    }
-    when(state === Ddr3State.READ && cycle === config.RCD / 4 + 2) {
-      assert(A(config.RCD % 4)(12) && !A(config.RCD % 4)(10))
-    }
-    when(state === Ddr3State.WRITE && trainDone && cycle === config.RCD / 4 + 1) {
-      assert(A(config.RCD % 4)(12) && A(config.RCD % 4)(10))
-    }
-    when(state === Ddr3State.WRITE && !trainDone && cycle === config.RCD / 4 + 1) {
-      assert(A(config.RCD % 4)(12) && !A(config.RCD % 4)(10))
-    }
-    // P9: no DQ/DQS bus contention outside write drive windows.
-    // dq_out/dqs_out assignments at cycle c are observable at c+1.
-    val wc = (config.RCD + config.CWL) / 4
-    when(!(state === Ddr3State.WRITE && ((trainDone && (cycle === wc + 1 || cycle === wc + 2)) || (!trainDone && (st1Valid || st2Valid || st3Valid))))) {
-      assert(dq_oen === B"4'b1111")
-    }
-    // NB: WRITE_LEVELING drives DQS (test strobe) by design: excluded.
-    when(!(state === Ddr3State.WRITE_LEVELING) && !(state === Ddr3State.WRITE && ((trainDone && (cycle === wc + 1 || cycle === wc + 2 || cycle === wc + 3)) || (!trainDone && (st1Valid || st2Valid || st3Valid || (wrCooldown =/= 0)))))) {
-      assert(dqs_oen === B"4'b1111")
-    }
-    // P10: mode-register program order MR2 -> MR3 -> MR1 -> MR0.
-    when(state === Ddr3State.CONFIG && cycle === 1) {
-      assert(BA(0) === MR2(15 downto 13) && A(0) === MR2(12 downto 0).resized)
-    }
-    when(state === Ddr3State.CONFIG && cycle === config.MRD / 4 + 1) {
-      assert(BA(0) === MR3(15 downto 13) && A(0) === MR3(12 downto 0).resized)
-    }
-    when(state === Ddr3State.CONFIG && cycle === config.MRD / 2 + 1) {
-      assert(BA(0) === MR1(15 downto 13) && A(0) === MR1(12 downto 0).resized)
-    }
-    when(state === Ddr3State.CONFIG && cycle === config.MRD * 3 / 4 + 1) {
-      assert(BA(0) === MR0(15 downto 13) && A(0) === MR0(12 downto 0).resized)
-    }
-    // P11: ZQ long calibration has A10 set.
-    when(state === Ddr3State.ZQCL && cycle === config.MRD * 3 / 4 + config.MOD / 4 + 2) {
-      assert(A(0)(10))
-    }
-    // P12: data_ready only inside READ.
-    assert(!data_ready || state === Ddr3State.READ)
-    // P13: write datapath mapping (beats + DM vs wstrb), observable next cycle (legacy calib path).
-    // Shift-0 mapping only: under wrMode != 0 the beats are remapped on purpose.
-    when(state === Ddr3State.WRITE && trainDone && cycle === wc + 1 && wrMode === 0) {
-      assert(dq_out(7) === reqReg.wdata(15 downto 0))
-      assert(dq_out(6) === 0)
-      assert(dm_out(7) === !reqReg.wstrb(1 downto 0).orR)
-      assert(dm_out(6))
-    }
-    when(state === Ddr3State.WRITE && trainDone && cycle === wc + 2 && wrMode === 0) {
-      assert(dq_out(0) === reqReg.wdata(31 downto 16))
-      assert(dq_out(1) === reqReg.wdata(47 downto 32))
-      assert(dq_out(2) === reqReg.wdata(63 downto 48))
-      assert(dq_out(3) === reqReg.wdata(79 downto 64))
-      assert(dq_out(4) === reqReg.wdata(95 downto 80))
-      assert(dq_out(5) === reqReg.wdata(111 downto 96))
-      assert(dq_out(6) === reqReg.wdata(127 downto 112))
-      assert(dq_out(7) === 0)
-      assert(dm_out(0) === !reqReg.wstrb(3 downto 2).orR)
-      assert(dm_out(1) === !reqReg.wstrb(5 downto 4).orR)
-      assert(dm_out(2) === !reqReg.wstrb(7 downto 6).orR)
-      assert(dm_out(3) === !reqReg.wstrb(9 downto 8).orR)
-      assert(dm_out(4) === !reqReg.wstrb(11 downto 10).orR)
-      assert(dm_out(5) === !reqReg.wstrb(13 downto 12).orR)
-      assert(dm_out(6) === !reqReg.wstrb(15 downto 14).orR)
-      assert(dm_out(7))
-    }
-    // P14: open-page invariants — never auto-refresh while a row is open, and commands match openBank.
-    assert(!(state === Ddr3State.REFRESH && rowOpen))
-    when((state === Ddr3State.READ || state === Ddr3State.WRITE) && cycle === config.RCD / 4 + 1) {
-      assert(BA(config.RCD % 4) === openBank || trainDone)
-    }
-    // Reachability sanity
-    cover(state === Ddr3State.CONFIG)
-    cover(io.req.fire)
-    }
-  }
+  Ddr3FormalProps.bind(this)
 }

@@ -107,7 +107,7 @@ class Ddr3TesterTop(
     io.DDR3_ODT    := ddr3.io.pad.DDR3_ODT
 
     // Autonomous Memtest & UART engine
-    val engine = new Ddr3MemtestEngine(axiConfig, testBursts)
+    val engine = new Ddr3MemtestEngine(axiConfig, testBursts, clkFreqHz = ddrConfig.pclkHz)
     engine.io.axi <> ddr3.io.axi
 
     engine.io.pll_lock         := pll_lock

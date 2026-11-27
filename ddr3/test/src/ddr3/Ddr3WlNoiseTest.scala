@@ -206,8 +206,8 @@ class Ddr3WlNoiseTest extends AnyFunSuite {
   }
 
   // 0. clean: deterministic answer every strobe -> lock at sim seed 0x18
-  //    minus WL_LOCK_OFF(-1) = 0x17, score 8
-  runCase("WL noise model 0 (clean baseline)", WlNoiseModel.CLEAN, 0x1234, 0x18, 0x17, 0, 8)
+  //    + WL_LOCK_OFF (currently 0 -> 0x18), score 8
+  runCase("WL noise model 0 (clean baseline)", WlNoiseModel.CLEAN, 0x1234, 0x18, 0x18 + Ddr3Config(isSimulation = true).WL_LOCK_OFF, 0, 8)
   // 1. gauss around 0x20 (lock lands ~first-verdict-1)
   runCase("WL noise model 1 (gaussian flicker)", WlNoiseModel.GAUSS, 0x5678, 0x20, 0x1F, 4, 6)
   // 2. dropout around 0x20 (terminates, stays near)

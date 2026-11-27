@@ -1,7 +1,7 @@
 // Generator : SpinalHDL v1.15.0    git head : 05a01af3d3345aa0afcaad8e0186dde13a359db2
 // Component : Ddr3ControllerSim
-// Git hash  : a47c2e3f695a97ae4473121079653752e0eb1cd2
-// Date      : 26/11/2026, 22:57:43
+// Git hash  : 99c3d5b596332371ea9ac284121f91f82495cc18
+// Date      : 27/11/2026, 15:10:00
 
 `timescale 1ns/1ps
 
@@ -124,7 +124,7 @@ module Ddr3ControllerSim (
   wire                phy_io_pad_DDR3_CKE;
   wire                phy_io_pad_DDR3_nRESET;
   wire                phy_io_pad_DDR3_ODT;
-  wire                _zz_when_Ddr3ControllerCore_l2176;
+  wire                _zz_when_Ddr3ControllerCore_l1997;
 
   Ddr3ControllerCore coreArea_core (
     .io_req_valid                      (io_req_valid                             ), //i
@@ -198,7 +198,7 @@ module Ddr3ControllerSim (
     .io_phy_BA_3                       (coreArea_core_io_phy_BA_3[2:0]           ), //o
     .io_phy_CKE                        (coreArea_core_io_phy_CKE                 ), //o
     .io_phy_resetn_delay               (coreArea_core_io_phy_resetn_delay        ), //o
-    ._zz_when_Ddr3ControllerCore_l2176 (_zz_when_Ddr3ControllerCore_l2176        ), //i
+    ._zz_when_Ddr3ControllerCore_l1997 (_zz_when_Ddr3ControllerCore_l1997        ), //i
     .io_pclk                           (io_pclk                                  )  //i
   );
   GowinDdr3Phy phy (
@@ -280,7 +280,7 @@ module Ddr3ControllerSim (
     .io_pad_DDR3_nRESET (phy_io_pad_DDR3_nRESET             ), //o
     .io_pad_DDR3_ODT    (phy_io_pad_DDR3_ODT                )  //o
   );
-  assign _zz_when_Ddr3ControllerCore_l2176 = (! io_resetn);
+  assign _zz_when_Ddr3ControllerCore_l1997 = (! io_resetn);
   assign io_pad_DDR3_DM = phy_io_pad_DDR3_DM;
   assign io_pad_DDR3_A = phy_io_pad_DDR3_A;
   assign io_pad_DDR3_BA = phy_io_pad_DDR3_BA;
@@ -3219,7 +3219,7 @@ module Ddr3ControllerCore (
   output wire [2:0]    io_phy_BA_3,
   output wire          io_phy_CKE,
   output wire          io_phy_resetn_delay,
-  input  wire          _zz_when_Ddr3ControllerCore_l2176,
+  input  wire          _zz_when_Ddr3ControllerCore_l1997,
   input  wire          io_pclk
 );
   localparam Ddr3State_RST_WAIT = 4'd0;
@@ -3234,200 +3234,200 @@ module Ddr3ControllerCore (
   localparam Ddr3State_PRECHARGE = 4'd9;
   localparam Ddr3State_REFRESH = 4'd10;
 
-  wire       [3:0]    _zz_rotScores_0;
-  wire       [3:0]    _zz_rotScores_0_1;
-  wire       [3:0]    _zz_rotScores_0_2;
-  wire       [3:0]    _zz_rotScores_0_3;
-  wire       [3:0]    _zz_rotScores_0_4;
-  wire       [3:0]    _zz_rotScores_0_5;
-  wire       [3:0]    _zz_rotScores_0_6;
-  wire       [3:0]    _zz_rotScores_0_7;
-  wire       [0:0]    _zz_rotScores_0_8;
-  wire       [3:0]    _zz_rotScores_0_9;
-  wire       [0:0]    _zz_rotScores_0_10;
-  wire       [3:0]    _zz_rotScores_0_11;
-  wire       [0:0]    _zz_rotScores_0_12;
-  wire       [3:0]    _zz_rotScores_0_13;
-  wire       [0:0]    _zz_rotScores_0_14;
-  wire       [3:0]    _zz_rotScores_0_15;
-  wire       [0:0]    _zz_rotScores_0_16;
-  wire       [3:0]    _zz_rotScores_0_17;
-  wire       [0:0]    _zz_rotScores_0_18;
-  wire       [3:0]    _zz_rotScores_0_19;
-  wire       [0:0]    _zz_rotScores_0_20;
-  wire       [3:0]    _zz_rotScores_0_21;
-  wire       [0:0]    _zz_rotScores_0_22;
-  wire       [3:0]    _zz_rotScores_1;
-  wire       [3:0]    _zz_rotScores_1_1;
-  wire       [3:0]    _zz_rotScores_1_2;
-  wire       [3:0]    _zz_rotScores_1_3;
-  wire       [3:0]    _zz_rotScores_1_4;
-  wire       [3:0]    _zz_rotScores_1_5;
-  wire       [3:0]    _zz_rotScores_1_6;
-  wire       [3:0]    _zz_rotScores_1_7;
-  wire       [0:0]    _zz_rotScores_1_8;
-  wire       [3:0]    _zz_rotScores_1_9;
-  wire       [0:0]    _zz_rotScores_1_10;
-  wire       [3:0]    _zz_rotScores_1_11;
-  wire       [0:0]    _zz_rotScores_1_12;
-  wire       [3:0]    _zz_rotScores_1_13;
-  wire       [0:0]    _zz_rotScores_1_14;
-  wire       [3:0]    _zz_rotScores_1_15;
-  wire       [0:0]    _zz_rotScores_1_16;
-  wire       [3:0]    _zz_rotScores_1_17;
-  wire       [0:0]    _zz_rotScores_1_18;
-  wire       [3:0]    _zz_rotScores_1_19;
-  wire       [0:0]    _zz_rotScores_1_20;
-  wire       [3:0]    _zz_rotScores_1_21;
-  wire       [0:0]    _zz_rotScores_1_22;
-  wire       [3:0]    _zz_rotScores_2;
-  wire       [3:0]    _zz_rotScores_2_1;
-  wire       [3:0]    _zz_rotScores_2_2;
-  wire       [3:0]    _zz_rotScores_2_3;
-  wire       [3:0]    _zz_rotScores_2_4;
-  wire       [3:0]    _zz_rotScores_2_5;
-  wire       [3:0]    _zz_rotScores_2_6;
-  wire       [3:0]    _zz_rotScores_2_7;
-  wire       [0:0]    _zz_rotScores_2_8;
-  wire       [3:0]    _zz_rotScores_2_9;
-  wire       [0:0]    _zz_rotScores_2_10;
-  wire       [3:0]    _zz_rotScores_2_11;
-  wire       [0:0]    _zz_rotScores_2_12;
-  wire       [3:0]    _zz_rotScores_2_13;
-  wire       [0:0]    _zz_rotScores_2_14;
-  wire       [3:0]    _zz_rotScores_2_15;
-  wire       [0:0]    _zz_rotScores_2_16;
-  wire       [3:0]    _zz_rotScores_2_17;
-  wire       [0:0]    _zz_rotScores_2_18;
-  wire       [3:0]    _zz_rotScores_2_19;
-  wire       [0:0]    _zz_rotScores_2_20;
-  wire       [3:0]    _zz_rotScores_2_21;
-  wire       [0:0]    _zz_rotScores_2_22;
-  wire       [3:0]    _zz_rotScores_3;
-  wire       [3:0]    _zz_rotScores_3_1;
-  wire       [3:0]    _zz_rotScores_3_2;
-  wire       [3:0]    _zz_rotScores_3_3;
-  wire       [3:0]    _zz_rotScores_3_4;
-  wire       [3:0]    _zz_rotScores_3_5;
-  wire       [3:0]    _zz_rotScores_3_6;
-  wire       [3:0]    _zz_rotScores_3_7;
-  wire       [0:0]    _zz_rotScores_3_8;
-  wire       [3:0]    _zz_rotScores_3_9;
-  wire       [0:0]    _zz_rotScores_3_10;
-  wire       [3:0]    _zz_rotScores_3_11;
-  wire       [0:0]    _zz_rotScores_3_12;
-  wire       [3:0]    _zz_rotScores_3_13;
-  wire       [0:0]    _zz_rotScores_3_14;
-  wire       [3:0]    _zz_rotScores_3_15;
-  wire       [0:0]    _zz_rotScores_3_16;
-  wire       [3:0]    _zz_rotScores_3_17;
-  wire       [0:0]    _zz_rotScores_3_18;
-  wire       [3:0]    _zz_rotScores_3_19;
-  wire       [0:0]    _zz_rotScores_3_20;
-  wire       [3:0]    _zz_rotScores_3_21;
-  wire       [0:0]    _zz_rotScores_3_22;
-  wire       [3:0]    _zz_rotScores_4;
-  wire       [3:0]    _zz_rotScores_4_1;
-  wire       [3:0]    _zz_rotScores_4_2;
-  wire       [3:0]    _zz_rotScores_4_3;
-  wire       [3:0]    _zz_rotScores_4_4;
-  wire       [3:0]    _zz_rotScores_4_5;
-  wire       [3:0]    _zz_rotScores_4_6;
-  wire       [3:0]    _zz_rotScores_4_7;
-  wire       [0:0]    _zz_rotScores_4_8;
-  wire       [3:0]    _zz_rotScores_4_9;
-  wire       [0:0]    _zz_rotScores_4_10;
-  wire       [3:0]    _zz_rotScores_4_11;
-  wire       [0:0]    _zz_rotScores_4_12;
-  wire       [3:0]    _zz_rotScores_4_13;
-  wire       [0:0]    _zz_rotScores_4_14;
-  wire       [3:0]    _zz_rotScores_4_15;
-  wire       [0:0]    _zz_rotScores_4_16;
-  wire       [3:0]    _zz_rotScores_4_17;
-  wire       [0:0]    _zz_rotScores_4_18;
-  wire       [3:0]    _zz_rotScores_4_19;
-  wire       [0:0]    _zz_rotScores_4_20;
-  wire       [3:0]    _zz_rotScores_4_21;
-  wire       [0:0]    _zz_rotScores_4_22;
-  wire       [3:0]    _zz_rotScores_5;
-  wire       [3:0]    _zz_rotScores_5_1;
-  wire       [3:0]    _zz_rotScores_5_2;
-  wire       [3:0]    _zz_rotScores_5_3;
-  wire       [3:0]    _zz_rotScores_5_4;
-  wire       [3:0]    _zz_rotScores_5_5;
-  wire       [3:0]    _zz_rotScores_5_6;
-  wire       [3:0]    _zz_rotScores_5_7;
-  wire       [0:0]    _zz_rotScores_5_8;
-  wire       [3:0]    _zz_rotScores_5_9;
-  wire       [0:0]    _zz_rotScores_5_10;
-  wire       [3:0]    _zz_rotScores_5_11;
-  wire       [0:0]    _zz_rotScores_5_12;
-  wire       [3:0]    _zz_rotScores_5_13;
-  wire       [0:0]    _zz_rotScores_5_14;
-  wire       [3:0]    _zz_rotScores_5_15;
-  wire       [0:0]    _zz_rotScores_5_16;
-  wire       [3:0]    _zz_rotScores_5_17;
-  wire       [0:0]    _zz_rotScores_5_18;
-  wire       [3:0]    _zz_rotScores_5_19;
-  wire       [0:0]    _zz_rotScores_5_20;
-  wire       [3:0]    _zz_rotScores_5_21;
-  wire       [0:0]    _zz_rotScores_5_22;
-  wire       [3:0]    _zz_rotScores_6;
-  wire       [3:0]    _zz_rotScores_6_1;
-  wire       [3:0]    _zz_rotScores_6_2;
-  wire       [3:0]    _zz_rotScores_6_3;
-  wire       [3:0]    _zz_rotScores_6_4;
-  wire       [3:0]    _zz_rotScores_6_5;
-  wire       [3:0]    _zz_rotScores_6_6;
-  wire       [3:0]    _zz_rotScores_6_7;
-  wire       [0:0]    _zz_rotScores_6_8;
-  wire       [3:0]    _zz_rotScores_6_9;
-  wire       [0:0]    _zz_rotScores_6_10;
-  wire       [3:0]    _zz_rotScores_6_11;
-  wire       [0:0]    _zz_rotScores_6_12;
-  wire       [3:0]    _zz_rotScores_6_13;
-  wire       [0:0]    _zz_rotScores_6_14;
-  wire       [3:0]    _zz_rotScores_6_15;
-  wire       [0:0]    _zz_rotScores_6_16;
-  wire       [3:0]    _zz_rotScores_6_17;
-  wire       [0:0]    _zz_rotScores_6_18;
-  wire       [3:0]    _zz_rotScores_6_19;
-  wire       [0:0]    _zz_rotScores_6_20;
-  wire       [3:0]    _zz_rotScores_6_21;
-  wire       [0:0]    _zz_rotScores_6_22;
-  wire       [3:0]    _zz_rotScores_7;
-  wire       [3:0]    _zz_rotScores_7_1;
-  wire       [3:0]    _zz_rotScores_7_2;
-  wire       [3:0]    _zz_rotScores_7_3;
-  wire       [3:0]    _zz_rotScores_7_4;
-  wire       [3:0]    _zz_rotScores_7_5;
-  wire       [3:0]    _zz_rotScores_7_6;
-  wire       [3:0]    _zz_rotScores_7_7;
-  wire       [0:0]    _zz_rotScores_7_8;
-  wire       [3:0]    _zz_rotScores_7_9;
-  wire       [0:0]    _zz_rotScores_7_10;
-  wire       [3:0]    _zz_rotScores_7_11;
-  wire       [0:0]    _zz_rotScores_7_12;
-  wire       [3:0]    _zz_rotScores_7_13;
-  wire       [0:0]    _zz_rotScores_7_14;
-  wire       [3:0]    _zz_rotScores_7_15;
-  wire       [0:0]    _zz_rotScores_7_16;
-  wire       [3:0]    _zz_rotScores_7_17;
-  wire       [0:0]    _zz_rotScores_7_18;
-  wire       [3:0]    _zz_rotScores_7_19;
-  wire       [0:0]    _zz_rotScores_7_20;
-  wire       [3:0]    _zz_rotScores_7_21;
-  wire       [0:0]    _zz_rotScores_7_22;
+  wire       [3:0]    _zz_rotScorer_rotScores_0;
+  wire       [3:0]    _zz_rotScorer_rotScores_0_1;
+  wire       [3:0]    _zz_rotScorer_rotScores_0_2;
+  wire       [3:0]    _zz_rotScorer_rotScores_0_3;
+  wire       [3:0]    _zz_rotScorer_rotScores_0_4;
+  wire       [3:0]    _zz_rotScorer_rotScores_0_5;
+  wire       [3:0]    _zz_rotScorer_rotScores_0_6;
+  wire       [3:0]    _zz_rotScorer_rotScores_0_7;
+  wire       [0:0]    _zz_rotScorer_rotScores_0_8;
+  wire       [3:0]    _zz_rotScorer_rotScores_0_9;
+  wire       [0:0]    _zz_rotScorer_rotScores_0_10;
+  wire       [3:0]    _zz_rotScorer_rotScores_0_11;
+  wire       [0:0]    _zz_rotScorer_rotScores_0_12;
+  wire       [3:0]    _zz_rotScorer_rotScores_0_13;
+  wire       [0:0]    _zz_rotScorer_rotScores_0_14;
+  wire       [3:0]    _zz_rotScorer_rotScores_0_15;
+  wire       [0:0]    _zz_rotScorer_rotScores_0_16;
+  wire       [3:0]    _zz_rotScorer_rotScores_0_17;
+  wire       [0:0]    _zz_rotScorer_rotScores_0_18;
+  wire       [3:0]    _zz_rotScorer_rotScores_0_19;
+  wire       [0:0]    _zz_rotScorer_rotScores_0_20;
+  wire       [3:0]    _zz_rotScorer_rotScores_0_21;
+  wire       [0:0]    _zz_rotScorer_rotScores_0_22;
+  wire       [3:0]    _zz_rotScorer_rotScores_1;
+  wire       [3:0]    _zz_rotScorer_rotScores_1_1;
+  wire       [3:0]    _zz_rotScorer_rotScores_1_2;
+  wire       [3:0]    _zz_rotScorer_rotScores_1_3;
+  wire       [3:0]    _zz_rotScorer_rotScores_1_4;
+  wire       [3:0]    _zz_rotScorer_rotScores_1_5;
+  wire       [3:0]    _zz_rotScorer_rotScores_1_6;
+  wire       [3:0]    _zz_rotScorer_rotScores_1_7;
+  wire       [0:0]    _zz_rotScorer_rotScores_1_8;
+  wire       [3:0]    _zz_rotScorer_rotScores_1_9;
+  wire       [0:0]    _zz_rotScorer_rotScores_1_10;
+  wire       [3:0]    _zz_rotScorer_rotScores_1_11;
+  wire       [0:0]    _zz_rotScorer_rotScores_1_12;
+  wire       [3:0]    _zz_rotScorer_rotScores_1_13;
+  wire       [0:0]    _zz_rotScorer_rotScores_1_14;
+  wire       [3:0]    _zz_rotScorer_rotScores_1_15;
+  wire       [0:0]    _zz_rotScorer_rotScores_1_16;
+  wire       [3:0]    _zz_rotScorer_rotScores_1_17;
+  wire       [0:0]    _zz_rotScorer_rotScores_1_18;
+  wire       [3:0]    _zz_rotScorer_rotScores_1_19;
+  wire       [0:0]    _zz_rotScorer_rotScores_1_20;
+  wire       [3:0]    _zz_rotScorer_rotScores_1_21;
+  wire       [0:0]    _zz_rotScorer_rotScores_1_22;
+  wire       [3:0]    _zz_rotScorer_rotScores_2;
+  wire       [3:0]    _zz_rotScorer_rotScores_2_1;
+  wire       [3:0]    _zz_rotScorer_rotScores_2_2;
+  wire       [3:0]    _zz_rotScorer_rotScores_2_3;
+  wire       [3:0]    _zz_rotScorer_rotScores_2_4;
+  wire       [3:0]    _zz_rotScorer_rotScores_2_5;
+  wire       [3:0]    _zz_rotScorer_rotScores_2_6;
+  wire       [3:0]    _zz_rotScorer_rotScores_2_7;
+  wire       [0:0]    _zz_rotScorer_rotScores_2_8;
+  wire       [3:0]    _zz_rotScorer_rotScores_2_9;
+  wire       [0:0]    _zz_rotScorer_rotScores_2_10;
+  wire       [3:0]    _zz_rotScorer_rotScores_2_11;
+  wire       [0:0]    _zz_rotScorer_rotScores_2_12;
+  wire       [3:0]    _zz_rotScorer_rotScores_2_13;
+  wire       [0:0]    _zz_rotScorer_rotScores_2_14;
+  wire       [3:0]    _zz_rotScorer_rotScores_2_15;
+  wire       [0:0]    _zz_rotScorer_rotScores_2_16;
+  wire       [3:0]    _zz_rotScorer_rotScores_2_17;
+  wire       [0:0]    _zz_rotScorer_rotScores_2_18;
+  wire       [3:0]    _zz_rotScorer_rotScores_2_19;
+  wire       [0:0]    _zz_rotScorer_rotScores_2_20;
+  wire       [3:0]    _zz_rotScorer_rotScores_2_21;
+  wire       [0:0]    _zz_rotScorer_rotScores_2_22;
+  wire       [3:0]    _zz_rotScorer_rotScores_3;
+  wire       [3:0]    _zz_rotScorer_rotScores_3_1;
+  wire       [3:0]    _zz_rotScorer_rotScores_3_2;
+  wire       [3:0]    _zz_rotScorer_rotScores_3_3;
+  wire       [3:0]    _zz_rotScorer_rotScores_3_4;
+  wire       [3:0]    _zz_rotScorer_rotScores_3_5;
+  wire       [3:0]    _zz_rotScorer_rotScores_3_6;
+  wire       [3:0]    _zz_rotScorer_rotScores_3_7;
+  wire       [0:0]    _zz_rotScorer_rotScores_3_8;
+  wire       [3:0]    _zz_rotScorer_rotScores_3_9;
+  wire       [0:0]    _zz_rotScorer_rotScores_3_10;
+  wire       [3:0]    _zz_rotScorer_rotScores_3_11;
+  wire       [0:0]    _zz_rotScorer_rotScores_3_12;
+  wire       [3:0]    _zz_rotScorer_rotScores_3_13;
+  wire       [0:0]    _zz_rotScorer_rotScores_3_14;
+  wire       [3:0]    _zz_rotScorer_rotScores_3_15;
+  wire       [0:0]    _zz_rotScorer_rotScores_3_16;
+  wire       [3:0]    _zz_rotScorer_rotScores_3_17;
+  wire       [0:0]    _zz_rotScorer_rotScores_3_18;
+  wire       [3:0]    _zz_rotScorer_rotScores_3_19;
+  wire       [0:0]    _zz_rotScorer_rotScores_3_20;
+  wire       [3:0]    _zz_rotScorer_rotScores_3_21;
+  wire       [0:0]    _zz_rotScorer_rotScores_3_22;
+  wire       [3:0]    _zz_rotScorer_rotScores_4;
+  wire       [3:0]    _zz_rotScorer_rotScores_4_1;
+  wire       [3:0]    _zz_rotScorer_rotScores_4_2;
+  wire       [3:0]    _zz_rotScorer_rotScores_4_3;
+  wire       [3:0]    _zz_rotScorer_rotScores_4_4;
+  wire       [3:0]    _zz_rotScorer_rotScores_4_5;
+  wire       [3:0]    _zz_rotScorer_rotScores_4_6;
+  wire       [3:0]    _zz_rotScorer_rotScores_4_7;
+  wire       [0:0]    _zz_rotScorer_rotScores_4_8;
+  wire       [3:0]    _zz_rotScorer_rotScores_4_9;
+  wire       [0:0]    _zz_rotScorer_rotScores_4_10;
+  wire       [3:0]    _zz_rotScorer_rotScores_4_11;
+  wire       [0:0]    _zz_rotScorer_rotScores_4_12;
+  wire       [3:0]    _zz_rotScorer_rotScores_4_13;
+  wire       [0:0]    _zz_rotScorer_rotScores_4_14;
+  wire       [3:0]    _zz_rotScorer_rotScores_4_15;
+  wire       [0:0]    _zz_rotScorer_rotScores_4_16;
+  wire       [3:0]    _zz_rotScorer_rotScores_4_17;
+  wire       [0:0]    _zz_rotScorer_rotScores_4_18;
+  wire       [3:0]    _zz_rotScorer_rotScores_4_19;
+  wire       [0:0]    _zz_rotScorer_rotScores_4_20;
+  wire       [3:0]    _zz_rotScorer_rotScores_4_21;
+  wire       [0:0]    _zz_rotScorer_rotScores_4_22;
+  wire       [3:0]    _zz_rotScorer_rotScores_5;
+  wire       [3:0]    _zz_rotScorer_rotScores_5_1;
+  wire       [3:0]    _zz_rotScorer_rotScores_5_2;
+  wire       [3:0]    _zz_rotScorer_rotScores_5_3;
+  wire       [3:0]    _zz_rotScorer_rotScores_5_4;
+  wire       [3:0]    _zz_rotScorer_rotScores_5_5;
+  wire       [3:0]    _zz_rotScorer_rotScores_5_6;
+  wire       [3:0]    _zz_rotScorer_rotScores_5_7;
+  wire       [0:0]    _zz_rotScorer_rotScores_5_8;
+  wire       [3:0]    _zz_rotScorer_rotScores_5_9;
+  wire       [0:0]    _zz_rotScorer_rotScores_5_10;
+  wire       [3:0]    _zz_rotScorer_rotScores_5_11;
+  wire       [0:0]    _zz_rotScorer_rotScores_5_12;
+  wire       [3:0]    _zz_rotScorer_rotScores_5_13;
+  wire       [0:0]    _zz_rotScorer_rotScores_5_14;
+  wire       [3:0]    _zz_rotScorer_rotScores_5_15;
+  wire       [0:0]    _zz_rotScorer_rotScores_5_16;
+  wire       [3:0]    _zz_rotScorer_rotScores_5_17;
+  wire       [0:0]    _zz_rotScorer_rotScores_5_18;
+  wire       [3:0]    _zz_rotScorer_rotScores_5_19;
+  wire       [0:0]    _zz_rotScorer_rotScores_5_20;
+  wire       [3:0]    _zz_rotScorer_rotScores_5_21;
+  wire       [0:0]    _zz_rotScorer_rotScores_5_22;
+  wire       [3:0]    _zz_rotScorer_rotScores_6;
+  wire       [3:0]    _zz_rotScorer_rotScores_6_1;
+  wire       [3:0]    _zz_rotScorer_rotScores_6_2;
+  wire       [3:0]    _zz_rotScorer_rotScores_6_3;
+  wire       [3:0]    _zz_rotScorer_rotScores_6_4;
+  wire       [3:0]    _zz_rotScorer_rotScores_6_5;
+  wire       [3:0]    _zz_rotScorer_rotScores_6_6;
+  wire       [3:0]    _zz_rotScorer_rotScores_6_7;
+  wire       [0:0]    _zz_rotScorer_rotScores_6_8;
+  wire       [3:0]    _zz_rotScorer_rotScores_6_9;
+  wire       [0:0]    _zz_rotScorer_rotScores_6_10;
+  wire       [3:0]    _zz_rotScorer_rotScores_6_11;
+  wire       [0:0]    _zz_rotScorer_rotScores_6_12;
+  wire       [3:0]    _zz_rotScorer_rotScores_6_13;
+  wire       [0:0]    _zz_rotScorer_rotScores_6_14;
+  wire       [3:0]    _zz_rotScorer_rotScores_6_15;
+  wire       [0:0]    _zz_rotScorer_rotScores_6_16;
+  wire       [3:0]    _zz_rotScorer_rotScores_6_17;
+  wire       [0:0]    _zz_rotScorer_rotScores_6_18;
+  wire       [3:0]    _zz_rotScorer_rotScores_6_19;
+  wire       [0:0]    _zz_rotScorer_rotScores_6_20;
+  wire       [3:0]    _zz_rotScorer_rotScores_6_21;
+  wire       [0:0]    _zz_rotScorer_rotScores_6_22;
+  wire       [3:0]    _zz_rotScorer_rotScores_7;
+  wire       [3:0]    _zz_rotScorer_rotScores_7_1;
+  wire       [3:0]    _zz_rotScorer_rotScores_7_2;
+  wire       [3:0]    _zz_rotScorer_rotScores_7_3;
+  wire       [3:0]    _zz_rotScorer_rotScores_7_4;
+  wire       [3:0]    _zz_rotScorer_rotScores_7_5;
+  wire       [3:0]    _zz_rotScorer_rotScores_7_6;
+  wire       [3:0]    _zz_rotScorer_rotScores_7_7;
+  wire       [0:0]    _zz_rotScorer_rotScores_7_8;
+  wire       [3:0]    _zz_rotScorer_rotScores_7_9;
+  wire       [0:0]    _zz_rotScorer_rotScores_7_10;
+  wire       [3:0]    _zz_rotScorer_rotScores_7_11;
+  wire       [0:0]    _zz_rotScorer_rotScores_7_12;
+  wire       [3:0]    _zz_rotScorer_rotScores_7_13;
+  wire       [0:0]    _zz_rotScorer_rotScores_7_14;
+  wire       [3:0]    _zz_rotScorer_rotScores_7_15;
+  wire       [0:0]    _zz_rotScorer_rotScores_7_16;
+  wire       [3:0]    _zz_rotScorer_rotScores_7_17;
+  wire       [0:0]    _zz_rotScorer_rotScores_7_18;
+  wire       [3:0]    _zz_rotScorer_rotScores_7_19;
+  wire       [0:0]    _zz_rotScorer_rotScores_7_20;
+  wire       [3:0]    _zz_rotScorer_rotScores_7_21;
+  wire       [0:0]    _zz_rotScorer_rotScores_7_22;
   wire       [6:0]    _zz_rdCyc;
   wire       [1:0]    _zz_rdCyc_1;
   wire       [0:0]    _zz_rotSplit;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l567;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l567_1;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l567_2;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l571;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l571_1;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l571_2;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l571_3;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l394;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l394_1;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l394_2;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l398;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l398_1;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l398_2;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l398_3;
   wire       [6:0]    _zz_cycle_1;
   wire       [16:0]   _zz_tick_counter;
   wire       [12:0]   _zz_A_0_1;
@@ -3445,9 +3445,9 @@ module Ddr3ControllerCore (
   wire       [8:0]    _zz_wstep_4;
   wire       [7:0]    _zz_wstep_5;
   wire       [12:0]   _zz_A_0_9;
-  wire       [2:0]    _zz_when_Ddr3ControllerCore_l727;
-  wire       [2:0]    _zz_when_Ddr3ControllerCore_l727_1;
-  wire       [0:0]    _zz_when_Ddr3ControllerCore_l727_2;
+  wire       [2:0]    _zz_when_Ddr3ControllerCore_l554;
+  wire       [2:0]    _zz_when_Ddr3ControllerCore_l554_1;
+  wire       [0:0]    _zz_when_Ddr3ControllerCore_l554_2;
   wire       [12:0]   _zz_A_0_10;
   wire       [0:0]    _zz_A_0_11;
   wire       [13:0]   _zz_A_2_2;
@@ -3459,8 +3459,8 @@ module Ddr3ControllerCore (
   wire       [0:0]    _zz_A_0_13;
   wire       [2:0]    _zz_rclksel;
   wire       [1:0]    _zz_rclkpos_1;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1268;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1280;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1094;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1106;
   wire       [0:0]    _zz_A_0_14;
   wire       [0:0]    _zz_A_0_15;
   wire       [0:0]    _zz_A_0_16;
@@ -3476,7 +3476,7 @@ module Ddr3ControllerCore (
   wire       [0:0]    _zz_rdRspLeft_2;
   wire       [5:0]    _zz_rdRspLeft_3;
   wire       [0:0]    _zz_rdRspLeft_4;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1642_1;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1468_1;
   wire       [15:0]   _zz_A_2_6;
   wire       [15:0]   _zz_A_2_7;
   wire       [15:0]   _zz_A_2_8;
@@ -3593,76 +3593,62 @@ module Ddr3ControllerCore (
   reg                 training;
   reg                 trainDone;
   reg                 needPoison;
-  reg        [127:0]  trainLatch;
-  wire       [15:0]   latchBeats_0;
-  wire       [15:0]   latchBeats_1;
-  wire       [15:0]   latchBeats_2;
-  wire       [15:0]   latchBeats_3;
-  wire       [15:0]   latchBeats_4;
-  wire       [15:0]   latchBeats_5;
-  wire       [15:0]   latchBeats_6;
-  wire       [15:0]   latchBeats_7;
-  wire       [15:0]   patBeats_0;
-  wire       [15:0]   patBeats_1;
-  wire       [15:0]   patBeats_2;
-  wire       [15:0]   patBeats_3;
-  wire       [15:0]   patBeats_4;
-  wire       [15:0]   patBeats_5;
-  wire       [15:0]   patBeats_6;
-  wire       [15:0]   patBeats_7;
-  wire       [3:0]    rotScores_0;
-  wire       [3:0]    rotScores_1;
-  wire       [3:0]    rotScores_2;
-  wire       [3:0]    rotScores_3;
-  wire       [3:0]    rotScores_4;
-  wire       [3:0]    rotScores_5;
-  wire       [3:0]    rotScores_6;
-  wire       [3:0]    rotScores_7;
-  reg        [3:0]    rotScoresReg_0;
-  reg        [3:0]    rotScoresReg_1;
-  reg        [3:0]    rotScoresReg_2;
-  reg        [3:0]    rotScoresReg_3;
-  reg        [3:0]    rotScoresReg_4;
-  reg        [3:0]    rotScoresReg_5;
-  reg        [3:0]    rotScoresReg_6;
-  reg        [3:0]    rotScoresReg_7;
-  wire       [3:0]    rotScoreW_0;
-  wire       [3:0]    rotScoreW_1;
-  wire       [3:0]    rotScoreW_2;
-  wire       [3:0]    rotScoreW_3;
-  wire       [3:0]    rotScoreW_4;
-  wire       [3:0]    rotScoreW_5;
-  wire       [3:0]    rotScoreW_6;
-  wire       [3:0]    rotScoreW_7;
-  wire       [2:0]    rotIdxW_0;
-  wire       [2:0]    rotIdxW_1;
-  wire       [2:0]    rotIdxW_2;
-  wire       [2:0]    rotIdxW_3;
-  wire       [2:0]    rotIdxW_4;
-  wire       [2:0]    rotIdxW_5;
-  wire       [2:0]    rotIdxW_6;
-  wire       [2:0]    rotIdxW_7;
-  wire       [3:0]    treeS1_0;
-  wire       [3:0]    treeS1_1;
-  wire       [3:0]    treeS1_2;
-  wire       [3:0]    treeS1_3;
-  wire       [2:0]    treeI1_0;
-  wire       [2:0]    treeI1_1;
-  wire       [2:0]    treeI1_2;
-  wire       [2:0]    treeI1_3;
-  wire                _zz_treeS1_0;
-  wire                _zz_treeS1_1;
-  wire                _zz_treeS1_2;
-  wire                _zz_treeS1_3;
-  wire       [3:0]    treeS2_0;
-  wire       [3:0]    treeS2_1;
-  wire       [2:0]    treeI2_0;
-  wire       [2:0]    treeI2_1;
-  wire                _zz_treeS2_0;
-  wire                _zz_treeS2_1;
-  wire                _zz_rotScoreW_7;
-  reg        [3:0]    sweepScoreReg;
-  reg        [2:0]    sweepRotReg;
+  reg        [127:0]  rotScorer_trainLatch;
+  wire       [15:0]   rotScorer_latchBeats_0;
+  wire       [15:0]   rotScorer_latchBeats_1;
+  wire       [15:0]   rotScorer_latchBeats_2;
+  wire       [15:0]   rotScorer_latchBeats_3;
+  wire       [15:0]   rotScorer_latchBeats_4;
+  wire       [15:0]   rotScorer_latchBeats_5;
+  wire       [15:0]   rotScorer_latchBeats_6;
+  wire       [15:0]   rotScorer_latchBeats_7;
+  wire       [15:0]   rotScorer_patBeats_0;
+  wire       [15:0]   rotScorer_patBeats_1;
+  wire       [15:0]   rotScorer_patBeats_2;
+  wire       [15:0]   rotScorer_patBeats_3;
+  wire       [15:0]   rotScorer_patBeats_4;
+  wire       [15:0]   rotScorer_patBeats_5;
+  wire       [15:0]   rotScorer_patBeats_6;
+  wire       [15:0]   rotScorer_patBeats_7;
+  wire       [3:0]    rotScorer_rotScores_0;
+  wire       [3:0]    rotScorer_rotScores_1;
+  wire       [3:0]    rotScorer_rotScores_2;
+  wire       [3:0]    rotScorer_rotScores_3;
+  wire       [3:0]    rotScorer_rotScores_4;
+  wire       [3:0]    rotScorer_rotScores_5;
+  wire       [3:0]    rotScorer_rotScores_6;
+  wire       [3:0]    rotScorer_rotScores_7;
+  reg        [3:0]    rotScorer_rotScoresReg_0;
+  reg        [3:0]    rotScorer_rotScoresReg_1;
+  reg        [3:0]    rotScorer_rotScoresReg_2;
+  reg        [3:0]    rotScorer_rotScoresReg_3;
+  reg        [3:0]    rotScorer_rotScoresReg_4;
+  reg        [3:0]    rotScorer_rotScoresReg_5;
+  reg        [3:0]    rotScorer_rotScoresReg_6;
+  reg        [3:0]    rotScorer_rotScoresReg_7;
+  wire       [3:0]    rotScorer_treeS1_0;
+  wire       [3:0]    rotScorer_treeS1_1;
+  wire       [3:0]    rotScorer_treeS1_2;
+  wire       [3:0]    rotScorer_treeS1_3;
+  wire       [2:0]    rotScorer_treeI1_0;
+  wire       [2:0]    rotScorer_treeI1_1;
+  wire       [2:0]    rotScorer_treeI1_2;
+  wire       [2:0]    rotScorer_treeI1_3;
+  wire                _zz_rotScorer_treeS1_0;
+  wire                _zz_rotScorer_treeS1_1;
+  wire                _zz_rotScorer_treeS1_2;
+  wire                _zz_rotScorer_treeS1_3;
+  wire       [3:0]    rotScorer_treeS2_0;
+  wire       [3:0]    rotScorer_treeS2_1;
+  wire       [2:0]    rotScorer_treeI2_0;
+  wire       [2:0]    rotScorer_treeI2_1;
+  wire                _zz_rotScorer_treeS2_0;
+  wire                _zz_rotScorer_treeS2_1;
+  wire                rotScorer_betterTop;
+  wire       [3:0]    rotScorer_topScore;
+  wire       [2:0]    rotScorer_topIdx;
+  reg        [3:0]    rotScorer_sweepScore;
+  reg        [2:0]    rotScorer_sweepRot;
   reg        [3:0]    bestCnt;
   reg        [1:0]    bestPos;
   reg        [2:0]    bestSel;
@@ -3718,8 +3704,8 @@ module Ddr3ControllerCore (
   reg                 rdir;
   reg        [10:0]   refresh_timer;
   reg                 refresh_due;
-  wire                when_Ddr3ControllerCore_l453;
-  wire                when_Ddr3ControllerCore_l454;
+  wire                when_Ddr3ControllerCore_l280;
+  wire                when_Ddr3ControllerCore_l281;
   reg                 reqReg_write;
   reg        [26:0]   reqReg_addr;
   reg        [127:0]  reqReg_wdata;
@@ -3756,103 +3742,103 @@ module Ddr3ControllerCore (
   reg        [7:0]    dqs_out;
   reg        [3:0]    dqs_oen;
   reg        [7:0]    dm_out;
-  wire                when_Ddr3ControllerCore_l537;
-  wire                when_Ddr3ControllerCore_l538;
+  wire                when_Ddr3ControllerCore_l364;
+  wire                when_Ddr3ControllerCore_l365;
   wire       [6:0]    rdCyc;
   wire       [6:0]    rotSplit;
   reg        [3:0]    dqs_read;
-  wire                when_Ddr3ControllerCore_l567;
-  wire                when_Ddr3ControllerCore_l571;
-  wire                when_Ddr3ControllerCore_l574;
+  wire                when_Ddr3ControllerCore_l394;
+  wire                when_Ddr3ControllerCore_l398;
+  wire                when_Ddr3ControllerCore_l401;
   wire       [13:0]   inRow;
   wire       [2:0]    inBank;
   wire                inSameRow;
   wire                canAcceptWrStream;
   wire                canAcceptRdStream;
   wire                acceptReq;
-  wire                when_Ddr3ControllerCore_l627;
-  wire                when_Ddr3ControllerCore_l642;
+  wire                when_Ddr3ControllerCore_l454;
+  wire                when_Ddr3ControllerCore_l469;
   wire       [15:0]   _zz_A_0;
-  wire                when_Ddr3ControllerCore_l749;
-  wire                when_Ddr3ControllerCore_l714;
-  wire                when_Ddr3ControllerCore_l723;
-  wire                when_Ddr3ControllerCore_l738;
-  wire                when_Ddr3ControllerCore_l727;
-  wire                when_Ddr3ControllerCore_l886;
-  wire                when_Ddr3ControllerCore_l891;
-  wire                when_Ddr3ControllerCore_l911;
-  wire                when_Ddr3ControllerCore_l913;
-  wire                when_Ddr3ControllerCore_l925;
-  wire                when_Ddr3ControllerCore_l949;
-  wire                when_Ddr3ControllerCore_l950;
-  wire                when_Ddr3ControllerCore_l965;
-  wire                when_Ddr3ControllerCore_l990;
-  wire                when_Ddr3ControllerCore_l1008;
-  wire                when_Ddr3ControllerCore_l1033;
+  wire                when_Ddr3ControllerCore_l576;
+  wire                when_Ddr3ControllerCore_l541;
+  wire                when_Ddr3ControllerCore_l550;
+  wire                when_Ddr3ControllerCore_l565;
+  wire                when_Ddr3ControllerCore_l554;
+  wire                when_Ddr3ControllerCore_l712;
+  wire                when_Ddr3ControllerCore_l717;
+  wire                when_Ddr3ControllerCore_l737;
+  wire                when_Ddr3ControllerCore_l739;
+  wire                when_Ddr3ControllerCore_l751;
+  wire                when_Ddr3ControllerCore_l775;
+  wire                when_Ddr3ControllerCore_l776;
+  wire                when_Ddr3ControllerCore_l791;
+  wire                when_Ddr3ControllerCore_l816;
+  wire                when_Ddr3ControllerCore_l834;
+  wire                when_Ddr3ControllerCore_l859;
+  wire                when_Ddr3ControllerCore_l864;
+  wire                when_Ddr3ControllerCore_l874;
+  wire                when_Ddr3ControllerCore_l899;
+  wire                when_Ddr3ControllerCore_l935;
+  wire                when_Ddr3ControllerCore_l941;
+  wire                when_Ddr3ControllerCore_l963;
+  wire                when_Ddr3ControllerCore_l982;
+  wire                when_Ddr3ControllerCore_l987;
+  wire                when_Ddr3ControllerCore_l1012;
+  wire                when_Ddr3ControllerCore_l1019;
+  wire                when_Ddr3ControllerCore_l1023;
+  wire                when_Ddr3ControllerCore_l1030;
   wire                when_Ddr3ControllerCore_l1038;
-  wire                when_Ddr3ControllerCore_l1048;
-  wire                when_Ddr3ControllerCore_l1073;
-  wire                when_Ddr3ControllerCore_l1109;
-  wire                when_Ddr3ControllerCore_l1115;
-  wire                when_Ddr3ControllerCore_l1137;
-  wire                when_Ddr3ControllerCore_l1156;
-  wire                when_Ddr3ControllerCore_l1161;
-  wire                when_Ddr3ControllerCore_l1186;
-  wire                when_Ddr3ControllerCore_l1193;
-  wire                when_Ddr3ControllerCore_l1197;
-  wire                when_Ddr3ControllerCore_l1204;
-  wire                when_Ddr3ControllerCore_l1212;
-  wire                when_Ddr3ControllerCore_l1214;
-  wire                when_Ddr3ControllerCore_l1220;
-  wire                when_Ddr3ControllerCore_l1227;
+  wire                when_Ddr3ControllerCore_l1040;
+  wire                when_Ddr3ControllerCore_l1046;
+  wire                when_Ddr3ControllerCore_l1053;
   wire       [1:0]    _zz_wrMode;
-  wire                when_Ddr3ControllerCore_l1235;
-  wire                when_Ddr3ControllerCore_l1252;
-  wire                when_Ddr3ControllerCore_l1259;
-  wire                when_Ddr3ControllerCore_l1268;
+  wire                when_Ddr3ControllerCore_l1061;
+  wire                when_Ddr3ControllerCore_l1078;
+  wire                when_Ddr3ControllerCore_l1085;
+  wire                when_Ddr3ControllerCore_l1094;
   wire       [6:0]    _zz_s0Mag;
-  wire                when_Ddr3ControllerCore_l1280;
+  wire                when_Ddr3ControllerCore_l1106;
   wire       [6:0]    _zz_s0Mag_1;
-  wire                when_Ddr3ControllerCore_l1273;
-  wire                when_Ddr3ControllerCore_l1309;
-  wire                when_Ddr3ControllerCore_l1346;
-  wire                when_Ddr3ControllerCore_l1391;
+  wire                when_Ddr3ControllerCore_l1099;
+  wire                when_Ddr3ControllerCore_l1135;
+  wire                when_Ddr3ControllerCore_l1172;
+  wire                when_Ddr3ControllerCore_l1217;
   wire       [13:0]   _zz_openRow;
   wire       [2:0]    _zz_openBank;
   wire                _zz_cycle;
-  wire                when_Ddr3ControllerCore_l1527;
-  wire                when_Ddr3ControllerCore_l1536;
-  wire                when_Ddr3ControllerCore_l1568;
+  wire                when_Ddr3ControllerCore_l1353;
+  wire                when_Ddr3ControllerCore_l1362;
+  wire                when_Ddr3ControllerCore_l1394;
   wire       [13:0]   _zz_openRow_1;
   wire       [2:0]    _zz_openBank_1;
   wire       [2:0]    _zz_BA_2;
   wire       [15:0]   _zz_A_2;
-  wire                when_Ddr3ControllerCore_l1614;
-  wire                when_Ddr3ControllerCore_l1618;
-  wire                when_Ddr3ControllerCore_l1624;
-  wire                when_Ddr3ControllerCore_l1623;
-  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1642;
+  wire                when_Ddr3ControllerCore_l1440;
+  wire                when_Ddr3ControllerCore_l1444;
+  wire                when_Ddr3ControllerCore_l1450;
+  wire                when_Ddr3ControllerCore_l1449;
+  wire       [6:0]    _zz_when_Ddr3ControllerCore_l1468;
   wire                _zz_data_ready;
-  wire                when_Ddr3ControllerCore_l1642;
+  wire                when_Ddr3ControllerCore_l1468;
   wire       [9:0]    _zz_A_2_1;
   wire       [2:0]    _zz_BA_2_1;
-  wire                when_Ddr3ControllerCore_l1657;
-  wire                when_Ddr3ControllerCore_l1663;
-  wire                when_Ddr3ControllerCore_l1698;
-  wire                when_Ddr3ControllerCore_l1784;
-  wire                when_Ddr3ControllerCore_l1816;
+  wire                when_Ddr3ControllerCore_l1483;
+  wire                when_Ddr3ControllerCore_l1489;
+  wire                when_Ddr3ControllerCore_l1524;
+  wire                when_Ddr3ControllerCore_l1610;
+  wire                when_Ddr3ControllerCore_l1642;
+  wire                when_Ddr3ControllerCore_l1660;
+  wire                when_Ddr3ControllerCore_l1672;
+  wire                when_Ddr3ControllerCore_l1683;
+  wire                when_Ddr3ControllerCore_l1713;
+  wire                when_Ddr3ControllerCore_l1749;
+  wire                when_Ddr3ControllerCore_l1752;
+  wire                when_Ddr3ControllerCore_l1762;
+  wire                when_Ddr3ControllerCore_l1783;
+  wire                when_Ddr3ControllerCore_l1793;
+  wire                when_Ddr3ControllerCore_l1821;
+  wire                when_Ddr3ControllerCore_l1825;
   wire                when_Ddr3ControllerCore_l1834;
-  wire                when_Ddr3ControllerCore_l1846;
-  wire                when_Ddr3ControllerCore_l1857;
-  wire                when_Ddr3ControllerCore_l1887;
-  wire                when_Ddr3ControllerCore_l1923;
-  wire                when_Ddr3ControllerCore_l1926;
-  wire                when_Ddr3ControllerCore_l1936;
-  wire                when_Ddr3ControllerCore_l1957;
-  wire                when_Ddr3ControllerCore_l1967;
-  wire                when_Ddr3ControllerCore_l1995;
-  wire                when_Ddr3ControllerCore_l1999;
-  wire                when_Ddr3ControllerCore_l2008;
   reg        [15:0]   dqPrevVec_0;
   reg        [15:0]   dqPrevVec_1;
   reg        [15:0]   dqPrevVec_2;
@@ -3878,206 +3864,206 @@ module Ddr3ControllerCore (
   wire       [2:0]    _zz_rdataVec_5;
   wire       [2:0]    _zz_rdataVec_6;
   wire       [2:0]    _zz_rdataVec_7;
-  wire                when_Ddr3ControllerCore_l2176;
+  wire                when_Ddr3ControllerCore_l1997;
   `ifndef SYNTHESIS
   reg [111:0] state_string;
   `endif
 
 
-  assign _zz_rotScores_0 = (_zz_rotScores_0_1 + _zz_rotScores_0_19);
-  assign _zz_rotScores_0_1 = (_zz_rotScores_0_2 + _zz_rotScores_0_17);
-  assign _zz_rotScores_0_2 = (_zz_rotScores_0_3 + _zz_rotScores_0_15);
-  assign _zz_rotScores_0_3 = (_zz_rotScores_0_4 + _zz_rotScores_0_13);
-  assign _zz_rotScores_0_4 = (_zz_rotScores_0_5 + _zz_rotScores_0_11);
-  assign _zz_rotScores_0_5 = (_zz_rotScores_0_6 + _zz_rotScores_0_9);
-  assign _zz_rotScores_0_6 = (4'b0000 + _zz_rotScores_0_7);
-  assign _zz_rotScores_0_8 = (latchBeats_0 == patBeats_0);
-  assign _zz_rotScores_0_7 = {3'd0, _zz_rotScores_0_8};
-  assign _zz_rotScores_0_10 = (latchBeats_1 == patBeats_1);
-  assign _zz_rotScores_0_9 = {3'd0, _zz_rotScores_0_10};
-  assign _zz_rotScores_0_12 = (latchBeats_2 == patBeats_2);
-  assign _zz_rotScores_0_11 = {3'd0, _zz_rotScores_0_12};
-  assign _zz_rotScores_0_14 = (latchBeats_3 == patBeats_3);
-  assign _zz_rotScores_0_13 = {3'd0, _zz_rotScores_0_14};
-  assign _zz_rotScores_0_16 = (latchBeats_4 == patBeats_4);
-  assign _zz_rotScores_0_15 = {3'd0, _zz_rotScores_0_16};
-  assign _zz_rotScores_0_18 = (latchBeats_5 == patBeats_5);
-  assign _zz_rotScores_0_17 = {3'd0, _zz_rotScores_0_18};
-  assign _zz_rotScores_0_20 = (latchBeats_6 == patBeats_6);
-  assign _zz_rotScores_0_19 = {3'd0, _zz_rotScores_0_20};
-  assign _zz_rotScores_0_22 = (latchBeats_7 == patBeats_7);
-  assign _zz_rotScores_0_21 = {3'd0, _zz_rotScores_0_22};
-  assign _zz_rotScores_1 = (_zz_rotScores_1_1 + _zz_rotScores_1_19);
-  assign _zz_rotScores_1_1 = (_zz_rotScores_1_2 + _zz_rotScores_1_17);
-  assign _zz_rotScores_1_2 = (_zz_rotScores_1_3 + _zz_rotScores_1_15);
-  assign _zz_rotScores_1_3 = (_zz_rotScores_1_4 + _zz_rotScores_1_13);
-  assign _zz_rotScores_1_4 = (_zz_rotScores_1_5 + _zz_rotScores_1_11);
-  assign _zz_rotScores_1_5 = (_zz_rotScores_1_6 + _zz_rotScores_1_9);
-  assign _zz_rotScores_1_6 = (4'b0000 + _zz_rotScores_1_7);
-  assign _zz_rotScores_1_8 = (latchBeats_0 == patBeats_1);
-  assign _zz_rotScores_1_7 = {3'd0, _zz_rotScores_1_8};
-  assign _zz_rotScores_1_10 = (latchBeats_1 == patBeats_2);
-  assign _zz_rotScores_1_9 = {3'd0, _zz_rotScores_1_10};
-  assign _zz_rotScores_1_12 = (latchBeats_2 == patBeats_3);
-  assign _zz_rotScores_1_11 = {3'd0, _zz_rotScores_1_12};
-  assign _zz_rotScores_1_14 = (latchBeats_3 == patBeats_4);
-  assign _zz_rotScores_1_13 = {3'd0, _zz_rotScores_1_14};
-  assign _zz_rotScores_1_16 = (latchBeats_4 == patBeats_5);
-  assign _zz_rotScores_1_15 = {3'd0, _zz_rotScores_1_16};
-  assign _zz_rotScores_1_18 = (latchBeats_5 == patBeats_6);
-  assign _zz_rotScores_1_17 = {3'd0, _zz_rotScores_1_18};
-  assign _zz_rotScores_1_20 = (latchBeats_6 == patBeats_7);
-  assign _zz_rotScores_1_19 = {3'd0, _zz_rotScores_1_20};
-  assign _zz_rotScores_1_22 = (latchBeats_7 == patBeats_0);
-  assign _zz_rotScores_1_21 = {3'd0, _zz_rotScores_1_22};
-  assign _zz_rotScores_2 = (_zz_rotScores_2_1 + _zz_rotScores_2_19);
-  assign _zz_rotScores_2_1 = (_zz_rotScores_2_2 + _zz_rotScores_2_17);
-  assign _zz_rotScores_2_2 = (_zz_rotScores_2_3 + _zz_rotScores_2_15);
-  assign _zz_rotScores_2_3 = (_zz_rotScores_2_4 + _zz_rotScores_2_13);
-  assign _zz_rotScores_2_4 = (_zz_rotScores_2_5 + _zz_rotScores_2_11);
-  assign _zz_rotScores_2_5 = (_zz_rotScores_2_6 + _zz_rotScores_2_9);
-  assign _zz_rotScores_2_6 = (4'b0000 + _zz_rotScores_2_7);
-  assign _zz_rotScores_2_8 = (latchBeats_0 == patBeats_2);
-  assign _zz_rotScores_2_7 = {3'd0, _zz_rotScores_2_8};
-  assign _zz_rotScores_2_10 = (latchBeats_1 == patBeats_3);
-  assign _zz_rotScores_2_9 = {3'd0, _zz_rotScores_2_10};
-  assign _zz_rotScores_2_12 = (latchBeats_2 == patBeats_4);
-  assign _zz_rotScores_2_11 = {3'd0, _zz_rotScores_2_12};
-  assign _zz_rotScores_2_14 = (latchBeats_3 == patBeats_5);
-  assign _zz_rotScores_2_13 = {3'd0, _zz_rotScores_2_14};
-  assign _zz_rotScores_2_16 = (latchBeats_4 == patBeats_6);
-  assign _zz_rotScores_2_15 = {3'd0, _zz_rotScores_2_16};
-  assign _zz_rotScores_2_18 = (latchBeats_5 == patBeats_7);
-  assign _zz_rotScores_2_17 = {3'd0, _zz_rotScores_2_18};
-  assign _zz_rotScores_2_20 = (latchBeats_6 == patBeats_0);
-  assign _zz_rotScores_2_19 = {3'd0, _zz_rotScores_2_20};
-  assign _zz_rotScores_2_22 = (latchBeats_7 == patBeats_1);
-  assign _zz_rotScores_2_21 = {3'd0, _zz_rotScores_2_22};
-  assign _zz_rotScores_3 = (_zz_rotScores_3_1 + _zz_rotScores_3_19);
-  assign _zz_rotScores_3_1 = (_zz_rotScores_3_2 + _zz_rotScores_3_17);
-  assign _zz_rotScores_3_2 = (_zz_rotScores_3_3 + _zz_rotScores_3_15);
-  assign _zz_rotScores_3_3 = (_zz_rotScores_3_4 + _zz_rotScores_3_13);
-  assign _zz_rotScores_3_4 = (_zz_rotScores_3_5 + _zz_rotScores_3_11);
-  assign _zz_rotScores_3_5 = (_zz_rotScores_3_6 + _zz_rotScores_3_9);
-  assign _zz_rotScores_3_6 = (4'b0000 + _zz_rotScores_3_7);
-  assign _zz_rotScores_3_8 = (latchBeats_0 == patBeats_3);
-  assign _zz_rotScores_3_7 = {3'd0, _zz_rotScores_3_8};
-  assign _zz_rotScores_3_10 = (latchBeats_1 == patBeats_4);
-  assign _zz_rotScores_3_9 = {3'd0, _zz_rotScores_3_10};
-  assign _zz_rotScores_3_12 = (latchBeats_2 == patBeats_5);
-  assign _zz_rotScores_3_11 = {3'd0, _zz_rotScores_3_12};
-  assign _zz_rotScores_3_14 = (latchBeats_3 == patBeats_6);
-  assign _zz_rotScores_3_13 = {3'd0, _zz_rotScores_3_14};
-  assign _zz_rotScores_3_16 = (latchBeats_4 == patBeats_7);
-  assign _zz_rotScores_3_15 = {3'd0, _zz_rotScores_3_16};
-  assign _zz_rotScores_3_18 = (latchBeats_5 == patBeats_0);
-  assign _zz_rotScores_3_17 = {3'd0, _zz_rotScores_3_18};
-  assign _zz_rotScores_3_20 = (latchBeats_6 == patBeats_1);
-  assign _zz_rotScores_3_19 = {3'd0, _zz_rotScores_3_20};
-  assign _zz_rotScores_3_22 = (latchBeats_7 == patBeats_2);
-  assign _zz_rotScores_3_21 = {3'd0, _zz_rotScores_3_22};
-  assign _zz_rotScores_4 = (_zz_rotScores_4_1 + _zz_rotScores_4_19);
-  assign _zz_rotScores_4_1 = (_zz_rotScores_4_2 + _zz_rotScores_4_17);
-  assign _zz_rotScores_4_2 = (_zz_rotScores_4_3 + _zz_rotScores_4_15);
-  assign _zz_rotScores_4_3 = (_zz_rotScores_4_4 + _zz_rotScores_4_13);
-  assign _zz_rotScores_4_4 = (_zz_rotScores_4_5 + _zz_rotScores_4_11);
-  assign _zz_rotScores_4_5 = (_zz_rotScores_4_6 + _zz_rotScores_4_9);
-  assign _zz_rotScores_4_6 = (4'b0000 + _zz_rotScores_4_7);
-  assign _zz_rotScores_4_8 = (latchBeats_0 == patBeats_4);
-  assign _zz_rotScores_4_7 = {3'd0, _zz_rotScores_4_8};
-  assign _zz_rotScores_4_10 = (latchBeats_1 == patBeats_5);
-  assign _zz_rotScores_4_9 = {3'd0, _zz_rotScores_4_10};
-  assign _zz_rotScores_4_12 = (latchBeats_2 == patBeats_6);
-  assign _zz_rotScores_4_11 = {3'd0, _zz_rotScores_4_12};
-  assign _zz_rotScores_4_14 = (latchBeats_3 == patBeats_7);
-  assign _zz_rotScores_4_13 = {3'd0, _zz_rotScores_4_14};
-  assign _zz_rotScores_4_16 = (latchBeats_4 == patBeats_0);
-  assign _zz_rotScores_4_15 = {3'd0, _zz_rotScores_4_16};
-  assign _zz_rotScores_4_18 = (latchBeats_5 == patBeats_1);
-  assign _zz_rotScores_4_17 = {3'd0, _zz_rotScores_4_18};
-  assign _zz_rotScores_4_20 = (latchBeats_6 == patBeats_2);
-  assign _zz_rotScores_4_19 = {3'd0, _zz_rotScores_4_20};
-  assign _zz_rotScores_4_22 = (latchBeats_7 == patBeats_3);
-  assign _zz_rotScores_4_21 = {3'd0, _zz_rotScores_4_22};
-  assign _zz_rotScores_5 = (_zz_rotScores_5_1 + _zz_rotScores_5_19);
-  assign _zz_rotScores_5_1 = (_zz_rotScores_5_2 + _zz_rotScores_5_17);
-  assign _zz_rotScores_5_2 = (_zz_rotScores_5_3 + _zz_rotScores_5_15);
-  assign _zz_rotScores_5_3 = (_zz_rotScores_5_4 + _zz_rotScores_5_13);
-  assign _zz_rotScores_5_4 = (_zz_rotScores_5_5 + _zz_rotScores_5_11);
-  assign _zz_rotScores_5_5 = (_zz_rotScores_5_6 + _zz_rotScores_5_9);
-  assign _zz_rotScores_5_6 = (4'b0000 + _zz_rotScores_5_7);
-  assign _zz_rotScores_5_8 = (latchBeats_0 == patBeats_5);
-  assign _zz_rotScores_5_7 = {3'd0, _zz_rotScores_5_8};
-  assign _zz_rotScores_5_10 = (latchBeats_1 == patBeats_6);
-  assign _zz_rotScores_5_9 = {3'd0, _zz_rotScores_5_10};
-  assign _zz_rotScores_5_12 = (latchBeats_2 == patBeats_7);
-  assign _zz_rotScores_5_11 = {3'd0, _zz_rotScores_5_12};
-  assign _zz_rotScores_5_14 = (latchBeats_3 == patBeats_0);
-  assign _zz_rotScores_5_13 = {3'd0, _zz_rotScores_5_14};
-  assign _zz_rotScores_5_16 = (latchBeats_4 == patBeats_1);
-  assign _zz_rotScores_5_15 = {3'd0, _zz_rotScores_5_16};
-  assign _zz_rotScores_5_18 = (latchBeats_5 == patBeats_2);
-  assign _zz_rotScores_5_17 = {3'd0, _zz_rotScores_5_18};
-  assign _zz_rotScores_5_20 = (latchBeats_6 == patBeats_3);
-  assign _zz_rotScores_5_19 = {3'd0, _zz_rotScores_5_20};
-  assign _zz_rotScores_5_22 = (latchBeats_7 == patBeats_4);
-  assign _zz_rotScores_5_21 = {3'd0, _zz_rotScores_5_22};
-  assign _zz_rotScores_6 = (_zz_rotScores_6_1 + _zz_rotScores_6_19);
-  assign _zz_rotScores_6_1 = (_zz_rotScores_6_2 + _zz_rotScores_6_17);
-  assign _zz_rotScores_6_2 = (_zz_rotScores_6_3 + _zz_rotScores_6_15);
-  assign _zz_rotScores_6_3 = (_zz_rotScores_6_4 + _zz_rotScores_6_13);
-  assign _zz_rotScores_6_4 = (_zz_rotScores_6_5 + _zz_rotScores_6_11);
-  assign _zz_rotScores_6_5 = (_zz_rotScores_6_6 + _zz_rotScores_6_9);
-  assign _zz_rotScores_6_6 = (4'b0000 + _zz_rotScores_6_7);
-  assign _zz_rotScores_6_8 = (latchBeats_0 == patBeats_6);
-  assign _zz_rotScores_6_7 = {3'd0, _zz_rotScores_6_8};
-  assign _zz_rotScores_6_10 = (latchBeats_1 == patBeats_7);
-  assign _zz_rotScores_6_9 = {3'd0, _zz_rotScores_6_10};
-  assign _zz_rotScores_6_12 = (latchBeats_2 == patBeats_0);
-  assign _zz_rotScores_6_11 = {3'd0, _zz_rotScores_6_12};
-  assign _zz_rotScores_6_14 = (latchBeats_3 == patBeats_1);
-  assign _zz_rotScores_6_13 = {3'd0, _zz_rotScores_6_14};
-  assign _zz_rotScores_6_16 = (latchBeats_4 == patBeats_2);
-  assign _zz_rotScores_6_15 = {3'd0, _zz_rotScores_6_16};
-  assign _zz_rotScores_6_18 = (latchBeats_5 == patBeats_3);
-  assign _zz_rotScores_6_17 = {3'd0, _zz_rotScores_6_18};
-  assign _zz_rotScores_6_20 = (latchBeats_6 == patBeats_4);
-  assign _zz_rotScores_6_19 = {3'd0, _zz_rotScores_6_20};
-  assign _zz_rotScores_6_22 = (latchBeats_7 == patBeats_5);
-  assign _zz_rotScores_6_21 = {3'd0, _zz_rotScores_6_22};
-  assign _zz_rotScores_7 = (_zz_rotScores_7_1 + _zz_rotScores_7_19);
-  assign _zz_rotScores_7_1 = (_zz_rotScores_7_2 + _zz_rotScores_7_17);
-  assign _zz_rotScores_7_2 = (_zz_rotScores_7_3 + _zz_rotScores_7_15);
-  assign _zz_rotScores_7_3 = (_zz_rotScores_7_4 + _zz_rotScores_7_13);
-  assign _zz_rotScores_7_4 = (_zz_rotScores_7_5 + _zz_rotScores_7_11);
-  assign _zz_rotScores_7_5 = (_zz_rotScores_7_6 + _zz_rotScores_7_9);
-  assign _zz_rotScores_7_6 = (4'b0000 + _zz_rotScores_7_7);
-  assign _zz_rotScores_7_8 = (latchBeats_0 == patBeats_7);
-  assign _zz_rotScores_7_7 = {3'd0, _zz_rotScores_7_8};
-  assign _zz_rotScores_7_10 = (latchBeats_1 == patBeats_0);
-  assign _zz_rotScores_7_9 = {3'd0, _zz_rotScores_7_10};
-  assign _zz_rotScores_7_12 = (latchBeats_2 == patBeats_1);
-  assign _zz_rotScores_7_11 = {3'd0, _zz_rotScores_7_12};
-  assign _zz_rotScores_7_14 = (latchBeats_3 == patBeats_2);
-  assign _zz_rotScores_7_13 = {3'd0, _zz_rotScores_7_14};
-  assign _zz_rotScores_7_16 = (latchBeats_4 == patBeats_3);
-  assign _zz_rotScores_7_15 = {3'd0, _zz_rotScores_7_16};
-  assign _zz_rotScores_7_18 = (latchBeats_5 == patBeats_4);
-  assign _zz_rotScores_7_17 = {3'd0, _zz_rotScores_7_18};
-  assign _zz_rotScores_7_20 = (latchBeats_6 == patBeats_5);
-  assign _zz_rotScores_7_19 = {3'd0, _zz_rotScores_7_20};
-  assign _zz_rotScores_7_22 = (latchBeats_7 == patBeats_6);
-  assign _zz_rotScores_7_21 = {3'd0, _zz_rotScores_7_22};
+  assign _zz_rotScorer_rotScores_0 = (_zz_rotScorer_rotScores_0_1 + _zz_rotScorer_rotScores_0_19);
+  assign _zz_rotScorer_rotScores_0_1 = (_zz_rotScorer_rotScores_0_2 + _zz_rotScorer_rotScores_0_17);
+  assign _zz_rotScorer_rotScores_0_2 = (_zz_rotScorer_rotScores_0_3 + _zz_rotScorer_rotScores_0_15);
+  assign _zz_rotScorer_rotScores_0_3 = (_zz_rotScorer_rotScores_0_4 + _zz_rotScorer_rotScores_0_13);
+  assign _zz_rotScorer_rotScores_0_4 = (_zz_rotScorer_rotScores_0_5 + _zz_rotScorer_rotScores_0_11);
+  assign _zz_rotScorer_rotScores_0_5 = (_zz_rotScorer_rotScores_0_6 + _zz_rotScorer_rotScores_0_9);
+  assign _zz_rotScorer_rotScores_0_6 = (4'b0000 + _zz_rotScorer_rotScores_0_7);
+  assign _zz_rotScorer_rotScores_0_8 = (rotScorer_latchBeats_0 == rotScorer_patBeats_0);
+  assign _zz_rotScorer_rotScores_0_7 = {3'd0, _zz_rotScorer_rotScores_0_8};
+  assign _zz_rotScorer_rotScores_0_10 = (rotScorer_latchBeats_1 == rotScorer_patBeats_1);
+  assign _zz_rotScorer_rotScores_0_9 = {3'd0, _zz_rotScorer_rotScores_0_10};
+  assign _zz_rotScorer_rotScores_0_12 = (rotScorer_latchBeats_2 == rotScorer_patBeats_2);
+  assign _zz_rotScorer_rotScores_0_11 = {3'd0, _zz_rotScorer_rotScores_0_12};
+  assign _zz_rotScorer_rotScores_0_14 = (rotScorer_latchBeats_3 == rotScorer_patBeats_3);
+  assign _zz_rotScorer_rotScores_0_13 = {3'd0, _zz_rotScorer_rotScores_0_14};
+  assign _zz_rotScorer_rotScores_0_16 = (rotScorer_latchBeats_4 == rotScorer_patBeats_4);
+  assign _zz_rotScorer_rotScores_0_15 = {3'd0, _zz_rotScorer_rotScores_0_16};
+  assign _zz_rotScorer_rotScores_0_18 = (rotScorer_latchBeats_5 == rotScorer_patBeats_5);
+  assign _zz_rotScorer_rotScores_0_17 = {3'd0, _zz_rotScorer_rotScores_0_18};
+  assign _zz_rotScorer_rotScores_0_20 = (rotScorer_latchBeats_6 == rotScorer_patBeats_6);
+  assign _zz_rotScorer_rotScores_0_19 = {3'd0, _zz_rotScorer_rotScores_0_20};
+  assign _zz_rotScorer_rotScores_0_22 = (rotScorer_latchBeats_7 == rotScorer_patBeats_7);
+  assign _zz_rotScorer_rotScores_0_21 = {3'd0, _zz_rotScorer_rotScores_0_22};
+  assign _zz_rotScorer_rotScores_1 = (_zz_rotScorer_rotScores_1_1 + _zz_rotScorer_rotScores_1_19);
+  assign _zz_rotScorer_rotScores_1_1 = (_zz_rotScorer_rotScores_1_2 + _zz_rotScorer_rotScores_1_17);
+  assign _zz_rotScorer_rotScores_1_2 = (_zz_rotScorer_rotScores_1_3 + _zz_rotScorer_rotScores_1_15);
+  assign _zz_rotScorer_rotScores_1_3 = (_zz_rotScorer_rotScores_1_4 + _zz_rotScorer_rotScores_1_13);
+  assign _zz_rotScorer_rotScores_1_4 = (_zz_rotScorer_rotScores_1_5 + _zz_rotScorer_rotScores_1_11);
+  assign _zz_rotScorer_rotScores_1_5 = (_zz_rotScorer_rotScores_1_6 + _zz_rotScorer_rotScores_1_9);
+  assign _zz_rotScorer_rotScores_1_6 = (4'b0000 + _zz_rotScorer_rotScores_1_7);
+  assign _zz_rotScorer_rotScores_1_8 = (rotScorer_latchBeats_0 == rotScorer_patBeats_1);
+  assign _zz_rotScorer_rotScores_1_7 = {3'd0, _zz_rotScorer_rotScores_1_8};
+  assign _zz_rotScorer_rotScores_1_10 = (rotScorer_latchBeats_1 == rotScorer_patBeats_2);
+  assign _zz_rotScorer_rotScores_1_9 = {3'd0, _zz_rotScorer_rotScores_1_10};
+  assign _zz_rotScorer_rotScores_1_12 = (rotScorer_latchBeats_2 == rotScorer_patBeats_3);
+  assign _zz_rotScorer_rotScores_1_11 = {3'd0, _zz_rotScorer_rotScores_1_12};
+  assign _zz_rotScorer_rotScores_1_14 = (rotScorer_latchBeats_3 == rotScorer_patBeats_4);
+  assign _zz_rotScorer_rotScores_1_13 = {3'd0, _zz_rotScorer_rotScores_1_14};
+  assign _zz_rotScorer_rotScores_1_16 = (rotScorer_latchBeats_4 == rotScorer_patBeats_5);
+  assign _zz_rotScorer_rotScores_1_15 = {3'd0, _zz_rotScorer_rotScores_1_16};
+  assign _zz_rotScorer_rotScores_1_18 = (rotScorer_latchBeats_5 == rotScorer_patBeats_6);
+  assign _zz_rotScorer_rotScores_1_17 = {3'd0, _zz_rotScorer_rotScores_1_18};
+  assign _zz_rotScorer_rotScores_1_20 = (rotScorer_latchBeats_6 == rotScorer_patBeats_7);
+  assign _zz_rotScorer_rotScores_1_19 = {3'd0, _zz_rotScorer_rotScores_1_20};
+  assign _zz_rotScorer_rotScores_1_22 = (rotScorer_latchBeats_7 == rotScorer_patBeats_0);
+  assign _zz_rotScorer_rotScores_1_21 = {3'd0, _zz_rotScorer_rotScores_1_22};
+  assign _zz_rotScorer_rotScores_2 = (_zz_rotScorer_rotScores_2_1 + _zz_rotScorer_rotScores_2_19);
+  assign _zz_rotScorer_rotScores_2_1 = (_zz_rotScorer_rotScores_2_2 + _zz_rotScorer_rotScores_2_17);
+  assign _zz_rotScorer_rotScores_2_2 = (_zz_rotScorer_rotScores_2_3 + _zz_rotScorer_rotScores_2_15);
+  assign _zz_rotScorer_rotScores_2_3 = (_zz_rotScorer_rotScores_2_4 + _zz_rotScorer_rotScores_2_13);
+  assign _zz_rotScorer_rotScores_2_4 = (_zz_rotScorer_rotScores_2_5 + _zz_rotScorer_rotScores_2_11);
+  assign _zz_rotScorer_rotScores_2_5 = (_zz_rotScorer_rotScores_2_6 + _zz_rotScorer_rotScores_2_9);
+  assign _zz_rotScorer_rotScores_2_6 = (4'b0000 + _zz_rotScorer_rotScores_2_7);
+  assign _zz_rotScorer_rotScores_2_8 = (rotScorer_latchBeats_0 == rotScorer_patBeats_2);
+  assign _zz_rotScorer_rotScores_2_7 = {3'd0, _zz_rotScorer_rotScores_2_8};
+  assign _zz_rotScorer_rotScores_2_10 = (rotScorer_latchBeats_1 == rotScorer_patBeats_3);
+  assign _zz_rotScorer_rotScores_2_9 = {3'd0, _zz_rotScorer_rotScores_2_10};
+  assign _zz_rotScorer_rotScores_2_12 = (rotScorer_latchBeats_2 == rotScorer_patBeats_4);
+  assign _zz_rotScorer_rotScores_2_11 = {3'd0, _zz_rotScorer_rotScores_2_12};
+  assign _zz_rotScorer_rotScores_2_14 = (rotScorer_latchBeats_3 == rotScorer_patBeats_5);
+  assign _zz_rotScorer_rotScores_2_13 = {3'd0, _zz_rotScorer_rotScores_2_14};
+  assign _zz_rotScorer_rotScores_2_16 = (rotScorer_latchBeats_4 == rotScorer_patBeats_6);
+  assign _zz_rotScorer_rotScores_2_15 = {3'd0, _zz_rotScorer_rotScores_2_16};
+  assign _zz_rotScorer_rotScores_2_18 = (rotScorer_latchBeats_5 == rotScorer_patBeats_7);
+  assign _zz_rotScorer_rotScores_2_17 = {3'd0, _zz_rotScorer_rotScores_2_18};
+  assign _zz_rotScorer_rotScores_2_20 = (rotScorer_latchBeats_6 == rotScorer_patBeats_0);
+  assign _zz_rotScorer_rotScores_2_19 = {3'd0, _zz_rotScorer_rotScores_2_20};
+  assign _zz_rotScorer_rotScores_2_22 = (rotScorer_latchBeats_7 == rotScorer_patBeats_1);
+  assign _zz_rotScorer_rotScores_2_21 = {3'd0, _zz_rotScorer_rotScores_2_22};
+  assign _zz_rotScorer_rotScores_3 = (_zz_rotScorer_rotScores_3_1 + _zz_rotScorer_rotScores_3_19);
+  assign _zz_rotScorer_rotScores_3_1 = (_zz_rotScorer_rotScores_3_2 + _zz_rotScorer_rotScores_3_17);
+  assign _zz_rotScorer_rotScores_3_2 = (_zz_rotScorer_rotScores_3_3 + _zz_rotScorer_rotScores_3_15);
+  assign _zz_rotScorer_rotScores_3_3 = (_zz_rotScorer_rotScores_3_4 + _zz_rotScorer_rotScores_3_13);
+  assign _zz_rotScorer_rotScores_3_4 = (_zz_rotScorer_rotScores_3_5 + _zz_rotScorer_rotScores_3_11);
+  assign _zz_rotScorer_rotScores_3_5 = (_zz_rotScorer_rotScores_3_6 + _zz_rotScorer_rotScores_3_9);
+  assign _zz_rotScorer_rotScores_3_6 = (4'b0000 + _zz_rotScorer_rotScores_3_7);
+  assign _zz_rotScorer_rotScores_3_8 = (rotScorer_latchBeats_0 == rotScorer_patBeats_3);
+  assign _zz_rotScorer_rotScores_3_7 = {3'd0, _zz_rotScorer_rotScores_3_8};
+  assign _zz_rotScorer_rotScores_3_10 = (rotScorer_latchBeats_1 == rotScorer_patBeats_4);
+  assign _zz_rotScorer_rotScores_3_9 = {3'd0, _zz_rotScorer_rotScores_3_10};
+  assign _zz_rotScorer_rotScores_3_12 = (rotScorer_latchBeats_2 == rotScorer_patBeats_5);
+  assign _zz_rotScorer_rotScores_3_11 = {3'd0, _zz_rotScorer_rotScores_3_12};
+  assign _zz_rotScorer_rotScores_3_14 = (rotScorer_latchBeats_3 == rotScorer_patBeats_6);
+  assign _zz_rotScorer_rotScores_3_13 = {3'd0, _zz_rotScorer_rotScores_3_14};
+  assign _zz_rotScorer_rotScores_3_16 = (rotScorer_latchBeats_4 == rotScorer_patBeats_7);
+  assign _zz_rotScorer_rotScores_3_15 = {3'd0, _zz_rotScorer_rotScores_3_16};
+  assign _zz_rotScorer_rotScores_3_18 = (rotScorer_latchBeats_5 == rotScorer_patBeats_0);
+  assign _zz_rotScorer_rotScores_3_17 = {3'd0, _zz_rotScorer_rotScores_3_18};
+  assign _zz_rotScorer_rotScores_3_20 = (rotScorer_latchBeats_6 == rotScorer_patBeats_1);
+  assign _zz_rotScorer_rotScores_3_19 = {3'd0, _zz_rotScorer_rotScores_3_20};
+  assign _zz_rotScorer_rotScores_3_22 = (rotScorer_latchBeats_7 == rotScorer_patBeats_2);
+  assign _zz_rotScorer_rotScores_3_21 = {3'd0, _zz_rotScorer_rotScores_3_22};
+  assign _zz_rotScorer_rotScores_4 = (_zz_rotScorer_rotScores_4_1 + _zz_rotScorer_rotScores_4_19);
+  assign _zz_rotScorer_rotScores_4_1 = (_zz_rotScorer_rotScores_4_2 + _zz_rotScorer_rotScores_4_17);
+  assign _zz_rotScorer_rotScores_4_2 = (_zz_rotScorer_rotScores_4_3 + _zz_rotScorer_rotScores_4_15);
+  assign _zz_rotScorer_rotScores_4_3 = (_zz_rotScorer_rotScores_4_4 + _zz_rotScorer_rotScores_4_13);
+  assign _zz_rotScorer_rotScores_4_4 = (_zz_rotScorer_rotScores_4_5 + _zz_rotScorer_rotScores_4_11);
+  assign _zz_rotScorer_rotScores_4_5 = (_zz_rotScorer_rotScores_4_6 + _zz_rotScorer_rotScores_4_9);
+  assign _zz_rotScorer_rotScores_4_6 = (4'b0000 + _zz_rotScorer_rotScores_4_7);
+  assign _zz_rotScorer_rotScores_4_8 = (rotScorer_latchBeats_0 == rotScorer_patBeats_4);
+  assign _zz_rotScorer_rotScores_4_7 = {3'd0, _zz_rotScorer_rotScores_4_8};
+  assign _zz_rotScorer_rotScores_4_10 = (rotScorer_latchBeats_1 == rotScorer_patBeats_5);
+  assign _zz_rotScorer_rotScores_4_9 = {3'd0, _zz_rotScorer_rotScores_4_10};
+  assign _zz_rotScorer_rotScores_4_12 = (rotScorer_latchBeats_2 == rotScorer_patBeats_6);
+  assign _zz_rotScorer_rotScores_4_11 = {3'd0, _zz_rotScorer_rotScores_4_12};
+  assign _zz_rotScorer_rotScores_4_14 = (rotScorer_latchBeats_3 == rotScorer_patBeats_7);
+  assign _zz_rotScorer_rotScores_4_13 = {3'd0, _zz_rotScorer_rotScores_4_14};
+  assign _zz_rotScorer_rotScores_4_16 = (rotScorer_latchBeats_4 == rotScorer_patBeats_0);
+  assign _zz_rotScorer_rotScores_4_15 = {3'd0, _zz_rotScorer_rotScores_4_16};
+  assign _zz_rotScorer_rotScores_4_18 = (rotScorer_latchBeats_5 == rotScorer_patBeats_1);
+  assign _zz_rotScorer_rotScores_4_17 = {3'd0, _zz_rotScorer_rotScores_4_18};
+  assign _zz_rotScorer_rotScores_4_20 = (rotScorer_latchBeats_6 == rotScorer_patBeats_2);
+  assign _zz_rotScorer_rotScores_4_19 = {3'd0, _zz_rotScorer_rotScores_4_20};
+  assign _zz_rotScorer_rotScores_4_22 = (rotScorer_latchBeats_7 == rotScorer_patBeats_3);
+  assign _zz_rotScorer_rotScores_4_21 = {3'd0, _zz_rotScorer_rotScores_4_22};
+  assign _zz_rotScorer_rotScores_5 = (_zz_rotScorer_rotScores_5_1 + _zz_rotScorer_rotScores_5_19);
+  assign _zz_rotScorer_rotScores_5_1 = (_zz_rotScorer_rotScores_5_2 + _zz_rotScorer_rotScores_5_17);
+  assign _zz_rotScorer_rotScores_5_2 = (_zz_rotScorer_rotScores_5_3 + _zz_rotScorer_rotScores_5_15);
+  assign _zz_rotScorer_rotScores_5_3 = (_zz_rotScorer_rotScores_5_4 + _zz_rotScorer_rotScores_5_13);
+  assign _zz_rotScorer_rotScores_5_4 = (_zz_rotScorer_rotScores_5_5 + _zz_rotScorer_rotScores_5_11);
+  assign _zz_rotScorer_rotScores_5_5 = (_zz_rotScorer_rotScores_5_6 + _zz_rotScorer_rotScores_5_9);
+  assign _zz_rotScorer_rotScores_5_6 = (4'b0000 + _zz_rotScorer_rotScores_5_7);
+  assign _zz_rotScorer_rotScores_5_8 = (rotScorer_latchBeats_0 == rotScorer_patBeats_5);
+  assign _zz_rotScorer_rotScores_5_7 = {3'd0, _zz_rotScorer_rotScores_5_8};
+  assign _zz_rotScorer_rotScores_5_10 = (rotScorer_latchBeats_1 == rotScorer_patBeats_6);
+  assign _zz_rotScorer_rotScores_5_9 = {3'd0, _zz_rotScorer_rotScores_5_10};
+  assign _zz_rotScorer_rotScores_5_12 = (rotScorer_latchBeats_2 == rotScorer_patBeats_7);
+  assign _zz_rotScorer_rotScores_5_11 = {3'd0, _zz_rotScorer_rotScores_5_12};
+  assign _zz_rotScorer_rotScores_5_14 = (rotScorer_latchBeats_3 == rotScorer_patBeats_0);
+  assign _zz_rotScorer_rotScores_5_13 = {3'd0, _zz_rotScorer_rotScores_5_14};
+  assign _zz_rotScorer_rotScores_5_16 = (rotScorer_latchBeats_4 == rotScorer_patBeats_1);
+  assign _zz_rotScorer_rotScores_5_15 = {3'd0, _zz_rotScorer_rotScores_5_16};
+  assign _zz_rotScorer_rotScores_5_18 = (rotScorer_latchBeats_5 == rotScorer_patBeats_2);
+  assign _zz_rotScorer_rotScores_5_17 = {3'd0, _zz_rotScorer_rotScores_5_18};
+  assign _zz_rotScorer_rotScores_5_20 = (rotScorer_latchBeats_6 == rotScorer_patBeats_3);
+  assign _zz_rotScorer_rotScores_5_19 = {3'd0, _zz_rotScorer_rotScores_5_20};
+  assign _zz_rotScorer_rotScores_5_22 = (rotScorer_latchBeats_7 == rotScorer_patBeats_4);
+  assign _zz_rotScorer_rotScores_5_21 = {3'd0, _zz_rotScorer_rotScores_5_22};
+  assign _zz_rotScorer_rotScores_6 = (_zz_rotScorer_rotScores_6_1 + _zz_rotScorer_rotScores_6_19);
+  assign _zz_rotScorer_rotScores_6_1 = (_zz_rotScorer_rotScores_6_2 + _zz_rotScorer_rotScores_6_17);
+  assign _zz_rotScorer_rotScores_6_2 = (_zz_rotScorer_rotScores_6_3 + _zz_rotScorer_rotScores_6_15);
+  assign _zz_rotScorer_rotScores_6_3 = (_zz_rotScorer_rotScores_6_4 + _zz_rotScorer_rotScores_6_13);
+  assign _zz_rotScorer_rotScores_6_4 = (_zz_rotScorer_rotScores_6_5 + _zz_rotScorer_rotScores_6_11);
+  assign _zz_rotScorer_rotScores_6_5 = (_zz_rotScorer_rotScores_6_6 + _zz_rotScorer_rotScores_6_9);
+  assign _zz_rotScorer_rotScores_6_6 = (4'b0000 + _zz_rotScorer_rotScores_6_7);
+  assign _zz_rotScorer_rotScores_6_8 = (rotScorer_latchBeats_0 == rotScorer_patBeats_6);
+  assign _zz_rotScorer_rotScores_6_7 = {3'd0, _zz_rotScorer_rotScores_6_8};
+  assign _zz_rotScorer_rotScores_6_10 = (rotScorer_latchBeats_1 == rotScorer_patBeats_7);
+  assign _zz_rotScorer_rotScores_6_9 = {3'd0, _zz_rotScorer_rotScores_6_10};
+  assign _zz_rotScorer_rotScores_6_12 = (rotScorer_latchBeats_2 == rotScorer_patBeats_0);
+  assign _zz_rotScorer_rotScores_6_11 = {3'd0, _zz_rotScorer_rotScores_6_12};
+  assign _zz_rotScorer_rotScores_6_14 = (rotScorer_latchBeats_3 == rotScorer_patBeats_1);
+  assign _zz_rotScorer_rotScores_6_13 = {3'd0, _zz_rotScorer_rotScores_6_14};
+  assign _zz_rotScorer_rotScores_6_16 = (rotScorer_latchBeats_4 == rotScorer_patBeats_2);
+  assign _zz_rotScorer_rotScores_6_15 = {3'd0, _zz_rotScorer_rotScores_6_16};
+  assign _zz_rotScorer_rotScores_6_18 = (rotScorer_latchBeats_5 == rotScorer_patBeats_3);
+  assign _zz_rotScorer_rotScores_6_17 = {3'd0, _zz_rotScorer_rotScores_6_18};
+  assign _zz_rotScorer_rotScores_6_20 = (rotScorer_latchBeats_6 == rotScorer_patBeats_4);
+  assign _zz_rotScorer_rotScores_6_19 = {3'd0, _zz_rotScorer_rotScores_6_20};
+  assign _zz_rotScorer_rotScores_6_22 = (rotScorer_latchBeats_7 == rotScorer_patBeats_5);
+  assign _zz_rotScorer_rotScores_6_21 = {3'd0, _zz_rotScorer_rotScores_6_22};
+  assign _zz_rotScorer_rotScores_7 = (_zz_rotScorer_rotScores_7_1 + _zz_rotScorer_rotScores_7_19);
+  assign _zz_rotScorer_rotScores_7_1 = (_zz_rotScorer_rotScores_7_2 + _zz_rotScorer_rotScores_7_17);
+  assign _zz_rotScorer_rotScores_7_2 = (_zz_rotScorer_rotScores_7_3 + _zz_rotScorer_rotScores_7_15);
+  assign _zz_rotScorer_rotScores_7_3 = (_zz_rotScorer_rotScores_7_4 + _zz_rotScorer_rotScores_7_13);
+  assign _zz_rotScorer_rotScores_7_4 = (_zz_rotScorer_rotScores_7_5 + _zz_rotScorer_rotScores_7_11);
+  assign _zz_rotScorer_rotScores_7_5 = (_zz_rotScorer_rotScores_7_6 + _zz_rotScorer_rotScores_7_9);
+  assign _zz_rotScorer_rotScores_7_6 = (4'b0000 + _zz_rotScorer_rotScores_7_7);
+  assign _zz_rotScorer_rotScores_7_8 = (rotScorer_latchBeats_0 == rotScorer_patBeats_7);
+  assign _zz_rotScorer_rotScores_7_7 = {3'd0, _zz_rotScorer_rotScores_7_8};
+  assign _zz_rotScorer_rotScores_7_10 = (rotScorer_latchBeats_1 == rotScorer_patBeats_0);
+  assign _zz_rotScorer_rotScores_7_9 = {3'd0, _zz_rotScorer_rotScores_7_10};
+  assign _zz_rotScorer_rotScores_7_12 = (rotScorer_latchBeats_2 == rotScorer_patBeats_1);
+  assign _zz_rotScorer_rotScores_7_11 = {3'd0, _zz_rotScorer_rotScores_7_12};
+  assign _zz_rotScorer_rotScores_7_14 = (rotScorer_latchBeats_3 == rotScorer_patBeats_2);
+  assign _zz_rotScorer_rotScores_7_13 = {3'd0, _zz_rotScorer_rotScores_7_14};
+  assign _zz_rotScorer_rotScores_7_16 = (rotScorer_latchBeats_4 == rotScorer_patBeats_3);
+  assign _zz_rotScorer_rotScores_7_15 = {3'd0, _zz_rotScorer_rotScores_7_16};
+  assign _zz_rotScorer_rotScores_7_18 = (rotScorer_latchBeats_5 == rotScorer_patBeats_4);
+  assign _zz_rotScorer_rotScores_7_17 = {3'd0, _zz_rotScorer_rotScores_7_18};
+  assign _zz_rotScorer_rotScores_7_20 = (rotScorer_latchBeats_6 == rotScorer_patBeats_5);
+  assign _zz_rotScorer_rotScores_7_19 = {3'd0, _zz_rotScorer_rotScores_7_20};
+  assign _zz_rotScorer_rotScores_7_22 = (rotScorer_latchBeats_7 == rotScorer_patBeats_6);
+  assign _zz_rotScorer_rotScores_7_21 = {3'd0, _zz_rotScorer_rotScores_7_22};
   assign _zz_rdCyc_1 = rclkpos;
   assign _zz_rdCyc = {5'd0, _zz_rdCyc_1};
   assign _zz_rotSplit = (bestRot != 3'b000);
-  assign _zz_when_Ddr3ControllerCore_l567 = (rdCyc + 7'h01);
-  assign _zz_when_Ddr3ControllerCore_l567_1 = (rdCyc + 7'h02);
-  assign _zz_when_Ddr3ControllerCore_l567_2 = (rdCyc + 7'h03);
-  assign _zz_when_Ddr3ControllerCore_l571 = (_zz_when_Ddr3ControllerCore_l571_1 + _zz_when_Ddr3ControllerCore_l571_3);
-  assign _zz_when_Ddr3ControllerCore_l571_1 = (_zz_when_Ddr3ControllerCore_l571_2 + rotSplit);
-  assign _zz_when_Ddr3ControllerCore_l571_2 = (rdCyc + 7'h03);
-  assign _zz_when_Ddr3ControllerCore_l571_3 = {1'd0, rdExtraCnt};
+  assign _zz_when_Ddr3ControllerCore_l394 = (rdCyc + 7'h01);
+  assign _zz_when_Ddr3ControllerCore_l394_1 = (rdCyc + 7'h02);
+  assign _zz_when_Ddr3ControllerCore_l394_2 = (rdCyc + 7'h03);
+  assign _zz_when_Ddr3ControllerCore_l398 = (_zz_when_Ddr3ControllerCore_l398_1 + _zz_when_Ddr3ControllerCore_l398_3);
+  assign _zz_when_Ddr3ControllerCore_l398_1 = (_zz_when_Ddr3ControllerCore_l398_2 + rotSplit);
+  assign _zz_when_Ddr3ControllerCore_l398_2 = (rdCyc + 7'h03);
+  assign _zz_when_Ddr3ControllerCore_l398_3 = {1'd0, rdExtraCnt};
   assign _zz_cycle_1 = (cycle + 7'h01);
   assign _zz_tick_counter = (tick_counter - 17'h00001);
   assign _zz_A_0_1 = MR2[12 : 0];
@@ -4095,9 +4081,9 @@ module Ddr3ControllerCore (
   assign _zz_wstep_5 = wstep;
   assign _zz_wstep_4 = {1'd0, _zz_wstep_5};
   assign _zz_A_0_9 = MR1[12 : 0];
-  assign _zz_when_Ddr3ControllerCore_l727 = (wlVoteCnt + _zz_when_Ddr3ControllerCore_l727_1);
-  assign _zz_when_Ddr3ControllerCore_l727_2 = when_Ddr3ControllerCore_l749;
-  assign _zz_when_Ddr3ControllerCore_l727_1 = {2'd0, _zz_when_Ddr3ControllerCore_l727_2};
+  assign _zz_when_Ddr3ControllerCore_l554 = (wlVoteCnt + _zz_when_Ddr3ControllerCore_l554_1);
+  assign _zz_when_Ddr3ControllerCore_l554_2 = when_Ddr3ControllerCore_l576;
+  assign _zz_when_Ddr3ControllerCore_l554_1 = {2'd0, _zz_when_Ddr3ControllerCore_l554_2};
   assign _zz_A_0_10 = MR2_RTT_WR[12 : 0];
   assign _zz_A_0_11 = 1'b0;
   assign _zz_A_2_3 = 1'b1;
@@ -4109,8 +4095,8 @@ module Ddr3ControllerCore (
   assign _zz_A_0_13 = 1'b0;
   assign _zz_rclksel = (rclksel + 3'b001);
   assign _zz_rclkpos_1 = (rclkpos + 2'b01);
-  assign _zz_when_Ddr3ControllerCore_l1268 = (scMag + 7'h02);
-  assign _zz_when_Ddr3ControllerCore_l1280 = (scMag + 7'h02);
+  assign _zz_when_Ddr3ControllerCore_l1094 = (scMag + 7'h02);
+  assign _zz_when_Ddr3ControllerCore_l1106 = (scMag + 7'h02);
   assign _zz_A_0_14 = 1'b0;
   assign _zz_A_0_15 = 1'b0;
   assign _zz_A_0_16 = 1'b0;
@@ -4122,11 +4108,11 @@ module Ddr3ControllerCore (
   assign _zz__zz_A_2_1 = {reqReg_addr[6 : 0],3'b000};
   assign _zz__zz_A_2 = {6'd0, _zz__zz_A_2_1};
   assign _zz_rdRspLeft = (rdRspLeft + _zz_rdRspLeft_1);
-  assign _zz_rdRspLeft_2 = when_Ddr3ControllerCore_l1624;
+  assign _zz_rdRspLeft_2 = when_Ddr3ControllerCore_l1450;
   assign _zz_rdRspLeft_1 = {5'd0, _zz_rdRspLeft_2};
   assign _zz_rdRspLeft_4 = _zz_data_ready;
   assign _zz_rdRspLeft_3 = {5'd0, _zz_rdRspLeft_4};
-  assign _zz_when_Ddr3ControllerCore_l1642_1 = (_zz_when_Ddr3ControllerCore_l1642 + 7'h02);
+  assign _zz_when_Ddr3ControllerCore_l1468_1 = (_zz_when_Ddr3ControllerCore_l1468 + 7'h02);
   assign _zz_A_2_6 = (_zz_A_2_7 | 16'h1400);
   assign _zz_A_2_7 = {6'd0, _zz_A_2_1};
   assign _zz_A_2_8 = (_zz_A_2_9 | 16'h1000);
@@ -4486,77 +4472,63 @@ module Ddr3ControllerCore (
   assign MR3 = {3'b011,13'h0};
   assign trainPat = 128'ha707a606a505a404a303a202a101a000;
   assign poisonPat = (~ trainPat);
-  assign latchBeats_0 = trainLatch[15 : 0];
-  assign patBeats_0 = trainPat[15 : 0];
-  assign latchBeats_1 = trainLatch[31 : 16];
-  assign patBeats_1 = trainPat[31 : 16];
-  assign latchBeats_2 = trainLatch[47 : 32];
-  assign patBeats_2 = trainPat[47 : 32];
-  assign latchBeats_3 = trainLatch[63 : 48];
-  assign patBeats_3 = trainPat[63 : 48];
-  assign latchBeats_4 = trainLatch[79 : 64];
-  assign patBeats_4 = trainPat[79 : 64];
-  assign latchBeats_5 = trainLatch[95 : 80];
-  assign patBeats_5 = trainPat[95 : 80];
-  assign latchBeats_6 = trainLatch[111 : 96];
-  assign patBeats_6 = trainPat[111 : 96];
-  assign latchBeats_7 = trainLatch[127 : 112];
-  assign patBeats_7 = trainPat[127 : 112];
-  assign rotScores_0 = (_zz_rotScores_0 + _zz_rotScores_0_21);
-  assign rotScores_1 = (_zz_rotScores_1 + _zz_rotScores_1_21);
-  assign rotScores_2 = (_zz_rotScores_2 + _zz_rotScores_2_21);
-  assign rotScores_3 = (_zz_rotScores_3 + _zz_rotScores_3_21);
-  assign rotScores_4 = (_zz_rotScores_4 + _zz_rotScores_4_21);
-  assign rotScores_5 = (_zz_rotScores_5 + _zz_rotScores_5_21);
-  assign rotScores_6 = (_zz_rotScores_6 + _zz_rotScores_6_21);
-  assign rotScores_7 = (_zz_rotScores_7 + _zz_rotScores_7_21);
-  assign _zz_treeS1_0 = (rotScoresReg_0 < rotScoresReg_1);
-  assign treeS1_0 = (_zz_treeS1_0 ? rotScoresReg_1 : rotScoresReg_0);
-  assign treeI1_0 = (_zz_treeS1_0 ? 3'b001 : 3'b000);
-  assign _zz_treeS1_1 = (rotScoresReg_2 < rotScoresReg_3);
-  assign treeS1_1 = (_zz_treeS1_1 ? rotScoresReg_3 : rotScoresReg_2);
-  assign treeI1_1 = (_zz_treeS1_1 ? 3'b011 : 3'b010);
-  assign _zz_treeS1_2 = (rotScoresReg_4 < rotScoresReg_5);
-  assign treeS1_2 = (_zz_treeS1_2 ? rotScoresReg_5 : rotScoresReg_4);
-  assign treeI1_2 = (_zz_treeS1_2 ? 3'b101 : 3'b100);
-  assign _zz_treeS1_3 = (rotScoresReg_6 < rotScoresReg_7);
-  assign treeS1_3 = (_zz_treeS1_3 ? rotScoresReg_7 : rotScoresReg_6);
-  assign treeI1_3 = (_zz_treeS1_3 ? 3'b111 : 3'b110);
-  assign _zz_treeS2_0 = (treeS1_0 < treeS1_1);
-  assign treeS2_0 = (_zz_treeS2_0 ? treeS1_1 : treeS1_0);
-  assign treeI2_0 = (_zz_treeS2_0 ? treeI1_1 : treeI1_0);
-  assign _zz_treeS2_1 = (treeS1_2 < treeS1_3);
-  assign treeS2_1 = (_zz_treeS2_1 ? treeS1_3 : treeS1_2);
-  assign treeI2_1 = (_zz_treeS2_1 ? treeI1_3 : treeI1_2);
-  assign rotScoreW_0 = 4'b0000;
-  assign rotIdxW_0 = 3'b000;
-  assign rotScoreW_1 = 4'b0000;
-  assign rotIdxW_1 = 3'b000;
-  assign rotScoreW_2 = 4'b0000;
-  assign rotIdxW_2 = 3'b000;
-  assign rotScoreW_3 = 4'b0000;
-  assign rotIdxW_3 = 3'b000;
-  assign rotScoreW_4 = 4'b0000;
-  assign rotIdxW_4 = 3'b000;
-  assign rotScoreW_5 = 4'b0000;
-  assign rotIdxW_5 = 3'b000;
-  assign rotScoreW_6 = 4'b0000;
-  assign rotIdxW_6 = 3'b000;
-  assign _zz_rotScoreW_7 = (treeS2_0 < treeS2_1);
-  assign rotScoreW_7 = (_zz_rotScoreW_7 ? treeS2_1 : treeS2_0);
-  assign rotIdxW_7 = (_zz_rotScoreW_7 ? treeI2_1 : treeI2_0);
+  assign rotScorer_latchBeats_0 = rotScorer_trainLatch[15 : 0];
+  assign rotScorer_patBeats_0 = trainPat[15 : 0];
+  assign rotScorer_latchBeats_1 = rotScorer_trainLatch[31 : 16];
+  assign rotScorer_patBeats_1 = trainPat[31 : 16];
+  assign rotScorer_latchBeats_2 = rotScorer_trainLatch[47 : 32];
+  assign rotScorer_patBeats_2 = trainPat[47 : 32];
+  assign rotScorer_latchBeats_3 = rotScorer_trainLatch[63 : 48];
+  assign rotScorer_patBeats_3 = trainPat[63 : 48];
+  assign rotScorer_latchBeats_4 = rotScorer_trainLatch[79 : 64];
+  assign rotScorer_patBeats_4 = trainPat[79 : 64];
+  assign rotScorer_latchBeats_5 = rotScorer_trainLatch[95 : 80];
+  assign rotScorer_patBeats_5 = trainPat[95 : 80];
+  assign rotScorer_latchBeats_6 = rotScorer_trainLatch[111 : 96];
+  assign rotScorer_patBeats_6 = trainPat[111 : 96];
+  assign rotScorer_latchBeats_7 = rotScorer_trainLatch[127 : 112];
+  assign rotScorer_patBeats_7 = trainPat[127 : 112];
+  assign rotScorer_rotScores_0 = (_zz_rotScorer_rotScores_0 + _zz_rotScorer_rotScores_0_21);
+  assign rotScorer_rotScores_1 = (_zz_rotScorer_rotScores_1 + _zz_rotScorer_rotScores_1_21);
+  assign rotScorer_rotScores_2 = (_zz_rotScorer_rotScores_2 + _zz_rotScorer_rotScores_2_21);
+  assign rotScorer_rotScores_3 = (_zz_rotScorer_rotScores_3 + _zz_rotScorer_rotScores_3_21);
+  assign rotScorer_rotScores_4 = (_zz_rotScorer_rotScores_4 + _zz_rotScorer_rotScores_4_21);
+  assign rotScorer_rotScores_5 = (_zz_rotScorer_rotScores_5 + _zz_rotScorer_rotScores_5_21);
+  assign rotScorer_rotScores_6 = (_zz_rotScorer_rotScores_6 + _zz_rotScorer_rotScores_6_21);
+  assign rotScorer_rotScores_7 = (_zz_rotScorer_rotScores_7 + _zz_rotScorer_rotScores_7_21);
+  assign _zz_rotScorer_treeS1_0 = (rotScorer_rotScoresReg_0 < rotScorer_rotScoresReg_1);
+  assign rotScorer_treeS1_0 = (_zz_rotScorer_treeS1_0 ? rotScorer_rotScoresReg_1 : rotScorer_rotScoresReg_0);
+  assign rotScorer_treeI1_0 = (_zz_rotScorer_treeS1_0 ? 3'b001 : 3'b000);
+  assign _zz_rotScorer_treeS1_1 = (rotScorer_rotScoresReg_2 < rotScorer_rotScoresReg_3);
+  assign rotScorer_treeS1_1 = (_zz_rotScorer_treeS1_1 ? rotScorer_rotScoresReg_3 : rotScorer_rotScoresReg_2);
+  assign rotScorer_treeI1_1 = (_zz_rotScorer_treeS1_1 ? 3'b011 : 3'b010);
+  assign _zz_rotScorer_treeS1_2 = (rotScorer_rotScoresReg_4 < rotScorer_rotScoresReg_5);
+  assign rotScorer_treeS1_2 = (_zz_rotScorer_treeS1_2 ? rotScorer_rotScoresReg_5 : rotScorer_rotScoresReg_4);
+  assign rotScorer_treeI1_2 = (_zz_rotScorer_treeS1_2 ? 3'b101 : 3'b100);
+  assign _zz_rotScorer_treeS1_3 = (rotScorer_rotScoresReg_6 < rotScorer_rotScoresReg_7);
+  assign rotScorer_treeS1_3 = (_zz_rotScorer_treeS1_3 ? rotScorer_rotScoresReg_7 : rotScorer_rotScoresReg_6);
+  assign rotScorer_treeI1_3 = (_zz_rotScorer_treeS1_3 ? 3'b111 : 3'b110);
+  assign _zz_rotScorer_treeS2_0 = (rotScorer_treeS1_0 < rotScorer_treeS1_1);
+  assign rotScorer_treeS2_0 = (_zz_rotScorer_treeS2_0 ? rotScorer_treeS1_1 : rotScorer_treeS1_0);
+  assign rotScorer_treeI2_0 = (_zz_rotScorer_treeS2_0 ? rotScorer_treeI1_1 : rotScorer_treeI1_0);
+  assign _zz_rotScorer_treeS2_1 = (rotScorer_treeS1_2 < rotScorer_treeS1_3);
+  assign rotScorer_treeS2_1 = (_zz_rotScorer_treeS2_1 ? rotScorer_treeS1_3 : rotScorer_treeS1_2);
+  assign rotScorer_treeI2_1 = (_zz_rotScorer_treeS2_1 ? rotScorer_treeI1_3 : rotScorer_treeI1_2);
+  assign rotScorer_betterTop = (rotScorer_treeS2_0 < rotScorer_treeS2_1);
+  assign rotScorer_topScore = (rotScorer_betterTop ? rotScorer_treeS2_1 : rotScorer_treeS2_0);
+  assign rotScorer_topIdx = (rotScorer_betterTop ? rotScorer_treeI2_1 : rotScorer_treeI2_0);
   assign winEndRaw = (sweepMag0 + sweepMagN);
   assign winEnd = (((sweepMagN == 7'h0) || (7'h40 < winEndRaw)) ? 7'h40 : winEndRaw[6 : 0]);
   assign winDoneNow = (((sweepMagN != 7'h0) && (! s2Side)) && (s2Mag == winEnd));
-  assign when_Ddr3ControllerCore_l453 = ((((state == Ddr3State_IDLE) || (state == Ddr3State_READ)) || (state == Ddr3State_WRITE)) || (state == Ddr3State_PRECHARGE));
-  assign when_Ddr3ControllerCore_l454 = (refresh_timer == 11'h0c8);
-  assign when_Ddr3ControllerCore_l537 = io_phy_rburst[0];
-  assign when_Ddr3ControllerCore_l538 = io_phy_rburst[1];
+  assign when_Ddr3ControllerCore_l280 = ((((state == Ddr3State_IDLE) || (state == Ddr3State_READ)) || (state == Ddr3State_WRITE)) || (state == Ddr3State_PRECHARGE));
+  assign when_Ddr3ControllerCore_l281 = (refresh_timer == 11'h0c8);
+  assign when_Ddr3ControllerCore_l364 = io_phy_rburst[0];
+  assign when_Ddr3ControllerCore_l365 = io_phy_rburst[1];
   assign rdCyc = (_zz_rdCyc + 7'h01);
   assign rotSplit = {6'd0, _zz_rotSplit};
-  assign when_Ddr3ControllerCore_l567 = ((state == Ddr3State_READ_CALIB) && ((((cycle == rdCyc) || (cycle == _zz_when_Ddr3ControllerCore_l567)) || (cycle == _zz_when_Ddr3ControllerCore_l567_1)) || (cycle == _zz_when_Ddr3ControllerCore_l567_2)));
-  assign when_Ddr3ControllerCore_l571 = ((state == Ddr3State_READ) && ((rdCyc <= cycle) && (cycle <= _zz_when_Ddr3ControllerCore_l571)));
-  assign when_Ddr3ControllerCore_l574 = (state == Ddr3State_WRITE);
+  assign when_Ddr3ControllerCore_l394 = ((state == Ddr3State_READ_CALIB) && ((((cycle == rdCyc) || (cycle == _zz_when_Ddr3ControllerCore_l394)) || (cycle == _zz_when_Ddr3ControllerCore_l394_1)) || (cycle == _zz_when_Ddr3ControllerCore_l394_2)));
+  assign when_Ddr3ControllerCore_l398 = ((state == Ddr3State_READ) && ((rdCyc <= cycle) && (cycle <= _zz_when_Ddr3ControllerCore_l398)));
+  assign when_Ddr3ControllerCore_l401 = (state == Ddr3State_WRITE);
   assign inRow = io_req_payload_addr[20 : 7];
   assign inBank = io_req_payload_addr[23 : 21];
   assign inSameRow = ((inBank == openBank) && (inRow == openRow));
@@ -4564,89 +4536,89 @@ module Ddr3ControllerCore (
   assign canAcceptRdStream = (((((((state == Ddr3State_READ) && rdStreamOpen) && (! refresh_due)) && (rdExtraCnt < 6'h1f)) && (7'h02 <= cycle)) && (! io_req_payload_write)) && inSameRow);
   assign acceptReq = (((((state == Ddr3State_IDLE) && (! busy)) && (! refresh_due)) || canAcceptWrStream) || canAcceptRdStream);
   assign io_req_ready = acceptReq;
-  assign when_Ddr3ControllerCore_l627 = (! 1'b0);
-  assign when_Ddr3ControllerCore_l642 = (tick_counter == 17'h0000f);
+  assign when_Ddr3ControllerCore_l454 = (! 1'b0);
+  assign when_Ddr3ControllerCore_l469 = (tick_counter == 17'h0000f);
   assign _zz_A_0 = (MR1 | 16'h0084);
-  assign when_Ddr3ControllerCore_l749 = (io_phy_dq_raw[0] && io_phy_dq_raw[8]);
-  assign when_Ddr3ControllerCore_l714 = (wlVoteN == 3'b011);
-  assign when_Ddr3ControllerCore_l723 = (wlevel_tries == 9'h1ff);
-  assign when_Ddr3ControllerCore_l738 = ((wlevel_cnt == 4'b0001) && (8'h08 <= wstep));
-  assign when_Ddr3ControllerCore_l727 = (! (3'b010 <= _zz_when_Ddr3ControllerCore_l727));
-  assign when_Ddr3ControllerCore_l886 = ((((! aligning) && (anchorLeft == 2'b00)) && (settleLeft == 2'b00)) && (pinLeft == 2'b00));
-  assign when_Ddr3ControllerCore_l891 = ((((! aligning) && (anchorLeft == 2'b00)) && (settleLeft == 2'b00)) && (pinLeft == 2'b00));
-  assign when_Ddr3ControllerCore_l911 = (scanOn && ((aligning || (anchorLeft != 2'b00)) || (settleLeft != 2'b00)));
-  assign when_Ddr3ControllerCore_l913 = (anchorLeft != 2'b00);
-  assign when_Ddr3ControllerCore_l925 = (navigateLeft != 8'h0);
-  assign when_Ddr3ControllerCore_l949 = (((aligning || (anchorLeft != 2'b00)) || (settleLeft != 2'b00)) || (pinLeft != 2'b00));
-  assign when_Ddr3ControllerCore_l950 = (anchorLeft != 2'b00);
-  assign when_Ddr3ControllerCore_l965 = (navigateLeft != 8'h0);
-  assign when_Ddr3ControllerCore_l990 = (pinLeft != 2'b00);
-  assign when_Ddr3ControllerCore_l1008 = ((settleLeft == 2'b01) && applyArmed);
-  assign when_Ddr3ControllerCore_l1033 = (settleLeft == 2'b00);
-  assign when_Ddr3ControllerCore_l1038 = (bestCntDll < sweepScoreReg);
-  assign when_Ddr3ControllerCore_l1048 = (bestCntDll == 4'b1000);
-  assign when_Ddr3ControllerCore_l1073 = ((s2Side && (s2Mag == 7'h40)) && (rclkpos == 2'b11));
-  assign when_Ddr3ControllerCore_l1109 = (rclkpos == 2'b11);
-  assign when_Ddr3ControllerCore_l1115 = (((! s2Side) && (s2Mag == 7'h40)) && (! winDoneNow));
-  assign when_Ddr3ControllerCore_l1137 = ((s0Mag != 7'h40) && (! winDoneNow));
-  assign when_Ddr3ControllerCore_l1156 = (! training);
-  assign when_Ddr3ControllerCore_l1161 = (! winDoneNow);
-  assign when_Ddr3ControllerCore_l1186 = (bestCnt < sweepScoreReg);
-  assign when_Ddr3ControllerCore_l1193 = (rclksel == 3'b111);
-  assign when_Ddr3ControllerCore_l1197 = (rcalib_tries == 10'h028);
-  assign when_Ddr3ControllerCore_l1204 = ((! training) && (! dllSweepDone));
-  assign when_Ddr3ControllerCore_l1212 = ((! scanOn) && (! shiftCalDone));
-  assign when_Ddr3ControllerCore_l1214 = ((bestCnt == 4'b1000) && ((tryMode == 2'b00) || (! 1'b1)));
-  assign when_Ddr3ControllerCore_l1220 = ((tryMode == 2'b00) || (best0 < bestCnt));
-  assign when_Ddr3ControllerCore_l1227 = (tryMode < 2'b01);
+  assign when_Ddr3ControllerCore_l576 = (io_phy_dq_raw[0] && io_phy_dq_raw[8]);
+  assign when_Ddr3ControllerCore_l541 = (wlVoteN == 3'b011);
+  assign when_Ddr3ControllerCore_l550 = (wlevel_tries == 9'h1ff);
+  assign when_Ddr3ControllerCore_l565 = ((wlevel_cnt == 4'b0001) && (8'h08 <= wstep));
+  assign when_Ddr3ControllerCore_l554 = (! (3'b010 <= _zz_when_Ddr3ControllerCore_l554));
+  assign when_Ddr3ControllerCore_l712 = ((((! aligning) && (anchorLeft == 2'b00)) && (settleLeft == 2'b00)) && (pinLeft == 2'b00));
+  assign when_Ddr3ControllerCore_l717 = ((((! aligning) && (anchorLeft == 2'b00)) && (settleLeft == 2'b00)) && (pinLeft == 2'b00));
+  assign when_Ddr3ControllerCore_l737 = (scanOn && ((aligning || (anchorLeft != 2'b00)) || (settleLeft != 2'b00)));
+  assign when_Ddr3ControllerCore_l739 = (anchorLeft != 2'b00);
+  assign when_Ddr3ControllerCore_l751 = (navigateLeft != 8'h0);
+  assign when_Ddr3ControllerCore_l775 = (((aligning || (anchorLeft != 2'b00)) || (settleLeft != 2'b00)) || (pinLeft != 2'b00));
+  assign when_Ddr3ControllerCore_l776 = (anchorLeft != 2'b00);
+  assign when_Ddr3ControllerCore_l791 = (navigateLeft != 8'h0);
+  assign when_Ddr3ControllerCore_l816 = (pinLeft != 2'b00);
+  assign when_Ddr3ControllerCore_l834 = ((settleLeft == 2'b01) && applyArmed);
+  assign when_Ddr3ControllerCore_l859 = (settleLeft == 2'b00);
+  assign when_Ddr3ControllerCore_l864 = (bestCntDll < rotScorer_sweepScore);
+  assign when_Ddr3ControllerCore_l874 = (bestCntDll == 4'b1000);
+  assign when_Ddr3ControllerCore_l899 = ((s2Side && (s2Mag == 7'h40)) && (rclkpos == 2'b11));
+  assign when_Ddr3ControllerCore_l935 = (rclkpos == 2'b11);
+  assign when_Ddr3ControllerCore_l941 = (((! s2Side) && (s2Mag == 7'h40)) && (! winDoneNow));
+  assign when_Ddr3ControllerCore_l963 = ((s0Mag != 7'h40) && (! winDoneNow));
+  assign when_Ddr3ControllerCore_l982 = (! training);
+  assign when_Ddr3ControllerCore_l987 = (! winDoneNow);
+  assign when_Ddr3ControllerCore_l1012 = (bestCnt < rotScorer_sweepScore);
+  assign when_Ddr3ControllerCore_l1019 = (rclksel == 3'b111);
+  assign when_Ddr3ControllerCore_l1023 = (rcalib_tries == 10'h028);
+  assign when_Ddr3ControllerCore_l1030 = ((! training) && (! dllSweepDone));
+  assign when_Ddr3ControllerCore_l1038 = ((! scanOn) && (! shiftCalDone));
+  assign when_Ddr3ControllerCore_l1040 = ((bestCnt == 4'b1000) && ((tryMode == 2'b00) || (! 1'b1)));
+  assign when_Ddr3ControllerCore_l1046 = ((tryMode == 2'b00) || (best0 < bestCnt));
+  assign when_Ddr3ControllerCore_l1053 = (tryMode < 2'b01);
   assign _zz_wrMode = (tryMode + 2'b01);
-  assign when_Ddr3ControllerCore_l1235 = (bestCnt <= best0);
-  assign when_Ddr3ControllerCore_l1252 = (bestSurveyCnt < bestCnt);
-  assign when_Ddr3ControllerCore_l1259 = (bestCnt == 4'b1000);
-  assign when_Ddr3ControllerCore_l1268 = ((! scSide) && (_zz_when_Ddr3ControllerCore_l1268 <= 7'h08));
+  assign when_Ddr3ControllerCore_l1061 = (bestCnt <= best0);
+  assign when_Ddr3ControllerCore_l1078 = (bestSurveyCnt < bestCnt);
+  assign when_Ddr3ControllerCore_l1085 = (bestCnt == 4'b1000);
+  assign when_Ddr3ControllerCore_l1094 = ((! scSide) && (_zz_when_Ddr3ControllerCore_l1094 <= 7'h08));
   assign _zz_s0Mag = (scMag + 7'h02);
-  assign when_Ddr3ControllerCore_l1280 = (_zz_when_Ddr3ControllerCore_l1280 <= 7'h08);
+  assign when_Ddr3ControllerCore_l1106 = (_zz_when_Ddr3ControllerCore_l1106 <= 7'h08);
   assign _zz_s0Mag_1 = (scMag + 7'h02);
-  assign when_Ddr3ControllerCore_l1273 = (! scSide);
-  assign when_Ddr3ControllerCore_l1309 = (sweepMagN != 7'h0);
-  assign when_Ddr3ControllerCore_l1346 = (bestCnt == 4'b1000);
-  assign when_Ddr3ControllerCore_l1391 = (! training);
+  assign when_Ddr3ControllerCore_l1099 = (! scSide);
+  assign when_Ddr3ControllerCore_l1135 = (sweepMagN != 7'h0);
+  assign when_Ddr3ControllerCore_l1172 = (bestCnt == 4'b1000);
+  assign when_Ddr3ControllerCore_l1217 = (! training);
   assign _zz_openRow = io_req_payload_addr[20 : 7];
   assign _zz_openBank = io_req_payload_addr[23 : 21];
   assign _zz_cycle = ((rowOpen && (_zz_openBank == openBank)) && (_zz_openRow == openRow));
-  assign when_Ddr3ControllerCore_l1527 = (rowOpen && (! _zz_cycle));
-  assign when_Ddr3ControllerCore_l1536 = (! rowOpen);
-  assign when_Ddr3ControllerCore_l1568 = (cycle == 7'h02);
+  assign when_Ddr3ControllerCore_l1353 = (rowOpen && (! _zz_cycle));
+  assign when_Ddr3ControllerCore_l1362 = (! rowOpen);
+  assign when_Ddr3ControllerCore_l1394 = (cycle == 7'h02);
   assign _zz_openRow_1 = reqReg_addr[20 : 7];
   assign _zz_openBank_1 = reqReg_addr[23 : 21];
   assign _zz_BA_2 = reqReg_addr[23 : 21];
   assign _zz_A_2 = (_zz__zz_A_2 | 16'h1000);
-  assign when_Ddr3ControllerCore_l1614 = (cycle == 7'h01);
-  assign when_Ddr3ControllerCore_l1618 = ((cycle == 7'h02) || rdHavePending);
-  assign when_Ddr3ControllerCore_l1624 = (canAcceptRdStream && io_req_valid);
-  assign when_Ddr3ControllerCore_l1623 = (7'h02 <= cycle);
-  assign _zz_when_Ddr3ControllerCore_l1642 = (7'h0a + rotSplit);
-  assign _zz_data_ready = ((_zz_when_Ddr3ControllerCore_l1642 <= cycle) && (rdRspLeft != 6'h0));
-  assign when_Ddr3ControllerCore_l1642 = (((((! rdStreamOpen) && (! rdHavePending)) && (rdRspLeft == 6'h0)) && (! data_ready)) && (_zz_when_Ddr3ControllerCore_l1642_1 <= cycle));
+  assign when_Ddr3ControllerCore_l1440 = (cycle == 7'h01);
+  assign when_Ddr3ControllerCore_l1444 = ((cycle == 7'h02) || rdHavePending);
+  assign when_Ddr3ControllerCore_l1450 = (canAcceptRdStream && io_req_valid);
+  assign when_Ddr3ControllerCore_l1449 = (7'h02 <= cycle);
+  assign _zz_when_Ddr3ControllerCore_l1468 = (7'h0a + rotSplit);
+  assign _zz_data_ready = ((_zz_when_Ddr3ControllerCore_l1468 <= cycle) && (rdRspLeft != 6'h0));
+  assign when_Ddr3ControllerCore_l1468 = (((((! rdStreamOpen) && (! rdHavePending)) && (rdRspLeft == 6'h0)) && (! data_ready)) && (_zz_when_Ddr3ControllerCore_l1468_1 <= cycle));
   assign _zz_A_2_1 = {reqReg_addr[6 : 0],3'b000};
   assign _zz_BA_2_1 = reqReg_addr[23 : 21];
-  assign when_Ddr3ControllerCore_l1657 = (cycle == 7'h01);
-  assign when_Ddr3ControllerCore_l1663 = (cycle == 7'h02);
-  assign when_Ddr3ControllerCore_l1698 = (cycle == 7'h03);
-  assign when_Ddr3ControllerCore_l1784 = (cycle == 7'h04);
-  assign when_Ddr3ControllerCore_l1816 = (cycle == ((2'b10 <= wrMode) ? 7'h08 : 7'h07));
-  assign when_Ddr3ControllerCore_l1834 = ((cycle == 7'h01) || wrHavePending);
-  assign when_Ddr3ControllerCore_l1846 = (canAcceptWrStream && io_req_valid);
-  assign when_Ddr3ControllerCore_l1857 = (st1Valid && (! st2Valid));
-  assign when_Ddr3ControllerCore_l1887 = (st1Valid && (! st2Valid));
-  assign when_Ddr3ControllerCore_l1923 = (st1Valid && (! st2Valid));
-  assign when_Ddr3ControllerCore_l1926 = (st2Valid && (! st3Valid));
-  assign when_Ddr3ControllerCore_l1936 = (st3Valid && st2Valid);
-  assign when_Ddr3ControllerCore_l1957 = (st2Valid && (! st3Valid));
-  assign when_Ddr3ControllerCore_l1967 = (st3Valid && st2Valid);
-  assign when_Ddr3ControllerCore_l1995 = (wrCooldown != 4'b0000);
-  assign when_Ddr3ControllerCore_l1999 = (((((! when_Ddr3ControllerCore_l1834) && (! st1Valid)) && (! st2Valid)) && (! st3Valid)) && (wrCooldown == 4'b0000));
-  assign when_Ddr3ControllerCore_l2008 = (cycle == 7'h10);
+  assign when_Ddr3ControllerCore_l1483 = (cycle == 7'h01);
+  assign when_Ddr3ControllerCore_l1489 = (cycle == 7'h02);
+  assign when_Ddr3ControllerCore_l1524 = (cycle == 7'h03);
+  assign when_Ddr3ControllerCore_l1610 = (cycle == 7'h04);
+  assign when_Ddr3ControllerCore_l1642 = (cycle == ((2'b10 <= wrMode) ? 7'h08 : 7'h07));
+  assign when_Ddr3ControllerCore_l1660 = ((cycle == 7'h01) || wrHavePending);
+  assign when_Ddr3ControllerCore_l1672 = (canAcceptWrStream && io_req_valid);
+  assign when_Ddr3ControllerCore_l1683 = (st1Valid && (! st2Valid));
+  assign when_Ddr3ControllerCore_l1713 = (st1Valid && (! st2Valid));
+  assign when_Ddr3ControllerCore_l1749 = (st1Valid && (! st2Valid));
+  assign when_Ddr3ControllerCore_l1752 = (st2Valid && (! st3Valid));
+  assign when_Ddr3ControllerCore_l1762 = (st3Valid && st2Valid);
+  assign when_Ddr3ControllerCore_l1783 = (st2Valid && (! st3Valid));
+  assign when_Ddr3ControllerCore_l1793 = (st3Valid && st2Valid);
+  assign when_Ddr3ControllerCore_l1821 = (wrCooldown != 4'b0000);
+  assign when_Ddr3ControllerCore_l1825 = (((((! when_Ddr3ControllerCore_l1660) && (! st1Valid)) && (! st2Valid)) && (! st3Valid)) && (wrCooldown == 4'b0000));
+  assign when_Ddr3ControllerCore_l1834 = (cycle == 7'h10);
   assign needRotSplit = (bestRot != 3'b000);
   assign _zz_rdataVec_0 = _zz__zz_rdataVec_0[2 : 0];
   assign rdataVec_0 = ((needRotSplit && (3'b000 < bestRot)) ? _zz_rdataVec_0_1 : _zz_rdataVec_0_2);
@@ -4708,7 +4680,7 @@ module Ddr3ControllerCore (
   assign io_phy_BA_3 = BA_3;
   assign io_phy_CKE = CKE;
   assign io_phy_resetn_delay = resetn_delay;
-  assign when_Ddr3ControllerCore_l2176 = (((((io_phy_rst_lock_n && (! _zz_when_Ddr3ControllerCore_l2176)) && (! busy)) && (state == Ddr3State_IDLE)) && wlevel_done) && rcalib_done);
+  assign when_Ddr3ControllerCore_l1997 = (((((io_phy_rst_lock_n && (! _zz_when_Ddr3ControllerCore_l1997)) && (! busy)) && (state == Ddr3State_IDLE)) && wlevel_done) && rcalib_done);
   assign io_init_done = init_done_latched;
   assign io_write_level_done = wlevel_done;
   assign io_read_calib_done = rcalib_done;
@@ -4718,8 +4690,8 @@ module Ddr3ControllerCore (
   assign io_best_rot = bestRot;
   assign io_best_score = bestCnt;
   assign io_dbg_state = state;
-  always @(posedge io_pclk or posedge _zz_when_Ddr3ControllerCore_l2176) begin
-    if(_zz_when_Ddr3ControllerCore_l2176) begin
+  always @(posedge io_pclk or posedge _zz_when_Ddr3ControllerCore_l1997) begin
+    if(_zz_when_Ddr3ControllerCore_l1997) begin
       state <= Ddr3State_RST_WAIT;
       cycle <= 7'h0;
       tick_counter <= 17'h00001;
@@ -4764,17 +4736,17 @@ module Ddr3ControllerCore (
       training <= 1'b1;
       trainDone <= 1'b0;
       needPoison <= 1'b0;
-      trainLatch <= 128'h0;
-      rotScoresReg_0 <= 4'b0000;
-      rotScoresReg_1 <= 4'b0000;
-      rotScoresReg_2 <= 4'b0000;
-      rotScoresReg_3 <= 4'b0000;
-      rotScoresReg_4 <= 4'b0000;
-      rotScoresReg_5 <= 4'b0000;
-      rotScoresReg_6 <= 4'b0000;
-      rotScoresReg_7 <= 4'b0000;
-      sweepScoreReg <= 4'b0000;
-      sweepRotReg <= 3'b000;
+      rotScorer_trainLatch <= 128'h0;
+      rotScorer_rotScoresReg_0 <= 4'b0000;
+      rotScorer_rotScoresReg_1 <= 4'b0000;
+      rotScorer_rotScoresReg_2 <= 4'b0000;
+      rotScorer_rotScoresReg_3 <= 4'b0000;
+      rotScorer_rotScoresReg_4 <= 4'b0000;
+      rotScorer_rotScoresReg_5 <= 4'b0000;
+      rotScorer_rotScoresReg_6 <= 4'b0000;
+      rotScorer_rotScoresReg_7 <= 4'b0000;
+      rotScorer_sweepScore <= 4'b0000;
+      rotScorer_sweepRot <= 3'b000;
       bestCnt <= 4'b0000;
       bestPos <= 2'b00;
       bestSel <= 3'b000;
@@ -4871,28 +4843,28 @@ module Ddr3ControllerCore (
     end else begin
       sweepMag0 <= 7'h0;
       sweepMagN <= 7'h0;
-      if(when_Ddr3ControllerCore_l453) begin
-        if(when_Ddr3ControllerCore_l454) begin
+      if(when_Ddr3ControllerCore_l280) begin
+        if(when_Ddr3ControllerCore_l281) begin
           refresh_due <= 1'b1;
           refresh_timer <= 11'h0;
         end else begin
           refresh_timer <= (refresh_timer + 11'h001);
         end
       end
-      if(when_Ddr3ControllerCore_l537) begin
+      if(when_Ddr3ControllerCore_l364) begin
         rburst_seen[0] <= 1'b1;
       end
-      if(when_Ddr3ControllerCore_l538) begin
+      if(when_Ddr3ControllerCore_l365) begin
         rburst_seen[1] <= 1'b1;
       end
       dqs_read <= 4'b0000;
-      if(when_Ddr3ControllerCore_l567) begin
+      if(when_Ddr3ControllerCore_l394) begin
         dqs_read <= 4'b1111;
       end
-      if(when_Ddr3ControllerCore_l571) begin
+      if(when_Ddr3ControllerCore_l398) begin
         dqs_read <= 4'b1111;
       end
-      if(when_Ddr3ControllerCore_l574) begin
+      if(when_Ddr3ControllerCore_l401) begin
         dqs_read <= 4'b1111;
       end
       if(io_phy_rst_lock_n) begin
@@ -4921,7 +4893,7 @@ module Ddr3ControllerCore (
         dq_oen <= 4'b1111;
         dqs_out <= 8'h0;
         dqs_hold <= 1'b0;
-        if(when_Ddr3ControllerCore_l627) begin
+        if(when_Ddr3ControllerCore_l454) begin
           cycle <= ((cycle == 7'h7f) ? 7'h7f : _zz_cycle_1);
           tick <= (tick_counter == 17'h00001);
           tick_counter <= ((tick_counter == 17'h0) ? 17'h0 : _zz_tick_counter);
@@ -4934,7 +4906,7 @@ module Ddr3ControllerCore (
               end
             end
             Ddr3State_CKE_WAIT : begin
-              if(when_Ddr3ControllerCore_l642) begin
+              if(when_Ddr3ControllerCore_l469) begin
                 CKE <= 1'b1;
               end
               if(tick) begin
@@ -5014,11 +4986,11 @@ module Ddr3ControllerCore (
                 7'h11 : begin
                   dqs_out <= 8'h0;
                   dqs_oen <= 4'b0000;
-                  if(when_Ddr3ControllerCore_l714) begin
+                  if(when_Ddr3ControllerCore_l541) begin
                     wlVoteN <= 3'b000;
                     wlVoteCnt <= 3'b000;
                     wlevel_tries <= (wlevel_tries + 9'h001);
-                    if(when_Ddr3ControllerCore_l723) begin
+                    if(when_Ddr3ControllerCore_l550) begin
                       wlevel_done <= 1'b1;
                       wstep <= 8'hff;
                       nRAS_0 <= CMD_SetModeReg[2];
@@ -5027,13 +4999,13 @@ module Ddr3ControllerCore (
                       BA_0 <= MR1[15 : 13];
                       A_0 <= {1'd0, _zz_A_0_8};
                     end else begin
-                      if(when_Ddr3ControllerCore_l727) begin
+                      if(when_Ddr3ControllerCore_l554) begin
                         wstep <= _zz_wstep;
                         wlevel_cnt <= 4'b0000;
                         cycle <= 7'h0a;
                       end else begin
                         wlevel_cnt <= (wlevel_cnt + 4'b0001);
-                        if(when_Ddr3ControllerCore_l738) begin
+                        if(when_Ddr3ControllerCore_l565) begin
                           wlevel_done <= 1'b1;
                           wstep <= _zz_wstep_1;
                           nRAS_0 <= CMD_SetModeReg[2];
@@ -5047,7 +5019,7 @@ module Ddr3ControllerCore (
                       end
                     end
                   end else begin
-                    if(when_Ddr3ControllerCore_l749) begin
+                    if(when_Ddr3ControllerCore_l576) begin
                       wlVoteCnt <= (wlVoteCnt + 3'b001);
                     end
                     wlVoteN <= (wlVoteN + 3'b001);
@@ -5142,46 +5114,46 @@ module Ddr3ControllerCore (
                   A_2 <= (_zz_A_2_4 <<< 12);
                 end
                 7'h0b : begin
-                  trainLatch <= {{{{{{{io_phy_dq_in_7,io_phy_dq_in_6},io_phy_dq_in_5},io_phy_dq_in_4},io_phy_dq_in_3},io_phy_dq_in_2},io_phy_dq_in_1},io_phy_dq_in_0};
+                  rotScorer_trainLatch <= {{{{{{{io_phy_dq_in_7,io_phy_dq_in_6},io_phy_dq_in_5},io_phy_dq_in_4},io_phy_dq_in_3},io_phy_dq_in_2},io_phy_dq_in_1},io_phy_dq_in_0};
                 end
                 7'h0c : begin
-                  rotScoresReg_0 <= rotScores_0;
-                  rotScoresReg_1 <= rotScores_1;
-                  rotScoresReg_2 <= rotScores_2;
-                  rotScoresReg_3 <= rotScores_3;
-                  rotScoresReg_4 <= rotScores_4;
-                  rotScoresReg_5 <= rotScores_5;
-                  rotScoresReg_6 <= rotScores_6;
-                  rotScoresReg_7 <= rotScores_7;
+                  rotScorer_rotScoresReg_0 <= rotScorer_rotScores_0;
+                  rotScorer_rotScoresReg_1 <= rotScorer_rotScores_1;
+                  rotScorer_rotScoresReg_2 <= rotScorer_rotScores_2;
+                  rotScorer_rotScoresReg_3 <= rotScorer_rotScores_3;
+                  rotScorer_rotScoresReg_4 <= rotScorer_rotScores_4;
+                  rotScorer_rotScoresReg_5 <= rotScorer_rotScores_5;
+                  rotScorer_rotScoresReg_6 <= rotScorer_rotScores_6;
+                  rotScorer_rotScoresReg_7 <= rotScorer_rotScores_7;
                 end
                 7'h0d : begin
-                  sweepScoreReg <= rotScoreW_7;
-                  sweepRotReg <= rotIdxW_7;
+                  rotScorer_sweepScore <= rotScorer_topScore;
+                  rotScorer_sweepRot <= rotScorer_topIdx;
                 end
                 7'h0e : begin
-                  if(when_Ddr3ControllerCore_l886) begin
+                  if(when_Ddr3ControllerCore_l712) begin
                     `ifndef SYNTHESIS
                       `ifdef FORMAL
-                        assert(1'b0); // Ddr3ControllerCore.scala:L887
+                        assert(1'b0); // Ddr3ControllerCore.scala:L713
                       `else
                         if(!1'b0) begin
-                          $display("NOTE RCALIB chk pos=%x sel=%x seen=%x score=%x rot=%x latch=%x best=%x tries=%x", rclkpos, rclksel, rburst_seen, sweepScoreReg, sweepRotReg, trainLatch, bestCnt, rcalib_tries); // Ddr3ControllerCore.scala:L887
+                          $display("NOTE RCALIB chk pos=%x sel=%x seen=%x score=%x rot=%x latch=%x best=%x tries=%x", rclkpos, rclksel, rburst_seen, rotScorer_sweepScore, rotScorer_sweepRot, rotScorer_trainLatch, bestCnt, rcalib_tries); // Ddr3ControllerCore.scala:L713
                         end
                       `endif
                     `endif
                   end
                   rcalib_cnt <= 4'b0000;
-                  if(when_Ddr3ControllerCore_l891) begin
+                  if(when_Ddr3ControllerCore_l717) begin
                     rcalib_tries <= (rcalib_tries + 10'h001);
                   end
-                  if(when_Ddr3ControllerCore_l911) begin
+                  if(when_Ddr3ControllerCore_l737) begin
                     rmove <= 1'b0;
-                    if(when_Ddr3ControllerCore_l913) begin
+                    if(when_Ddr3ControllerCore_l739) begin
                       anchorLeft <= (anchorLeft - 2'b01);
                       cycle <= 7'h01;
                     end else begin
                       if(aligning) begin
-                        if(when_Ddr3ControllerCore_l925) begin
+                        if(when_Ddr3ControllerCore_l751) begin
                           rdir <= s0Side;
                           rmove <= navigateLeft[0];
                           navigateLeft <= (navigateLeft - 8'h01);
@@ -5199,13 +5171,13 @@ module Ddr3ControllerCore (
                   end else begin
                     if(dllSweepOn) begin
                       rmove <= 1'b0;
-                      if(when_Ddr3ControllerCore_l949) begin
-                        if(when_Ddr3ControllerCore_l950) begin
+                      if(when_Ddr3ControllerCore_l775) begin
+                        if(when_Ddr3ControllerCore_l776) begin
                           anchorLeft <= (anchorLeft - 2'b01);
                           cycle <= 7'h01;
                         end else begin
                           if(aligning) begin
-                            if(when_Ddr3ControllerCore_l965) begin
+                            if(when_Ddr3ControllerCore_l791) begin
                               rdir <= (applyArmed ? bestSide : s0Side);
                               rmove <= navigateLeft[0];
                               navigateLeft <= (navigateLeft - 8'h01);
@@ -5216,7 +5188,7 @@ module Ddr3ControllerCore (
                               cycle <= 7'h01;
                             end
                           end else begin
-                            if(when_Ddr3ControllerCore_l990) begin
+                            if(when_Ddr3ControllerCore_l816) begin
                               dqs_hold <= 1'b1;
                               s1Side <= s0Side;
                               s1Mag <= s0Mag;
@@ -5230,7 +5202,7 @@ module Ddr3ControllerCore (
                               s1Mag <= s0Mag;
                               s2Side <= s1Side;
                               s2Mag <= s1Mag;
-                              if(when_Ddr3ControllerCore_l1008) begin
+                              if(when_Ddr3ControllerCore_l834) begin
                                 rclkpos <= bestPos;
                                 needFinalSurvey <= 1'b1;
                                 dllSweepDone <= 1'b1;
@@ -5238,10 +5210,10 @@ module Ddr3ControllerCore (
                                 applyArmed <= 1'b0;
                                 `ifndef SYNTHESIS
                                   `ifdef FORMAL
-                                    assert(1'b0); // Ddr3ControllerCore.scala:L1018
+                                    assert(1'b0); // Ddr3ControllerCore.scala:L844
                                   `else
                                     if(!1'b0) begin
-                                      $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L1018
+                                      $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L844
                                     end
                                   `endif
                                 `endif
@@ -5257,16 +5229,16 @@ module Ddr3ControllerCore (
                           end
                         end
                       end else begin
-                        if(when_Ddr3ControllerCore_l1033) begin
-                          if(when_Ddr3ControllerCore_l1038) begin
-                            bestCntDll <= sweepScoreReg;
+                        if(when_Ddr3ControllerCore_l859) begin
+                          if(when_Ddr3ControllerCore_l864) begin
+                            bestCntDll <= rotScorer_sweepScore;
                             bestMag <= s2Mag;
                             bestSide <= s2Side;
                             bestPos <= rclkpos;
                             bestSel <= rclksel;
-                            bestRot <= sweepRotReg;
+                            bestRot <= rotScorer_sweepRot;
                           end
-                          if(when_Ddr3ControllerCore_l1048) begin
+                          if(when_Ddr3ControllerCore_l874) begin
                             aligning <= 1'b1;
                             anchorLeft <= 2'b10;
                             navigateLeft <= ({1'd0,bestMag} <<< 1'd1);
@@ -5279,16 +5251,16 @@ module Ddr3ControllerCore (
                             s2Mag <= bestMag;
                             `ifndef SYNTHESIS
                               `ifdef FORMAL
-                                assert(1'b0); // Ddr3ControllerCore.scala:L1063
+                                assert(1'b0); // Ddr3ControllerCore.scala:L889
                               `else
                                 if(!1'b0) begin
-                                  $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L1063
+                                  $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L889
                                 end
                               `endif
                             `endif
                             cycle <= 7'h01;
                           end else begin
-                            if(when_Ddr3ControllerCore_l1073) begin
+                            if(when_Ddr3ControllerCore_l899) begin
                               aligning <= 1'b1;
                               anchorLeft <= 2'b10;
                               navigateLeft <= ({1'd0,bestMag} <<< 1'd1);
@@ -5301,10 +5273,10 @@ module Ddr3ControllerCore (
                               s2Mag <= bestMag;
                               `ifndef SYNTHESIS
                                 `ifdef FORMAL
-                                  assert(1'b0); // Ddr3ControllerCore.scala:L1086
+                                  assert(1'b0); // Ddr3ControllerCore.scala:L912
                                 `else
                                   if(!1'b0) begin
-                                    $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L1086
+                                    $display("NOTE RCALIB dll side=%x mag=%x pos=%x score=%x", bestSide, bestMag, bestPos, bestCntDll); // Ddr3ControllerCore.scala:L912
                                   end
                                 `endif
                               `endif
@@ -5316,8 +5288,8 @@ module Ddr3ControllerCore (
                               s2Mag <= s1Mag;
                               rclkpos <= _zz_rclkpos;
                               rdir <= s0Side;
-                              if(when_Ddr3ControllerCore_l1109) begin
-                                if(when_Ddr3ControllerCore_l1115) begin
+                              if(when_Ddr3ControllerCore_l935) begin
+                                if(when_Ddr3ControllerCore_l941) begin
                                   s0Side <= 1'b1;
                                   s0Mag <= 7'h01;
                                   s1Side <= 1'b1;
@@ -5330,15 +5302,15 @@ module Ddr3ControllerCore (
                                   applyArmed <= 1'b0;
                                   `ifndef SYNTHESIS
                                     `ifdef FORMAL
-                                      assert(1'b0); // Ddr3ControllerCore.scala:L1127
+                                      assert(1'b0); // Ddr3ControllerCore.scala:L953
                                     `else
                                       if(!1'b0) begin
-                                        $display("NOTE RCALIB dll side switch to minus"); // Ddr3ControllerCore.scala:L1127
+                                        $display("NOTE RCALIB dll side switch to minus"); // Ddr3ControllerCore.scala:L953
                                       end
                                     `endif
                                   `endif
                                 end else begin
-                                  if(when_Ddr3ControllerCore_l1137) begin
+                                  if(when_Ddr3ControllerCore_l963) begin
                                     s0Mag <= (s0Mag + 7'h01);
                                     rmove <= 1'b1;
                                     pinLeft <= 2'b10;
@@ -5349,14 +5321,14 @@ module Ddr3ControllerCore (
                                 dllSweepOn <= 1'b0;
                                 `ifndef SYNTHESIS
                                   `ifdef FORMAL
-                                    assert(1'b0); // Ddr3ControllerCore.scala:L1154
+                                    assert(1'b0); // Ddr3ControllerCore.scala:L980
                                   `else
                                     if(!1'b0) begin
-                                      $display("NOTE RCALIB window side=%x mag=%x pos=%x rot=%x score=%x", bestSide, bestMag, bestPos, bestRot, bestCntDll); // Ddr3ControllerCore.scala:L1154
+                                      $display("NOTE RCALIB window side=%x mag=%x pos=%x rot=%x score=%x", bestSide, bestMag, bestPos, bestRot, bestCntDll); // Ddr3ControllerCore.scala:L980
                                     end
                                   `endif
                                 `endif
-                                if(when_Ddr3ControllerCore_l1156) begin
+                                if(when_Ddr3ControllerCore_l982) begin
                                   rcalib_done <= 1'b1;
                                 end
                                 nRAS_0 <= CMD_PreCharge[2];
@@ -5365,7 +5337,7 @@ module Ddr3ControllerCore (
                                 BA_0 <= 3'b000;
                                 A_0 <= {13'd0, _zz_A_0_13};
                               end
-                              if(when_Ddr3ControllerCore_l1161) begin
+                              if(when_Ddr3ControllerCore_l987) begin
                                 trainDone <= 1'b1;
                                 needPoison <= 1'b0;
                                 bistReturn <= 1'b1;
@@ -5377,22 +5349,22 @@ module Ddr3ControllerCore (
                         end
                       end
                     end else begin
-                      if(when_Ddr3ControllerCore_l1186) begin
-                        bestCnt <= sweepScoreReg;
+                      if(when_Ddr3ControllerCore_l1012) begin
+                        bestCnt <= rotScorer_sweepScore;
                         bestPos <= rclkpos;
                         bestSel <= rclksel;
-                        bestRot <= sweepRotReg;
+                        bestRot <= rotScorer_sweepRot;
                       end
                       rclksel <= _zz_rclksel;
-                      if(when_Ddr3ControllerCore_l1193) begin
+                      if(when_Ddr3ControllerCore_l1019) begin
                         rclkpos <= _zz_rclkpos_1;
                       end
-                      if(when_Ddr3ControllerCore_l1197) begin
+                      if(when_Ddr3ControllerCore_l1023) begin
                         rclkpos <= bestPos;
                         rclksel <= bestSel;
-                        if(when_Ddr3ControllerCore_l1204) begin
-                          if(when_Ddr3ControllerCore_l1212) begin
-                            if(when_Ddr3ControllerCore_l1214) begin
+                        if(when_Ddr3ControllerCore_l1030) begin
+                          if(when_Ddr3ControllerCore_l1038) begin
+                            if(when_Ddr3ControllerCore_l1040) begin
                               shiftCalDone <= 1'b1;
                               rcalib_tries <= 10'h028;
                               trainDone <= 1'b1;
@@ -5401,14 +5373,14 @@ module Ddr3ControllerCore (
                               state <= Ddr3State_WRITE;
                               cycle <= 7'h0;
                             end else begin
-                              if(when_Ddr3ControllerCore_l1220) begin
+                              if(when_Ddr3ControllerCore_l1046) begin
                                 best0 <= bestCnt;
                                 bestMode <= wrMode;
                                 best0Pos <= bestPos;
                                 best0Sel <= bestSel;
                                 best0Rot <= bestRot;
                               end
-                              if(when_Ddr3ControllerCore_l1227) begin
+                              if(when_Ddr3ControllerCore_l1053) begin
                                 tryMode <= _zz_wrMode;
                                 wrMode <= _zz_wrMode;
                                 rcalib_tries <= 10'h0;
@@ -5419,7 +5391,7 @@ module Ddr3ControllerCore (
                                 state <= Ddr3State_WRITE;
                                 cycle <= 7'h0;
                               end else begin
-                                if(when_Ddr3ControllerCore_l1235) begin
+                                if(when_Ddr3ControllerCore_l1061) begin
                                   bestCnt <= best0;
                                   bestPos <= best0Pos;
                                   bestSel <= best0Sel;
@@ -5437,18 +5409,18 @@ module Ddr3ControllerCore (
                             end
                           end
                           if(scanOn) begin
-                            if(when_Ddr3ControllerCore_l1252) begin
+                            if(when_Ddr3ControllerCore_l1078) begin
                               bestSurveyCnt <= bestCnt;
                               bestSurveySide <= scSide;
                               bestSurveyMag <= scMag;
                             end
-                            if(when_Ddr3ControllerCore_l1259) begin
+                            if(when_Ddr3ControllerCore_l1085) begin
                               `ifndef SYNTHESIS
                                 `ifdef FORMAL
-                                  assert(1'b0); // Ddr3ControllerCore.scala:L1261
+                                  assert(1'b0); // Ddr3ControllerCore.scala:L1087
                                 `else
                                   if(!1'b0) begin
-                                    $display("NOTE RCALIB scan sweep at side=%x mag=%x score=%x", scSide, scMag, bestCnt); // Ddr3ControllerCore.scala:L1261
+                                    $display("NOTE RCALIB scan sweep at side=%x mag=%x score=%x", scSide, scMag, bestCnt); // Ddr3ControllerCore.scala:L1087
                                   end
                                 `endif
                               `endif
@@ -5472,7 +5444,7 @@ module Ddr3ControllerCore (
                               applyArmed <= 1'b0;
                               cycle <= 7'h01;
                             end else begin
-                              if(when_Ddr3ControllerCore_l1268) begin
+                              if(when_Ddr3ControllerCore_l1094) begin
                                 scMag <= (scMag + 7'h02);
                                 rcalib_tries <= 10'h0;
                                 bestCnt <= 4'b0000;
@@ -5489,7 +5461,7 @@ module Ddr3ControllerCore (
                                 applyArmed <= 1'b0;
                                 cycle <= 7'h01;
                               end else begin
-                                if(when_Ddr3ControllerCore_l1273) begin
+                                if(when_Ddr3ControllerCore_l1099) begin
                                   scSide <= 1'b1;
                                   scMag <= 7'h02;
                                   rcalib_tries <= 10'h0;
@@ -5507,7 +5479,7 @@ module Ddr3ControllerCore (
                                   applyArmed <= 1'b0;
                                   cycle <= 7'h01;
                                 end else begin
-                                  if(when_Ddr3ControllerCore_l1280) begin
+                                  if(when_Ddr3ControllerCore_l1106) begin
                                     scMag <= (scMag + 7'h02);
                                     rcalib_tries <= 10'h0;
                                     bestCnt <= 4'b0000;
@@ -5526,10 +5498,10 @@ module Ddr3ControllerCore (
                                   end else begin
                                     `ifndef SYNTHESIS
                                       `ifdef FORMAL
-                                        assert(1'b0); // Ddr3ControllerCore.scala:L1288
+                                        assert(1'b0); // Ddr3ControllerCore.scala:L1114
                                       `else
                                         if(!1'b0) begin
-                                          $display("NOTE RCALIB scan done best side=%x mag=%x score=%x", bestSurveySide, bestSurveyMag, bestSurveyCnt); // Ddr3ControllerCore.scala:L1288
+                                          $display("NOTE RCALIB scan done best side=%x mag=%x score=%x", bestSurveySide, bestSurveyMag, bestSurveyCnt); // Ddr3ControllerCore.scala:L1114
                                         end
                                       `endif
                                     `endif
@@ -5562,7 +5534,7 @@ module Ddr3ControllerCore (
                               bestSurveySide <= 1'b0;
                               bestSurveyMag <= 7'h0;
                               rclksel[0] <= 1'b0;
-                              if(when_Ddr3ControllerCore_l1309) begin
+                              if(when_Ddr3ControllerCore_l1135) begin
                                 dllSweepOn <= 1'b1;
                                 bestCntDll <= 4'b0000;
                                 bestSide <= 1'b0;
@@ -5581,16 +5553,16 @@ module Ddr3ControllerCore (
                                 applyArmed <= 1'b0;
                                 `ifndef SYNTHESIS
                                   `ifdef FORMAL
-                                    assert(1'b0); // Ddr3ControllerCore.scala:L1338
+                                    assert(1'b0); // Ddr3ControllerCore.scala:L1164
                                   `else
                                     if(!1'b0) begin
-                                      $display("NOTE RCALIB window start mag0=%x n=%x", sweepMag0, sweepMagN); // Ddr3ControllerCore.scala:L1338
+                                      $display("NOTE RCALIB window start mag0=%x n=%x", sweepMag0, sweepMagN); // Ddr3ControllerCore.scala:L1164
                                     end
                                   `endif
                                 `endif
                                 cycle <= 7'h01;
                               end else begin
-                                if(when_Ddr3ControllerCore_l1346) begin
+                                if(when_Ddr3ControllerCore_l1172) begin
                                   dllSweepOn <= 1'b1;
                                   bestCntDll <= 4'b0000;
                                   bestSide <= 1'b0;
@@ -5609,10 +5581,10 @@ module Ddr3ControllerCore (
                                   bestCnt <= 4'b0000;
                                   `ifndef SYNTHESIS
                                     `ifdef FORMAL
-                                      assert(1'b0); // Ddr3ControllerCore.scala:L1375
+                                      assert(1'b0); // Ddr3ControllerCore.scala:L1201
                                     `else
                                       if(!1'b0) begin
-                                        $display("NOTE RCALIB scan start"); // Ddr3ControllerCore.scala:L1375
+                                        $display("NOTE RCALIB scan start"); // Ddr3ControllerCore.scala:L1201
                                       end
                                     `endif
                                   `endif
@@ -5636,14 +5608,14 @@ module Ddr3ControllerCore (
                           dllSweepOn <= 1'b0;
                           `ifndef SYNTHESIS
                             `ifdef FORMAL
-                              assert(1'b0); // Ddr3ControllerCore.scala:L1384
+                              assert(1'b0); // Ddr3ControllerCore.scala:L1210
                             `else
                               if(!1'b0) begin
-                                $display("NOTE RCALIB lock best pos=%x sel=%x rot=%x score=%x", bestPos, bestSel, bestRot, bestCnt); // Ddr3ControllerCore.scala:L1384
+                                $display("NOTE RCALIB lock best pos=%x sel=%x rot=%x score=%x", bestPos, bestSel, bestRot, bestCnt); // Ddr3ControllerCore.scala:L1210
                               end
                             `endif
                           `endif
-                          if(when_Ddr3ControllerCore_l1391) begin
+                          if(when_Ddr3ControllerCore_l1217) begin
                             rcalib_done <= 1'b1;
                             nRAS_0 <= CMD_PreCharge[2];
                             nCAS_0 <= CMD_PreCharge[1];
@@ -5732,7 +5704,7 @@ module Ddr3ControllerCore (
                       cycle <= 7'h0;
                     end else begin
                       if(io_req_valid) begin
-                        if(when_Ddr3ControllerCore_l1527) begin
+                        if(when_Ddr3ControllerCore_l1353) begin
                           nRAS_0 <= CMD_PreCharge[2];
                           nCAS_0 <= CMD_PreCharge[1];
                           nWE_0 <= CMD_PreCharge[0];
@@ -5744,7 +5716,7 @@ module Ddr3ControllerCore (
                           cycle <= 7'h01;
                           busy <= 1'b1;
                         end else begin
-                          if(when_Ddr3ControllerCore_l1536) begin
+                          if(when_Ddr3ControllerCore_l1362) begin
                             nRAS_0 <= CMD_BankActivate[2];
                             nCAS_0 <= CMD_BankActivate[1];
                             nWE_0 <= CMD_BankActivate[0];
@@ -5782,7 +5754,7 @@ module Ddr3ControllerCore (
               end
             end
             Ddr3State_PRECHARGE : begin
-              if(when_Ddr3ControllerCore_l1568) begin
+              if(when_Ddr3ControllerCore_l1394) begin
                 if(prechForReq) begin
                   prechForReq <= 1'b0;
                   nRAS_0 <= CMD_BankActivate[2];
@@ -5825,22 +5797,22 @@ module Ddr3ControllerCore (
               end
             end
             Ddr3State_READ : begin
-              if(when_Ddr3ControllerCore_l1614) begin
+              if(when_Ddr3ControllerCore_l1440) begin
                 nRAS_2 <= CMD_Read[2];
                 nCAS_2 <= CMD_Read[1];
                 nWE_2 <= CMD_Read[0];
                 BA_2 <= _zz_BA_2;
                 A_2 <= _zz_A_2[13:0];
               end
-              if(when_Ddr3ControllerCore_l1618) begin
+              if(when_Ddr3ControllerCore_l1444) begin
                 nRAS_2 <= CMD_Read[2];
                 nCAS_2 <= CMD_Read[1];
                 nWE_2 <= CMD_Read[0];
                 BA_2 <= _zz_BA_2;
                 A_2 <= _zz_A_2[13:0];
               end
-              if(when_Ddr3ControllerCore_l1623) begin
-                if(when_Ddr3ControllerCore_l1624) begin
+              if(when_Ddr3ControllerCore_l1449) begin
+                if(when_Ddr3ControllerCore_l1450) begin
                   rdHavePending <= 1'b1;
                   rdExtraCnt <= (rdExtraCnt + 6'h01);
                 end else begin
@@ -5852,21 +5824,21 @@ module Ddr3ControllerCore (
               end
               data_ready <= _zz_data_ready;
               rdRspLeft <= (_zz_rdRspLeft - _zz_rdRspLeft_3);
-              if(when_Ddr3ControllerCore_l1642) begin
+              if(when_Ddr3ControllerCore_l1468) begin
                 busy <= 1'b0;
                 state <= Ddr3State_IDLE;
               end
             end
             Ddr3State_WRITE : begin
               if(trainDone) begin
-                if(when_Ddr3ControllerCore_l1657) begin
+                if(when_Ddr3ControllerCore_l1483) begin
                   nRAS_2 <= CMD_Write[2];
                   nCAS_2 <= CMD_Write[1];
                   nWE_2 <= CMD_Write[0];
                   BA_2 <= _zz_BA_2_1;
                   A_2 <= _zz_A_2_6[13:0];
                 end
-                if(when_Ddr3ControllerCore_l1663) begin
+                if(when_Ddr3ControllerCore_l1489) begin
                   case(wrMode)
                     2'b00 : begin
                       dqs_out <= 8'h40;
@@ -5898,7 +5870,7 @@ module Ddr3ControllerCore (
                     end
                   endcase
                 end
-                if(when_Ddr3ControllerCore_l1698) begin
+                if(when_Ddr3ControllerCore_l1524) begin
                   case(wrMode)
                     2'b00 : begin
                       dqs_out <= 8'h55;
@@ -5982,7 +5954,7 @@ module Ddr3ControllerCore (
                     end
                   endcase
                 end
-                if(when_Ddr3ControllerCore_l1784) begin
+                if(when_Ddr3ControllerCore_l1610) begin
                   case(wrMode)
                     2'b00, 2'b01 : begin
                       dqs_out <= 8'h0;
@@ -6013,7 +5985,7 @@ module Ddr3ControllerCore (
                     end
                   endcase
                 end
-                if(when_Ddr3ControllerCore_l1816) begin
+                if(when_Ddr3ControllerCore_l1642) begin
                   trainDone <= 1'b0;
                   if(needPoison) begin
                     state <= Ddr3State_IDLE;
@@ -6024,17 +5996,17 @@ module Ddr3ControllerCore (
                   end
                 end
               end else begin
-                if(when_Ddr3ControllerCore_l1834) begin
+                if(when_Ddr3ControllerCore_l1660) begin
                   nRAS_2 <= CMD_Write[2];
                   nCAS_2 <= CMD_Write[1];
                   nWE_2 <= CMD_Write[0];
                   BA_2 <= _zz_BA_2_1;
                   A_2 <= _zz_A_2_8[13:0];
                 end
-                st1Valid <= when_Ddr3ControllerCore_l1834;
+                st1Valid <= when_Ddr3ControllerCore_l1660;
                 st2Valid <= st1Valid;
                 st3Valid <= st2Valid;
-                if(when_Ddr3ControllerCore_l1846) begin
+                if(when_Ddr3ControllerCore_l1672) begin
                   wrHavePending <= 1'b1;
                   wrExtraCnt <= (wrExtraCnt + 6'h01);
                 end else begin
@@ -6043,7 +6015,7 @@ module Ddr3ControllerCore (
                 end
                 case(wrMode)
                   2'b00 : begin
-                    if(when_Ddr3ControllerCore_l1857) begin
+                    if(when_Ddr3ControllerCore_l1683) begin
                       dqs_out <= 8'h40;
                       dqs_oen <= 4'b0011;
                       dq_oen <= 4'b0111;
@@ -6087,7 +6059,7 @@ module Ddr3ControllerCore (
                     end
                   end
                   2'b01 : begin
-                    if(when_Ddr3ControllerCore_l1887) begin
+                    if(when_Ddr3ControllerCore_l1713) begin
                       dqs_out <= 8'h40;
                       dqs_oen <= 4'b0011;
                       dq_oen <= 4'b0011;
@@ -6139,11 +6111,11 @@ module Ddr3ControllerCore (
                     end
                   end
                   2'b10 : begin
-                    if(when_Ddr3ControllerCore_l1923) begin
+                    if(when_Ddr3ControllerCore_l1749) begin
                       dqs_out <= 8'h0;
                       dqs_oen <= 4'b0111;
                     end else begin
-                      if(when_Ddr3ControllerCore_l1926) begin
+                      if(when_Ddr3ControllerCore_l1752) begin
                         dqs_out <= 8'h55;
                         dqs_oen <= 4'b0000;
                         dq_oen <= 4'b0000;
@@ -6164,7 +6136,7 @@ module Ddr3ControllerCore (
                         dq_out_7 <= st2Req_wdata[111 : 96];
                         dm_out[7] <= (! (|st2Req_wstrb[13 : 12]));
                       end else begin
-                        if(when_Ddr3ControllerCore_l1936) begin
+                        if(when_Ddr3ControllerCore_l1762) begin
                           dqs_out <= 8'h55;
                           dqs_oen <= 4'b0000;
                           dq_oen <= 4'b0000;
@@ -6199,7 +6171,7 @@ module Ddr3ControllerCore (
                     end
                   end
                   default : begin
-                    if(when_Ddr3ControllerCore_l1957) begin
+                    if(when_Ddr3ControllerCore_l1783) begin
                       dqs_out <= 8'h54;
                       dqs_oen <= 4'b0000;
                       dq_oen <= 4'b0001;
@@ -6216,7 +6188,7 @@ module Ddr3ControllerCore (
                       dq_out_7 <= st2Req_wdata[79 : 64];
                       dm_out[7] <= (! (|st2Req_wstrb[9 : 8]));
                     end else begin
-                      if(when_Ddr3ControllerCore_l1967) begin
+                      if(when_Ddr3ControllerCore_l1793) begin
                         dqs_out <= 8'h55;
                         dqs_oen <= 4'b0000;
                         dq_oen <= 4'b0000;
@@ -6254,21 +6226,21 @@ module Ddr3ControllerCore (
                     end
                   end
                 endcase
-                if(when_Ddr3ControllerCore_l1834) begin
+                if(when_Ddr3ControllerCore_l1660) begin
                   wrCooldown <= ((2'b10 <= wrMode) ? 4'b0101 : 4'b0100);
                 end else begin
-                  if(when_Ddr3ControllerCore_l1995) begin
+                  if(when_Ddr3ControllerCore_l1821) begin
                     wrCooldown <= (wrCooldown - 4'b0001);
                   end
                 end
-                if(when_Ddr3ControllerCore_l1999) begin
+                if(when_Ddr3ControllerCore_l1825) begin
                   busy <= 1'b0;
                   state <= Ddr3State_IDLE;
                 end
               end
             end
             default : begin
-              if(when_Ddr3ControllerCore_l2008) begin
+              if(when_Ddr3ControllerCore_l1834) begin
                 busy <= 1'b0;
                 state <= Ddr3State_IDLE;
               end
@@ -6359,20 +6331,20 @@ module Ddr3ControllerCore (
         bestWSel <= 3'b000;
         bestWRot <= 3'b000;
         bestWMode <= 2'b00;
-        rotScoresReg_0 <= 4'b0000;
-        rotScoresReg_1 <= 4'b0000;
-        rotScoresReg_2 <= 4'b0000;
-        rotScoresReg_3 <= 4'b0000;
-        rotScoresReg_4 <= 4'b0000;
-        rotScoresReg_5 <= 4'b0000;
-        rotScoresReg_6 <= 4'b0000;
-        rotScoresReg_7 <= 4'b0000;
-        sweepScoreReg <= 4'b0000;
-        sweepRotReg <= 3'b000;
+        rotScorer_rotScoresReg_0 <= 4'b0000;
+        rotScorer_rotScoresReg_1 <= 4'b0000;
+        rotScorer_rotScoresReg_2 <= 4'b0000;
+        rotScorer_rotScoresReg_3 <= 4'b0000;
+        rotScorer_rotScoresReg_4 <= 4'b0000;
+        rotScorer_rotScoresReg_5 <= 4'b0000;
+        rotScorer_rotScoresReg_6 <= 4'b0000;
+        rotScorer_rotScoresReg_7 <= 4'b0000;
+        rotScorer_sweepScore <= 4'b0000;
+        rotScorer_sweepRot <= 3'b000;
+        rotScorer_trainLatch <= 128'h0;
         training <= 1'b1;
         trainDone <= 1'b0;
         needPoison <= 1'b0;
-        trainLatch <= 128'h0;
         rclkpos <= 2'b00;
         rclksel <= 3'b000;
         init_done_latched <= 1'b0;
@@ -6403,7 +6375,7 @@ module Ddr3ControllerCore (
       dqPrevVec_5 <= io_phy_dq_in_5;
       dqPrevVec_6 <= io_phy_dq_in_6;
       dqPrevVec_7 <= io_phy_dq_in_7;
-      if(when_Ddr3ControllerCore_l2176) begin
+      if(when_Ddr3ControllerCore_l1997) begin
         init_done_latched <= 1'b1;
       end
     end
@@ -6411,7 +6383,7 @@ module Ddr3ControllerCore (
 
   always @(posedge io_pclk) begin
     if(io_phy_rst_lock_n) begin
-      if(when_Ddr3ControllerCore_l627) begin
+      if(when_Ddr3ControllerCore_l454) begin
         case(state)
           Ddr3State_RST_WAIT : begin
           end
@@ -6426,13 +6398,13 @@ module Ddr3ControllerCore (
           Ddr3State_READ_CALIB : begin
             case(cycle)
               7'h0e : begin
-                if(!when_Ddr3ControllerCore_l911) begin
+                if(!when_Ddr3ControllerCore_l737) begin
                   if(dllSweepOn) begin
-                    if(!when_Ddr3ControllerCore_l949) begin
-                      if(when_Ddr3ControllerCore_l1033) begin
-                        if(!when_Ddr3ControllerCore_l1048) begin
-                          if(!when_Ddr3ControllerCore_l1073) begin
-                            if(when_Ddr3ControllerCore_l1161) begin
+                    if(!when_Ddr3ControllerCore_l775) begin
+                      if(when_Ddr3ControllerCore_l859) begin
+                        if(!when_Ddr3ControllerCore_l874) begin
+                          if(!when_Ddr3ControllerCore_l899) begin
+                            if(when_Ddr3ControllerCore_l987) begin
                               reqReg_write <= 1'b1;
                               reqReg_addr <= 27'h0;
                               reqReg_wdata <= trainPat;
@@ -6443,16 +6415,16 @@ module Ddr3ControllerCore (
                       end
                     end
                   end else begin
-                    if(when_Ddr3ControllerCore_l1197) begin
-                      if(when_Ddr3ControllerCore_l1204) begin
-                        if(when_Ddr3ControllerCore_l1212) begin
-                          if(when_Ddr3ControllerCore_l1214) begin
+                    if(when_Ddr3ControllerCore_l1023) begin
+                      if(when_Ddr3ControllerCore_l1030) begin
+                        if(when_Ddr3ControllerCore_l1038) begin
+                          if(when_Ddr3ControllerCore_l1040) begin
                             reqReg_write <= 1'b1;
                             reqReg_addr <= 27'h0;
                             reqReg_wdata <= trainPat;
                             reqReg_wstrb <= 16'hffff;
                           end else begin
-                            if(when_Ddr3ControllerCore_l1227) begin
+                            if(when_Ddr3ControllerCore_l1053) begin
                               reqReg_write <= 1'b1;
                               reqReg_addr <= 27'h0;
                               reqReg_wdata <= trainPat;
@@ -6467,8 +6439,8 @@ module Ddr3ControllerCore (
                         end
                         if(!scanOn) begin
                           if(shiftCalDone) begin
-                            if(!when_Ddr3ControllerCore_l1309) begin
-                              if(when_Ddr3ControllerCore_l1346) begin
+                            if(!when_Ddr3ControllerCore_l1135) begin
+                              if(when_Ddr3ControllerCore_l1172) begin
                                 reqReg_write <= 1'b1;
                                 reqReg_addr <= 27'h0;
                                 reqReg_wdata <= trainPat;
@@ -6520,8 +6492,8 @@ module Ddr3ControllerCore (
           Ddr3State_PRECHARGE : begin
           end
           Ddr3State_READ : begin
-            if(when_Ddr3ControllerCore_l1623) begin
-              if(when_Ddr3ControllerCore_l1624) begin
+            if(when_Ddr3ControllerCore_l1449) begin
+              if(when_Ddr3ControllerCore_l1450) begin
                 reqReg_write <= io_req_payload_write;
                 reqReg_addr <= io_req_payload_addr;
                 reqReg_wdata <= io_req_payload_wdata;
@@ -6531,7 +6503,7 @@ module Ddr3ControllerCore (
           end
           Ddr3State_WRITE : begin
             if(!trainDone) begin
-              if(when_Ddr3ControllerCore_l1834) begin
+              if(when_Ddr3ControllerCore_l1660) begin
                 st1Req_write <= reqReg_write;
                 st1Req_addr <= reqReg_addr;
                 st1Req_wdata <= reqReg_wdata;
@@ -6545,7 +6517,7 @@ module Ddr3ControllerCore (
               st3Req_addr <= st2Req_addr;
               st3Req_wdata <= st2Req_wdata;
               st3Req_wstrb <= st2Req_wstrb;
-              if(when_Ddr3ControllerCore_l1846) begin
+              if(when_Ddr3ControllerCore_l1672) begin
                 reqReg_write <= io_req_payload_write;
                 reqReg_addr <= io_req_payload_addr;
                 reqReg_wdata <= io_req_payload_wdata;
