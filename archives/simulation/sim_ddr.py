@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 SIM = Path(__file__).resolve().parent
-REPO = SIM.parent
+REPO = SIM.parent.parent
 DEFINES = ["SIM", "den1024Mb", "sg25", "x16"]
 
 
@@ -47,12 +47,12 @@ def check_vendor_files(gowin_sim: Path) -> bool:
         )
     for m in ("ddr3_vanilla.v", "1024Mb_ddr3_parameters.vh"):
         if not (SIM / m).exists():
-            missing.append(f"Micron file missing: simulation/{m}")
+            missing.append(f"Micron file missing: archives/simulation/{m}")
     if missing:
         for line in missing:
             print(f"ERROR: {line}", file=sys.stderr)
         print(
-            "See simulation/README.md for Micron DDR3 model download "
+            "See archives/simulation/README.md for Micron DDR3 model download "
             "(https://www.micron.com/products/dram/ddr3-sdram) and Gowin IDE prim_sim.v setup.",
             file=sys.stderr,
         )

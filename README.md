@@ -74,25 +74,25 @@ The ready-to-flash bitstream is produced at `build_eda/impl/pnr/Ddr3TesterTop.fs
 ---
 
 ### Legacy Icarus Verilog vs Micron Model (Optional — Vendor Files Required)
-To keep this repository 100% open-source, third-party proprietary simulation files are **not included** in Git. If you wish to run the legacy Icarus Verilog pin-level testbenches in `simulation/`:
+To keep this repository 100% open-source, third-party proprietary simulation files are **not included** in Git. The legacy pin-level Icarus Verilog testbenches now live in `archives/simulation/`:
 
 1. **Gowin Primitive Simulation Library (`prim_sim.v`)**:
    - Already installed locally with Gowin EDA IDE under:
      `<GOWIN_HOME>/IDE/simlib/gw2a/prim_sim.v`
      (e.g. `C:\Gowin\Gowin_V1.9.11.03_Education_x64\IDE\simlib\gw2a\prim_sim.v`)
-   - `simulation/sim_ddr.py` automatically detects `prim_sim.v` via `GOWIN_HOME` (or standard `C:\Gowin\...` installs), or you can copy it locally as `simulation/prim_sim_tb.v` (gitignored).
+   - `archives/simulation/sim_ddr.py` automatically detects `prim_sim.v` via `GOWIN_HOME` (or standard `C:\Gowin\...` installs), or you can copy it locally as `archives/simulation/prim_sim_tb.v` (gitignored).
 2. **Micron DDR3 SDRAM Behavioral Model (`ddr3.v` + `*_parameters.vh`)**:
    - Download the **DDR3 SDRAM Verilog Model (v1.74)** for a 1024Mb x16 part (e.g. `MT41K64M16` / `MT41J64M16`) from Micron's official catalog:
      <https://www.micron.com/products/dram/ddr3-sdram> (select a DDR3 part -> *Tools / Simulation Models*).
-   - Extract and place locally into `simulation/` (gitignored):
-     - `ddr3.v` -> `simulation/ddr3_vanilla.v`
-     - `1024Mb_ddr3_parameters.vh` -> `simulation/1024Mb_ddr3_parameters.vh`
-     - `2048Mb_ddr3_parameters.vh` -> `simulation/2048Mb_ddr3_parameters.vh` *(optional)*
+   - Extract and place locally into `archives/simulation/` (gitignored):
+     - `ddr3.v` -> `archives/simulation/ddr3_vanilla.v`
+     - `1024Mb_ddr3_parameters.vh` -> `archives/simulation/1024Mb_ddr3_parameters.vh`
+     - `2048Mb_ddr3_parameters.vh` -> `archives/simulation/2048Mb_ddr3_parameters.vh` *(optional)*
 
-Then run via `simulation/sim_ddr.py`:
+Then run via `archives/simulation/sim_ddr.py`:
 ```powershell
-python simulation/sim_ddr.py --baseline --run   # nand2mario baseline
-python simulation/sim_ddr.py --spinal --run     # SpinalHDL Ddr3ControllerSim (~10 min)
+python archives/simulation/sim_ddr.py --baseline --run   # nand2mario baseline
+python archives/simulation/sim_ddr.py --spinal --run     # SpinalHDL Ddr3ControllerSim (~10 min)
 ```
 
 ---
@@ -101,16 +101,12 @@ python simulation/sim_ddr.py --spinal --run     # SpinalHDL Ddr3ControllerSim (~
 
 ```text
 ├── ddr3/                    # DRAM controller & AXI4 bridge in SpinalHDL (regen via Ddr3Gen)
-│   ├── src/ddr3/            #   Ddr3ControllerCore.scala (FSM), GowinDdr3Phy.scala (DLL/DQS PHY),
-│   │                        #   Ddr3Controller/Axi4/Bridge, Ddr3TesterTop, Ddr3MemtestEngine, UartTx
+│   ├── src/ddr3/            #   Ddr3ControllerCore.scala, GowinDdr3Phy.scala, Ddr3Axi4/Bridge, ...
 │   └── test/                #   unit tests (src/) + formal proofs (formal/)
 ├── hw/gen/                  # Generated Verilog (Ddr3TesterTop.v, Ddr3Axi4*.v, ...) — via mill
-├── src/                     # nand2mario baseline (kept): ddr3_controller.v, top, PLL, constraints (.cst, .sdc)
-├── simulation/              # Legacy iverilog driver & testbenches (sim_ddr.py, tb_fast.v, tb_spinal.v, ...)
-│                            # Vendor Micron/Gowin sim files supplied locally (gitignored)
-├── measure/                 # Legacy simulation sweep & VCD analysis scripts
-├── archives/                # Ranged history, out of the active path
-├── doc/                     # Design & bringup documentation
+├── src/                     # Active Gowin board constraints & PLL (tang20k.cst, ddr3.sdc, gowin_rpll/)
+├── doc/                     # Active architecture & hardware milestone docs
+├── archives/                # Archived bringup/sim/measurement history (out of active path)
 ├── tools/                   # Local toolchains from setup.bat (oss-cad-suite, w64devkit) — gitignored
 ├── setup.bat                # Automated Windows setup script (downloads Mill & OSS CAD Suite)
 ├── build.mill               # Mill build configuration
@@ -123,5 +119,5 @@ python simulation/sim_ddr.py --spinal --run     # SpinalHDL Ddr3ControllerSim (~
 ## License & Attribution
 
 - **SpinalHDL Implementation & Project Scripts**: Copyright (c) 2026 Léonard Adamo ([Juste-Leo2](https://github.com/Juste-Leo2)). Released under the **[MIT License](LICENSE)**.
-- **Reference Verilog RTL, PLL Wrapper & Tang Primer 20K Constraints (`src/`)**: Adapted from [nand2mario/ddr3-tang-primer-20k](https://github.com/nand2mario/ddr3-tang-primer-20k), Copyright (c) 2022 nand2mario. Released under the **[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)**.
+- **Reference PLL Wrapper, Tang Primer 20K Constraints (`src/`) & Archived Baseline**: Adapted from [nand2mario/ddr3-tang-primer-20k](https://github.com/nand2mario/ddr3-tang-primer-20k), Copyright (c) 2022 nand2mario. Released under the **[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)**.
 - **Optional External Simulation Models**: Micron DDR3 Verilog models (`ddr3.v`, `*_parameters.vh`) and Gowin `prim_sim.v` are **not distributed** in this repository and remain the property of their respective copyright holders.
