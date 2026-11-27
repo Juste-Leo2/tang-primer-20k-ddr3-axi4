@@ -83,6 +83,12 @@ PRESETS = {
          "src/tang20k.cst", "src/ddr3.sdc"],
         EXPECTED, "Ddr3TesterTop",
     ),
+    "demo": (
+        [], "Ddr3UartDemoTop",
+        ["hw/gen/Ddr3UartDemoTop.v", "src/gowin_rpll/gowin_rpll.v",
+         "src/tang20k.cst", "src/ddr3.sdc"],
+        EXPECTED, "Ddr3UartDemoTop",
+    ),
     "dram": (
         ["--dram"], "DramSoCTop",
         ["rtl/DramSoCTop.v", "dram/out/litedram_core.v",
@@ -125,7 +131,7 @@ def main():
     ap.add_argument("--board", default="tang-primer-20k")
     ap.add_argument("--workdir", default=str(REPO / "build_eda"))
     ap.add_argument("--top", default=None)
-    ap.add_argument("--preset", choices=["ddr3", "dram", "mnist"], default="ddr3")
+    ap.add_argument("--preset", choices=["ddr3", "demo", "dram", "mnist"], default="ddr3")
     ap.add_argument("--skip-compile", action="store_true")
     ap.add_argument("--report-only", action="store_true",
                     help="Skip compile+gw_sh, only parse WORKDIR outputs")
@@ -145,7 +151,7 @@ def main():
 
     # 1. compile MODEL ----------------------------------------------------
     if not args.skip_compile and not args.report_only:
-        if args.preset == "ddr3":
+        if args.preset in ("ddr3", "demo"):
             sh([str(MILL_BAT), "ddr3.runMain", "ddr3.Ddr3Gen"], REPO, "mill_gen")
         else:
             model = args.model or (r"tests\universal\UniversalScaleDemo.scala"
@@ -162,6 +168,15 @@ def main():
                 raise SystemExit(f"missing artifact: {a} (compile first?)")
             shutil.copy2(a, b)
             print(f"[stage] {a.name} ({a.stat().st_size // 1024} KiB)")
+        if args.preset == "demo":
+            cst = src / "tang20k.cst"
+            txt = cst.read_text(encoding="utf-8")
+            if "uart_rxp" not in txt:
+                cst.write_text(
+                    txt + '\nIO_LOC "uart_rxp" T13;\n'
+                          'IO_PORT "uart_rxp" IO_TYPE=LVCMOS33 PULL_MODE=UP;\n',
+                    encoding="utf-8",
+                )
 
     # 3. build.tcl + gw_sh -------------------------------------------------
     if not args.report_only:

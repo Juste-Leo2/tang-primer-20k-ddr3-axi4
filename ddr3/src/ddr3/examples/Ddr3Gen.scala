@@ -36,6 +36,9 @@ object Ddr3Gen {
     println(s"Generating Ddr3TesterTop (${width}-bit AXI4${cdcLabel} hardware top for Tang Primer 20K)...")
     spinalConfig.generateVerilog(new Ddr3TesterTop(axiConfig, hwConfig, useAsyncAxiClock = useCdc))
 
+    println("Generating Ddr3UartDemoTop (64-bit AXI4 UART <-> DDR3 demo top)...")
+    spinalConfig.generateVerilog(new Ddr3UartDemoTop)
+
     println("Generating Ddr3ControllerSim (iverilog sim vs Micron model, short timeouts)...")
     spinalConfig.generateVerilog(new Ddr3ControllerSim)
 

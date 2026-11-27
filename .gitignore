@@ -25,7 +25,8 @@ archives/simulation/_vcd_probe.py
 *.log
 *.err
 
-# Python cache
+# Python cache & local venv
+.venv/
 __pycache__/
 *.py[cod]
 
