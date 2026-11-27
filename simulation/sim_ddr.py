@@ -19,8 +19,48 @@ from pathlib import Path
 
 SIM = Path(__file__).resolve().parent
 REPO = SIM.parent
-GOWIN_SIM = SIM / "prim_sim_tb.v"
 DEFINES = ["SIM", "den1024Mb", "sg25", "x16"]
+
+
+def find_gowin_sim():
+    local = SIM / "prim_sim_tb.v"
+    if local.exists():
+        return local
+    candidates = []
+    if "GOWIN_HOME" in os.environ:
+        candidates.append(Path(os.environ["GOWIN_HOME"]) / "IDE" / "simlib" / "gw2a" / "prim_sim.v")
+    for base in (Path("C:/Gowin"), Path("/opt/gowin")):
+        if base.exists():
+            candidates.extend(sorted(base.glob("*/IDE/simlib/gw2a/prim_sim.v"), reverse=True))
+            candidates.append(base / "IDE" / "simlib" / "gw2a" / "prim_sim.v")
+    for c in candidates:
+        if c.exists():
+            return c
+    return local
+
+
+def check_vendor_files(gowin_sim: Path) -> bool:
+    missing = []
+    if not gowin_sim.exists():
+        missing.append(
+            f"Gowin prim_sim.v not found (tried {gowin_sim} and GOWIN_HOME/IDE/simlib/gw2a/prim_sim.v)."
+        )
+    for m in ("ddr3_vanilla.v", "1024Mb_ddr3_parameters.vh"):
+        if not (SIM / m).exists():
+            missing.append(f"Micron file missing: simulation/{m}")
+    if missing:
+        for line in missing:
+            print(f"ERROR: {line}", file=sys.stderr)
+        print(
+            "See simulation/README.md for Micron DDR3 model download "
+            "(https://www.micron.com/products/dram/ddr3-sdram) and Gowin IDE prim_sim.v setup.",
+            file=sys.stderr,
+        )
+        return False
+    return True
+
+
+GOWIN_SIM = find_gowin_sim()
 
 
 def find_oss_cad_suite():
@@ -168,6 +208,8 @@ def main():
         return 1
 
     if args.baseline:
+        if not check_vendor_files(GOWIN_SIM):
+            return 1
         out = SIM / "tb_orig.vvp"
         rc = build([SIM / "tb_controller.v",
                     SIM / "ddr3_vanilla.v",
@@ -180,6 +222,8 @@ def main():
             return run(out)
         return 0
     elif args.spinal:
+        if not check_vendor_files(GOWIN_SIM):
+            return 1
         out = SIM / "tb_spinal.vvp"
         extra = ["FASTDLL"] if args.fastdll else []
         if args.no_vcd:
@@ -196,6 +240,8 @@ def main():
             return run(out)
         return 0
     elif args.fast_tb:
+        if not check_vendor_files(GOWIN_SIM):
+            return 1
         # STEP and phase are runtime plusargs: one build serves the whole map.
         # ZERO_STALE_SLOTS hardens the IDES model (X on the DQ pad stores 0
         # instead of poisoning the slot) so near-miss captures stay visible

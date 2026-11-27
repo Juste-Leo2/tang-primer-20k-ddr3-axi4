@@ -29,6 +29,13 @@ simulation/_vcd_probe.py
 __pycache__/
 *.py[cod]
 
+# Formal & local scratch
 /formal/
 tb_fast_s23_p0_w-1_k0.bak
 simulation/compare_runs.py
+
+# Third-party vendor simulation models (must be supplied locally, never committed)
+simulation/prim_sim_tb.v
+simulation/ddr3_vanilla.v
+simulation/1024Mb_ddr3_parameters.vh
+simulation/2048Mb_ddr3_parameters.vh

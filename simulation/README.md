@@ -1,14 +1,16 @@
 
-## Simulation setup using Icarus Verilog, prim_sim.v and Micro DDR3 model
+## Simulation setup using Icarus Verilog, `prim_sim.v` and Micron DDR3 model
 
-The Gowin IDE doesn't come with integrated model simulation as of late 2022. Luckily they do provide behavioral HDL for their primitives. So combining that with a DDR3 memory model, we can simulate our design with iverilog.
+*(Note: Vendor files are **not redistributed** in Git. For fast daily verification, use the Verilator Scala unit tests `.\mill.bat -i ddr3.test` and direct hardware runs `python fpga_run.py`.)*
 
-What you need (on Windows).
+If you want to run the legacy pin-level Icarus Verilog simulations against Micron's JEDEC model:
 
-* [Icarus Verilog 11](https://bleyer.org/icarus/iverilog-v11-20201123-x64_setup.exe). This particular version works for me. The latest version has some issues (assertion errors) with the Micron DDR3 model.
-* Micron DDR3 memory model. Get it from [Micron's website](https://www.micron.com/products/dram/ddr3-sdram) ("DDR3 SDRAM Verilog Model, version 1.74"). Extract the source files to this dir.
-* Gowin's `prim_sim.v`. It comes with Gowin IDE: for example `Gowin_V1.9.8.07/IDE/simlib/gw2a/prim_sim.v`.
-* GNU make: `choco install make`
+* [Icarus Verilog](https://bleyer.org/icarus/) (also bundled via `setup.bat` in `tools/oss-cad-suite/`).
+* **Micron DDR3 memory model**: download **"DDR3 SDRAM Verilog Model (v1.74)"** for a 1024Mb x16 part (e.g., MT41K64M16 / MT41J64M16) from [Micron's official DDR3 catalog](https://www.micron.com/products/dram/ddr3-sdram) (*Tools / Simulation Models*). Extract and place in this directory (`simulation/`, gitignored):
+  * `ddr3.v` → `simulation/ddr3_vanilla.v`
+  * `1024Mb_ddr3_parameters.vh` → `simulation/1024Mb_ddr3_parameters.vh`
+  * `2048Mb_ddr3_parameters.vh` → `simulation/2048Mb_ddr3_parameters.vh` *(optional)*
+* **Gowin `prim_sim.v`**: bundled with your local Gowin EDA IDE installation at `<GOWIN_HOME>/IDE/simlib/gw2a/prim_sim.v` (e.g., `C:\Gowin\Gowin_V1.9.11.03_Education_x64\IDE\simlib\gw2a\prim_sim.v`). `sim_ddr.py` auto-detects `GOWIN_HOME` / `C:\Gowin\...`, or you can copy it here as `simulation/prim_sim_tb.v`.
 
 Then you can run 
 ```bash
