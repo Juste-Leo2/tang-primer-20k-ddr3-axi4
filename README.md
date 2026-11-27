@@ -2,6 +2,10 @@
 
 Open-source **DDR3 + AXI4** memory subsystem written in **SpinalHDL** for the **Sipeed Tang Primer 20K** (`GW2A-LV18PG256C8/I7`), driving Gowin native DDR primitives (`OSER8_MEM`, `IDES8_MEM`, `DQS`, `DLL`).
 
+> [!WARNING]
+> **Experimental / Hobby & Prototyping Project — Not Production-Hardened.**
+> This controller has **not** been validated in industrial environments or across multiple boards, voltage/temperature corners (PVT), or exhaustive formal/UVM sign-off. **Bugs may remain** (for example, re-flashing SRAM hot without power-cycling can require a USB unplug/replug). Use at your own risk under the MIT "AS IS" license — **do not** use for safety-critical or commercial production systems without independent qualification.
+
 ## Plug-and-Play Usage (`TangPrimer20kDdr3`)
 
 Instantiate [`TangPrimer20kDdr3`](ddr3/src/ddr3/board/TangPrimer20kDdr3.scala) to get the PLL (`303.75 MHz` CK / `75.94 MHz` controller clock), Power-On-Reset, DDR3 controller, and **32 / 64 (default) / 128-bit AXI4** slave port in one block:
