@@ -27,17 +27,18 @@ val ddr3Async = TangPrimer20kDdr3(
 )
 ```
 
-> **AXI4 notes:** supports `INCR` and `FIXED` bursts (not `WRAP`); expects `AxSIZE` matching the configured bus width (use `WSTRB` for sub-word / byte writes).
-
 ## Verified Hardware Results (Tang Primer 20K)
 
 All modes verified in Verilator (`ddr3.test`) and on physical Tang Primer 20K hardware (`pclk = 75.94 MHz`, `CK = 303.75 MHz`, including byte-masked `DDR3_DM[1:0]` writes and optional `27 MHz` async `Axi4CC`):
 
-| Mode | Resources (`Ddr3TesterTop`) | Sustained HW Throughput | Hardware Status |
+| Mode | Resources (`Ddr3TesterTop`) | Sequential HW Throughput (avg / peak) | Hardware Status |
 |---|---|---|---|
 | **32-bit** (`--32`) | `LUT=4858`, `REG=2187`, `BSRAM=1` | ~145 MB/s WR, ~241 MB/s RD *(sim)* | `1359` passes, `0` fails (`32b+CDC`: `912` passes) |
-| **64-bit** *(default)* | `LUT=4941`, `REG=2245`, `BSRAM=1` | **~546–551 MB/s WR**, **~514–517 MB/s RD** | `1226` passes, `0` fails (`64b+CDC`: `1171` passes) |
-| **128-bit** (`--128`) | `LUT=4527`, `REG=1959`, `BSRAM=5` | **~960 MB/s WR**, **~794 MB/s RD** | `1183` passes, `0` fails |
+| **64-bit** *(default)* | `LUT=4941`, `REG=2245`, `BSRAM=1` | **580.0 MB/s** (`peak 586.3`) WR, **548.8 MB/s** (`peak 556.7`) RD | `1226` passes, `0` fails (`64b+CDC`: `1171` passes) |
+| **128-bit** (`--128`) | `LUT=4527`, `REG=1959`, `BSRAM=5` | **~960 MB/s** (`peak ~965`) WR, **~794 MB/s** (`peak ~804`) RD | `1183` passes, `0` fails |
+
+- **Mixed R/W, short row-miss & scalar latency (64-bit HW, 100-run avg):** `256 B` mixed R/W 100% row-miss **`387.4 MB/s`** combined (`402.0` WR / `373.8` RD), `64 B` mixed R/W 100% row-miss **`211.1 MB/s`** combined (`252.6` WR / `181.4` RD); `16 B` read latency **`19.5 cyc` (`257 ns`)** same-row hit / **`21.7 cyc` (`286 ns`)** row-miss. Full breakdown in [`doc/bench.md`](doc/bench.md).
+- **AXI4 integration notes:** supports `INCR` and `FIXED` bursts (not `WRAP`), expects `AxSIZE` matching the configured bus width (use `WSTRB` for partial/sub-word writes), arbitrates one `AW` or `AR` burst at a time, and tracks a single open bank/row at a time.
 
 ## Quick PC ↔ DDR3 Demo (`demo/`)
 
@@ -51,6 +52,9 @@ Ready-to-run bitstream + `pyserial` visualizer in [`demo/`](demo/) (**no Mill or
 # Flash prebuilt demo bitstream to SRAM, round-trip an RGB image + message in DDR3,
 # and display a live AXI4 Write/Read throughput & peak graph (COM8 @ 115200 baud)
 .venv\Scripts\python.exe demo\demo_ddr3.py --flash --port COM8
+
+# Or run the 100-iteration workload + row-miss + scalar latency suite
+.venv\Scripts\python.exe demo\demo_ddr3.py --flash --workload --port COM8
 ```
 
 *(To rebuild the demo bitstream from SpinalHDL sources: `python eda-flow.py --preset demo --skip-compile --flash openfpgaloader`.)*
@@ -63,7 +67,7 @@ Ready-to-run bitstream + `pyserial` visualizer in [`demo/`](demo/) (**no Mill or
 setup.bat                                           # Downloads Mill + OSS CAD Suite (Verilator, openFPGALoader)
 
 .\mill.bat -i ddr3.runMain ddr3.Ddr3Gen             # Generate Verilog in hw/gen/ (flags: --32 | --128, --cdc)
-.\mill.bat -i ddr3.test                             # Run all Verilator unit tests (23 tests)
+.\mill.bat -i ddr3.test                             # Run all Verilator unit tests (24 tests)
 
 python eda-flow.py --preset ddr3 --skip-compile     # Headless Gowin synthesis & PnR -> build_eda/impl/pnr/
 python fpga_run.py --timeout 12 --pass-target 0     # Flash SRAM & verify live UART memtest
@@ -75,7 +79,7 @@ python fpga_run.py --timeout 12 --pass-target 0     # Flash SRAM & verify live U
 ├── ddr3/src/ddr3/      # SpinalHDL sources (config/, phy/, core/, axi/, board/TangPrimer20kDdr3.scala, examples/)
 ├── ddr3/test/          # Verilator unit tests & formal properties (Ddr3FormalProof)
 ├── demo/               # Prebuilt Ddr3UartDemoTop.fs + demo_ddr3.py (UART round-trip + live MB/s graph)
-├── doc/                # Design docs & hardware demo GIF (demo.gif)
+├── doc/                # Design docs, benchmark report (bench.md) & demo GIF (demo.gif)
 ├── hw/gen/             # Pre-generated Verilog (Ddr3Controller, Ddr3Axi4, TangPrimer20kDdr3, Ddr3TesterTop, Ddr3UartDemoTop)
 ├── src/                # Tang Primer 20K constraints (tang20k.cst, ddr3.sdc) & Gowin_rPLL
 ├── eda-flow.py         # Headless Gowin synthesis, PnR & flash helper (--preset ddr3 | demo)

@@ -1,7 +1,7 @@
 // Generator : SpinalHDL v1.15.0    git head : 05a01af3d3345aa0afcaad8e0186dde13a359db2
 // Component : Ddr3UartDemoTop
-// Git hash  : b810472f85404370ca2923b352da50f3d13b0414
-// Date      : 27/11/2026, 16:34:13
+// Git hash  : 25c447bbc51e7ed0cddaa01470e611de8001f265
+// Date      : 27/11/2026, 20:27:09
 
 `timescale 1ns/1ps
 
@@ -300,12 +300,13 @@ module Ddr3UartBridge (
   localparam S_RD_WAIT_R = 5'd9;
   localparam S_RD_TX_WORD = 5'd10;
   localparam S_B_RX_LEN = 5'd11;
-  localparam S_B_WR_AW = 5'd12;
-  localparam S_B_WR_W = 5'd13;
-  localparam S_B_WR_B = 5'd14;
-  localparam S_B_RD_AR = 5'd15;
-  localparam S_B_RD_R = 5'd16;
-  localparam S_B_TX_RES = 5'd17;
+  localparam S_M_RX_HDR = 5'd12;
+  localparam S_B_WR_AW = 5'd13;
+  localparam S_B_WR_W = 5'd14;
+  localparam S_B_WR_B = 5'd15;
+  localparam S_B_RD_AR = 5'd16;
+  localparam S_B_RD_R = 5'd17;
+  localparam S_B_TX_RES = 5'd18;
 
   reg                 tx_io_write_valid;
   reg        [7:0]    tx_io_write_payload;
@@ -314,6 +315,10 @@ module Ddr3UartBridge (
   wire                tx_io_write_ready;
   wire                tx_io_txd;
   wire                tx_io_busy;
+  wire       [31:0]   _zz_bStrideBytes;
+  wire       [18:0]   _zz_bStrideBytes_1;
+  wire       [15:0]   _zz_bStrideBytes_2;
+  wire       [15:0]   _zz_bStrideBytes_3;
   reg        [7:0]    _zz_io_write_payload;
   wire       [2:0]    _zz_io_write_payload_1;
   reg        [7:0]    _zz_io_write_payload_2;
@@ -329,13 +334,18 @@ module Ddr3UartBridge (
   reg        [7:0]    txByte;
   reg        [3:0]    cmdCnt;
   reg        [7:0]    bBurstsM1;
+  reg        [7:0]    bBeatsM1;
+  reg                 bMixed;
+  reg                 bRowStride;
+  reg        [1:0]    bHdrIdx;
   reg        [7:0]    bBurstIdx;
   reg        [31:0]   bWrCycles;
   reg        [31:0]   bRdCycles;
   reg                 bErr;
+  wire       [31:0]   bStrideBytes;
   wire       [63:0]   benchWord;
-  wire                when_Ddr3UartDemoTop_l66;
-  wire                when_Ddr3UartDemoTop_l69;
+  wire                when_Ddr3UartDemoTop_l75;
+  wire                when_Ddr3UartDemoTop_l78;
   wire                inBenchWr;
   wire                inBenchRd;
   wire       [7:0]    wordBytes_0;
@@ -355,38 +365,45 @@ module Ddr3UartBridge (
   wire       [7:0]    benchResBytes_6;
   wire       [7:0]    benchResBytes_7;
   wire       [7:0]    benchResBytes_8;
-  wire                when_Ddr3UartDemoTop_l130;
-  wire                when_Ddr3UartDemoTop_l133;
-  wire                when_Ddr3UartDemoTop_l138;
+  wire                when_Ddr3UartDemoTop_l139;
+  wire                when_Ddr3UartDemoTop_l142;
+  wire                when_Ddr3UartDemoTop_l147;
+  wire                when_Ddr3UartDemoTop_l150;
   wire                tx_io_write_fire;
   wire       [4:0]    _zz_state;
   wire                io_axi_aw_fire;
-  wire                when_Ddr3UartDemoTop_l177;
-  wire                when_Ddr3UartDemoTop_l177_1;
-  wire                when_Ddr3UartDemoTop_l177_2;
-  wire                when_Ddr3UartDemoTop_l177_3;
-  wire                when_Ddr3UartDemoTop_l177_4;
-  wire                when_Ddr3UartDemoTop_l177_5;
-  wire                when_Ddr3UartDemoTop_l177_6;
-  wire                when_Ddr3UartDemoTop_l177_7;
-  wire                when_Ddr3UartDemoTop_l179;
+  wire                when_Ddr3UartDemoTop_l190;
+  wire                when_Ddr3UartDemoTop_l190_1;
+  wire                when_Ddr3UartDemoTop_l190_2;
+  wire                when_Ddr3UartDemoTop_l190_3;
+  wire                when_Ddr3UartDemoTop_l190_4;
+  wire                when_Ddr3UartDemoTop_l190_5;
+  wire                when_Ddr3UartDemoTop_l190_6;
+  wire                when_Ddr3UartDemoTop_l190_7;
+  wire                when_Ddr3UartDemoTop_l192;
   wire                io_axi_w_fire;
-  wire                when_Ddr3UartDemoTop_l189;
+  wire                when_Ddr3UartDemoTop_l202;
   wire                io_axi_ar_fire;
-  wire                when_Ddr3UartDemoTop_l228;
+  wire                when_Ddr3UartDemoTop_l241;
   wire       [4:0]    _zz_state_1;
-  wire                when_Ddr3UartDemoTop_l259;
-  wire                when_Ddr3UartDemoTop_l269;
-  wire                when_Ddr3UartDemoTop_l290;
-  wire                when_Ddr3UartDemoTop_l294;
-  wire                when_Ddr3UartDemoTop_l312;
+  wire                when_Ddr3UartDemoTop_l296;
+  wire                when_Ddr3UartDemoTop_l308;
+  wire                when_Ddr3UartDemoTop_l329;
+  wire                when_Ddr3UartDemoTop_l333;
+  wire       [4:0]    _zz_state_2;
+  wire                when_Ddr3UartDemoTop_l351;
   `ifndef SYNTHESIS
   reg [79:0] state_string;
   reg [79:0] _zz_state_string;
   reg [79:0] _zz_state_1_string;
+  reg [79:0] _zz_state_2_string;
   `endif
 
 
+  assign _zz_bStrideBytes_1 = ({3'd0,_zz_bStrideBytes_2} <<< 2'd3);
+  assign _zz_bStrideBytes = {13'd0, _zz_bStrideBytes_1};
+  assign _zz_bStrideBytes_2 = (_zz_bStrideBytes_3 + 16'h0001);
+  assign _zz_bStrideBytes_3 = {8'd0, bBeatsM1};
   assign _zz_io_write_payload_1 = byteIdx[2 : 0];
   UartRx rx (
     .io_rxd          (io_uart_rxp            ), //i
@@ -446,6 +463,7 @@ module Ddr3UartBridge (
       S_RD_WAIT_R : state_string = "RD_WAIT_R ";
       S_RD_TX_WORD : state_string = "RD_TX_WORD";
       S_B_RX_LEN : state_string = "B_RX_LEN  ";
+      S_M_RX_HDR : state_string = "M_RX_HDR  ";
       S_B_WR_AW : state_string = "B_WR_AW   ";
       S_B_WR_W : state_string = "B_WR_W    ";
       S_B_WR_B : state_string = "B_WR_B    ";
@@ -469,6 +487,7 @@ module Ddr3UartBridge (
       S_RD_WAIT_R : _zz_state_string = "RD_WAIT_R ";
       S_RD_TX_WORD : _zz_state_string = "RD_TX_WORD";
       S_B_RX_LEN : _zz_state_string = "B_RX_LEN  ";
+      S_M_RX_HDR : _zz_state_string = "M_RX_HDR  ";
       S_B_WR_AW : _zz_state_string = "B_WR_AW   ";
       S_B_WR_W : _zz_state_string = "B_WR_W    ";
       S_B_WR_B : _zz_state_string = "B_WR_B    ";
@@ -492,6 +511,7 @@ module Ddr3UartBridge (
       S_RD_WAIT_R : _zz_state_1_string = "RD_WAIT_R ";
       S_RD_TX_WORD : _zz_state_1_string = "RD_TX_WORD";
       S_B_RX_LEN : _zz_state_1_string = "B_RX_LEN  ";
+      S_M_RX_HDR : _zz_state_1_string = "M_RX_HDR  ";
       S_B_WR_AW : _zz_state_1_string = "B_WR_AW   ";
       S_B_WR_W : _zz_state_1_string = "B_WR_W    ";
       S_B_WR_B : _zz_state_1_string = "B_WR_B    ";
@@ -501,12 +521,37 @@ module Ddr3UartBridge (
       default : _zz_state_1_string = "??????????";
     endcase
   end
+  always @(*) begin
+    case(_zz_state_2)
+      S_IDLE : _zz_state_2_string = "IDLE      ";
+      S_SEND_PING : _zz_state_2_string = "SEND_PING ";
+      S_RX_HDR : _zz_state_2_string = "RX_HDR    ";
+      S_WR_AW : _zz_state_2_string = "WR_AW     ";
+      S_WR_RX_WORD : _zz_state_2_string = "WR_RX_WORD";
+      S_WR_W_BEAT : _zz_state_2_string = "WR_W_BEAT ";
+      S_WR_B : _zz_state_2_string = "WR_B      ";
+      S_WR_ACK : _zz_state_2_string = "WR_ACK    ";
+      S_RD_AR : _zz_state_2_string = "RD_AR     ";
+      S_RD_WAIT_R : _zz_state_2_string = "RD_WAIT_R ";
+      S_RD_TX_WORD : _zz_state_2_string = "RD_TX_WORD";
+      S_B_RX_LEN : _zz_state_2_string = "B_RX_LEN  ";
+      S_M_RX_HDR : _zz_state_2_string = "M_RX_HDR  ";
+      S_B_WR_AW : _zz_state_2_string = "B_WR_AW   ";
+      S_B_WR_W : _zz_state_2_string = "B_WR_W    ";
+      S_B_WR_B : _zz_state_2_string = "B_WR_B    ";
+      S_B_RD_AR : _zz_state_2_string = "B_RD_AR   ";
+      S_B_RD_R : _zz_state_2_string = "B_RD_R    ";
+      S_B_TX_RES : _zz_state_2_string = "B_TX_RES  ";
+      default : _zz_state_2_string = "??????????";
+    endcase
+  end
   `endif
 
   assign io_uart_txp = tx_io_txd;
+  assign bStrideBytes = (bRowStride ? 32'h00000800 : _zz_bStrideBytes);
   assign benchWord = {{{{{16'ha55a,bBurstIdx},beatCnt},16'hcafe},(bBurstIdx ^ beatCnt)},(~ beatCnt)};
-  assign when_Ddr3UartDemoTop_l66 = (((state == S_B_WR_AW) || (state == S_B_WR_W)) || (state == S_B_WR_B));
-  assign when_Ddr3UartDemoTop_l69 = ((state == S_B_RD_AR) || (state == S_B_RD_R));
+  assign when_Ddr3UartDemoTop_l75 = (((state == S_B_WR_AW) || (state == S_B_WR_W)) || (state == S_B_WR_B));
+  assign when_Ddr3UartDemoTop_l78 = ((state == S_B_RD_AR) || (state == S_B_RD_R));
   assign io_busy = (state != S_IDLE);
   assign io_cmd_count = cmdCnt;
   assign inBenchWr = (((state == S_B_WR_AW) || (state == S_B_WR_W)) || (state == S_B_WR_B));
@@ -514,7 +559,7 @@ module Ddr3UartBridge (
   assign io_axi_aw_valid = ((state == S_WR_AW) || (state == S_B_WR_AW));
   assign io_axi_aw_payload_addr = addrReg;
   assign io_axi_aw_payload_id = 4'b0000;
-  assign io_axi_aw_payload_len = (inBenchWr ? 8'hff : lenM1);
+  assign io_axi_aw_payload_len = (inBenchWr ? bBeatsM1 : lenM1);
   assign io_axi_aw_payload_size = 3'b011;
   assign io_axi_aw_payload_burst = 2'b01;
   assign io_axi_aw_payload_lock = 1'b0;
@@ -525,12 +570,12 @@ module Ddr3UartBridge (
   assign io_axi_w_valid = ((state == S_WR_W_BEAT) || (state == S_B_WR_W));
   assign io_axi_w_payload_data = ((state == S_B_WR_W) ? benchWord : wordBuf);
   assign io_axi_w_payload_strb = 8'hff;
-  assign io_axi_w_payload_last = ((state == S_B_WR_W) ? (beatCnt == 8'hff) : (beatCnt == lenM1));
+  assign io_axi_w_payload_last = ((state == S_B_WR_W) ? (beatCnt == bBeatsM1) : (beatCnt == lenM1));
   assign io_axi_b_ready = ((state == S_WR_B) || (state == S_B_WR_B));
   assign io_axi_ar_valid = ((state == S_RD_AR) || (state == S_B_RD_AR));
   assign io_axi_ar_payload_addr = addrReg;
   assign io_axi_ar_payload_id = 4'b0000;
-  assign io_axi_ar_payload_len = (inBenchRd ? 8'hff : lenM1);
+  assign io_axi_ar_payload_len = (inBenchRd ? bBeatsM1 : lenM1);
   assign io_axi_ar_payload_size = 3'b011;
   assign io_axi_ar_payload_burst = 2'b01;
   assign io_axi_ar_payload_lock = 1'b0;
@@ -568,6 +613,8 @@ module Ddr3UartBridge (
         tx_io_write_valid = 1'b1;
       end
       S_B_RX_LEN : begin
+      end
+      S_M_RX_HDR : begin
       end
       S_B_WR_AW : begin
       end
@@ -613,6 +660,8 @@ module Ddr3UartBridge (
       end
       S_B_RX_LEN : begin
       end
+      S_M_RX_HDR : begin
+      end
       S_B_WR_AW : begin
       end
       S_B_WR_W : begin
@@ -646,31 +695,33 @@ module Ddr3UartBridge (
   assign benchResBytes_6 = bRdCycles[15 : 8];
   assign benchResBytes_7 = bRdCycles[23 : 16];
   assign benchResBytes_8 = bRdCycles[31 : 24];
-  assign when_Ddr3UartDemoTop_l130 = (rx_io_read_payload == 8'h50);
-  assign when_Ddr3UartDemoTop_l133 = ((rx_io_read_payload == 8'h57) || (rx_io_read_payload == 8'h52));
-  assign when_Ddr3UartDemoTop_l138 = (rx_io_read_payload == 8'h42);
+  assign when_Ddr3UartDemoTop_l139 = (rx_io_read_payload == 8'h50);
+  assign when_Ddr3UartDemoTop_l142 = ((rx_io_read_payload == 8'h57) || (rx_io_read_payload == 8'h52));
+  assign when_Ddr3UartDemoTop_l147 = (rx_io_read_payload == 8'h42);
+  assign when_Ddr3UartDemoTop_l150 = (rx_io_read_payload == 8'h4d);
   assign tx_io_write_fire = (tx_io_write_valid && tx_io_write_ready);
   assign _zz_state = (isWrite ? S_WR_AW : S_RD_AR);
   assign io_axi_aw_fire = (io_axi_aw_valid && io_axi_aw_ready);
-  assign when_Ddr3UartDemoTop_l177 = (byteIdx == 4'b0000);
-  assign when_Ddr3UartDemoTop_l177_1 = (byteIdx == 4'b0001);
-  assign when_Ddr3UartDemoTop_l177_2 = (byteIdx == 4'b0010);
-  assign when_Ddr3UartDemoTop_l177_3 = (byteIdx == 4'b0011);
-  assign when_Ddr3UartDemoTop_l177_4 = (byteIdx == 4'b0100);
-  assign when_Ddr3UartDemoTop_l177_5 = (byteIdx == 4'b0101);
-  assign when_Ddr3UartDemoTop_l177_6 = (byteIdx == 4'b0110);
-  assign when_Ddr3UartDemoTop_l177_7 = (byteIdx == 4'b0111);
-  assign when_Ddr3UartDemoTop_l179 = (byteIdx == 4'b0111);
+  assign when_Ddr3UartDemoTop_l190 = (byteIdx == 4'b0000);
+  assign when_Ddr3UartDemoTop_l190_1 = (byteIdx == 4'b0001);
+  assign when_Ddr3UartDemoTop_l190_2 = (byteIdx == 4'b0010);
+  assign when_Ddr3UartDemoTop_l190_3 = (byteIdx == 4'b0011);
+  assign when_Ddr3UartDemoTop_l190_4 = (byteIdx == 4'b0100);
+  assign when_Ddr3UartDemoTop_l190_5 = (byteIdx == 4'b0101);
+  assign when_Ddr3UartDemoTop_l190_6 = (byteIdx == 4'b0110);
+  assign when_Ddr3UartDemoTop_l190_7 = (byteIdx == 4'b0111);
+  assign when_Ddr3UartDemoTop_l192 = (byteIdx == 4'b0111);
   assign io_axi_w_fire = (io_axi_w_valid && io_axi_w_ready);
-  assign when_Ddr3UartDemoTop_l189 = (beatCnt == lenM1);
+  assign when_Ddr3UartDemoTop_l202 = (beatCnt == lenM1);
   assign io_axi_ar_fire = (io_axi_ar_valid && io_axi_ar_ready);
-  assign when_Ddr3UartDemoTop_l228 = (byteIdx == 4'b0111);
+  assign when_Ddr3UartDemoTop_l241 = (byteIdx == 4'b0111);
   assign _zz_state_1 = (rdLast ? S_IDLE : S_RD_WAIT_R);
-  assign when_Ddr3UartDemoTop_l259 = (beatCnt == 8'hff);
-  assign when_Ddr3UartDemoTop_l269 = (bBurstIdx == bBurstsM1);
-  assign when_Ddr3UartDemoTop_l290 = (io_axi_r_payload_data != benchWord);
-  assign when_Ddr3UartDemoTop_l294 = (bBurstIdx == bBurstsM1);
-  assign when_Ddr3UartDemoTop_l312 = (byteIdx == 4'b1000);
+  assign when_Ddr3UartDemoTop_l296 = (beatCnt == bBeatsM1);
+  assign when_Ddr3UartDemoTop_l308 = (bBurstIdx == bBurstsM1);
+  assign when_Ddr3UartDemoTop_l329 = (io_axi_r_payload_data != benchWord);
+  assign when_Ddr3UartDemoTop_l333 = (bBurstIdx == bBurstsM1);
+  assign _zz_state_2 = (bMixed ? S_B_WR_AW : S_B_RD_AR);
+  assign when_Ddr3UartDemoTop_l351 = (byteIdx == 4'b1000);
   always @(posedge clkoutd or posedge _zz_1) begin
     if(_zz_1) begin
       state <= S_IDLE;
@@ -685,33 +736,43 @@ module Ddr3UartBridge (
       txByte <= 8'h0;
       cmdCnt <= 4'b0000;
       bBurstsM1 <= 8'h0;
+      bBeatsM1 <= 8'hff;
+      bMixed <= 1'b0;
+      bRowStride <= 1'b0;
+      bHdrIdx <= 2'b00;
       bBurstIdx <= 8'h0;
       bWrCycles <= 32'h0;
       bRdCycles <= 32'h0;
       bErr <= 1'b0;
     end else begin
-      if(when_Ddr3UartDemoTop_l66) begin
+      if(when_Ddr3UartDemoTop_l75) begin
         bWrCycles <= (bWrCycles + 32'h00000001);
       end
-      if(when_Ddr3UartDemoTop_l69) begin
+      if(when_Ddr3UartDemoTop_l78) begin
         bRdCycles <= (bRdCycles + 32'h00000001);
       end
       case(state)
         S_IDLE : begin
           if(rx_io_read_valid) begin
-            if(when_Ddr3UartDemoTop_l130) begin
+            if(when_Ddr3UartDemoTop_l139) begin
               txByte <= (io_init_done ? 8'h21 : 8'h3f);
               state <= S_SEND_PING;
             end else begin
-              if(when_Ddr3UartDemoTop_l133) begin
+              if(when_Ddr3UartDemoTop_l142) begin
                 isWrite <= (rx_io_read_payload == 8'h57);
                 hdrIdx <= 3'b000;
                 cmdCnt <= (cmdCnt + 4'b0001);
                 state <= S_RX_HDR;
               end else begin
-                if(when_Ddr3UartDemoTop_l138) begin
+                if(when_Ddr3UartDemoTop_l147) begin
                   cmdCnt <= (cmdCnt + 4'b0001);
                   state <= S_B_RX_LEN;
+                end else begin
+                  if(when_Ddr3UartDemoTop_l150) begin
+                    cmdCnt <= (cmdCnt + 4'b0001);
+                    bHdrIdx <= 2'b00;
+                    state <= S_M_RX_HDR;
+                  end
                 end
               end
             end
@@ -756,31 +817,31 @@ module Ddr3UartBridge (
         end
         S_WR_RX_WORD : begin
           if(rx_io_read_valid) begin
-            if(when_Ddr3UartDemoTop_l177) begin
+            if(when_Ddr3UartDemoTop_l190) begin
               wordBuf[7 : 0] <= rx_io_read_payload;
             end
-            if(when_Ddr3UartDemoTop_l177_1) begin
+            if(when_Ddr3UartDemoTop_l190_1) begin
               wordBuf[15 : 8] <= rx_io_read_payload;
             end
-            if(when_Ddr3UartDemoTop_l177_2) begin
+            if(when_Ddr3UartDemoTop_l190_2) begin
               wordBuf[23 : 16] <= rx_io_read_payload;
             end
-            if(when_Ddr3UartDemoTop_l177_3) begin
+            if(when_Ddr3UartDemoTop_l190_3) begin
               wordBuf[31 : 24] <= rx_io_read_payload;
             end
-            if(when_Ddr3UartDemoTop_l177_4) begin
+            if(when_Ddr3UartDemoTop_l190_4) begin
               wordBuf[39 : 32] <= rx_io_read_payload;
             end
-            if(when_Ddr3UartDemoTop_l177_5) begin
+            if(when_Ddr3UartDemoTop_l190_5) begin
               wordBuf[47 : 40] <= rx_io_read_payload;
             end
-            if(when_Ddr3UartDemoTop_l177_6) begin
+            if(when_Ddr3UartDemoTop_l190_6) begin
               wordBuf[55 : 48] <= rx_io_read_payload;
             end
-            if(when_Ddr3UartDemoTop_l177_7) begin
+            if(when_Ddr3UartDemoTop_l190_7) begin
               wordBuf[63 : 56] <= rx_io_read_payload;
             end
-            if(when_Ddr3UartDemoTop_l179) begin
+            if(when_Ddr3UartDemoTop_l192) begin
               state <= S_WR_W_BEAT;
             end else begin
               byteIdx <= (byteIdx + 4'b0001);
@@ -789,7 +850,7 @@ module Ddr3UartBridge (
         end
         S_WR_W_BEAT : begin
           if(io_axi_w_fire) begin
-            if(when_Ddr3UartDemoTop_l189) begin
+            if(when_Ddr3UartDemoTop_l202) begin
               state <= S_WR_B;
             end else begin
               beatCnt <= (beatCnt + 8'h01);
@@ -824,7 +885,7 @@ module Ddr3UartBridge (
         end
         S_RD_TX_WORD : begin
           if(tx_io_write_fire) begin
-            if(when_Ddr3UartDemoTop_l228) begin
+            if(when_Ddr3UartDemoTop_l241) begin
               state <= _zz_state_1;
             end else begin
               byteIdx <= (byteIdx + 4'b0001);
@@ -834,6 +895,9 @@ module Ddr3UartBridge (
         S_B_RX_LEN : begin
           if(rx_io_read_valid) begin
             bBurstsM1 <= rx_io_read_payload;
+            bBeatsM1 <= 8'hff;
+            bMixed <= 1'b0;
+            bRowStride <= 1'b0;
             bBurstIdx <= 8'h0;
             beatCnt <= 8'h0;
             bWrCycles <= 32'h0;
@@ -841,6 +905,32 @@ module Ddr3UartBridge (
             bErr <= 1'b0;
             addrReg <= 32'h00200000;
             state <= S_B_WR_AW;
+          end
+        end
+        S_M_RX_HDR : begin
+          if(rx_io_read_valid) begin
+            case(bHdrIdx)
+              2'b00 : begin
+                bBurstsM1 <= rx_io_read_payload;
+              end
+              2'b01 : begin
+                bBeatsM1 <= rx_io_read_payload;
+              end
+              2'b10 : begin
+                bMixed <= rx_io_read_payload[0];
+                bRowStride <= rx_io_read_payload[1];
+                bBurstIdx <= 8'h0;
+                beatCnt <= 8'h0;
+                bWrCycles <= 32'h0;
+                bRdCycles <= 32'h0;
+                bErr <= 1'b0;
+                addrReg <= 32'h00200000;
+                state <= S_B_WR_AW;
+              end
+              default : begin
+              end
+            endcase
+            bHdrIdx <= (bHdrIdx + 2'b01);
           end
         end
         S_B_WR_AW : begin
@@ -851,7 +941,7 @@ module Ddr3UartBridge (
         end
         S_B_WR_W : begin
           if(io_axi_w_fire) begin
-            if(when_Ddr3UartDemoTop_l259) begin
+            if(when_Ddr3UartDemoTop_l296) begin
               state <= S_B_WR_B;
             end else begin
               beatCnt <= (beatCnt + 8'h01);
@@ -860,14 +950,18 @@ module Ddr3UartBridge (
         end
         S_B_WR_B : begin
           if(io_axi_b_valid) begin
-            if(when_Ddr3UartDemoTop_l269) begin
-              bBurstIdx <= 8'h0;
-              addrReg <= 32'h00200000;
+            if(bMixed) begin
               state <= S_B_RD_AR;
             end else begin
-              bBurstIdx <= (bBurstIdx + 8'h01);
-              addrReg <= (addrReg + 32'h00000800);
-              state <= S_B_WR_AW;
+              if(when_Ddr3UartDemoTop_l308) begin
+                bBurstIdx <= 8'h0;
+                addrReg <= 32'h00200000;
+                state <= S_B_RD_AR;
+              end else begin
+                bBurstIdx <= (bBurstIdx + 8'h01);
+                addrReg <= (addrReg + bStrideBytes);
+                state <= S_B_WR_AW;
+              end
             end
           end
         end
@@ -879,17 +973,17 @@ module Ddr3UartBridge (
         end
         S_B_RD_R : begin
           if(io_axi_r_valid) begin
-            if(when_Ddr3UartDemoTop_l290) begin
+            if(when_Ddr3UartDemoTop_l329) begin
               bErr <= 1'b1;
             end
             if(io_axi_r_payload_last) begin
-              if(when_Ddr3UartDemoTop_l294) begin
+              if(when_Ddr3UartDemoTop_l333) begin
                 byteIdx <= 4'b0000;
                 state <= S_B_TX_RES;
               end else begin
                 bBurstIdx <= (bBurstIdx + 8'h01);
-                addrReg <= (addrReg + 32'h00000800);
-                state <= S_B_RD_AR;
+                addrReg <= (addrReg + bStrideBytes);
+                state <= _zz_state_2;
               end
             end else begin
               beatCnt <= (beatCnt + 8'h01);
@@ -898,7 +992,7 @@ module Ddr3UartBridge (
         end
         default : begin
           if(tx_io_write_fire) begin
-            if(when_Ddr3UartDemoTop_l312) begin
+            if(when_Ddr3UartDemoTop_l351) begin
               state <= S_IDLE;
             end else begin
               byteIdx <= (byteIdx + 4'b0001);

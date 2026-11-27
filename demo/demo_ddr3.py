@@ -91,6 +91,74 @@ def bench_ddr3(ser: serial.Serial, bursts: int = 8) -> tuple[float, float]:
     return (size_bytes * PCLK_HZ / wr_cyc / 1e6, size_bytes * PCLK_HZ / rd_cyc / 1e6)
 
 
+def bench_matrix(ser: serial.Serial, bursts: int, beats: int, mixed: bool, row_stride: bool) -> tuple[float, float, float, int, int]:
+    """Run configurable workload ('M') and return (wr_mbs, rd_mbs, combined_mbs, wr_cyc, rd_cyc)."""
+    flags = (1 if mixed else 0) | (2 if row_stride else 0)
+    ser.write(b"M" + bytes([bursts - 1, beats - 1, flags]))
+    status, wr_cyc, rd_cyc = struct.unpack("<cII", read_exact(ser, 9))
+    if status != b"K":
+        raise RuntimeError(f"DDR3 workload verify failed (status={status!r}, mixed={mixed}, row_stride={row_stride})")
+    total_bytes = bursts * beats * 8
+    wr_mbs = total_bytes * PCLK_HZ / wr_cyc / 1e6
+    rd_mbs = total_bytes * PCLK_HZ / rd_cyc / 1e6
+    comb_mbs = (2 * total_bytes) * PCLK_HZ / (wr_cyc + rd_cyc) / 1e6
+    return wr_mbs, rd_mbs, comb_mbs, wr_cyc, rd_cyc
+
+
+def run_workload_suite(ser: serial.Serial, runs: int = 100) -> None:
+    print(f"\nHardware DDR3 Workload Matrix (64-bit AXI4 @ 75.94 MHz, avg over {runs} runs/row, data verified):")
+    print(f"  {'Workload (16 KiB x runs)':<42} | {'WR avg (peak)':>15} | {'RD avg (peak)':>15} | {'Comb avg':>8}")
+    print("  " + "-" * 91)
+    cases = [
+        ("Sequential 2 KiB bursts (same-row hits)", 8, 256, False, False),
+        ("Sequential 256 B bursts (same-row hits)", 64, 32, False, False),
+        ("Short 256 B bursts (100% row-miss)", 64, 32, False, True),
+        ("Short 64 B bursts (same-row hits)", 256, 8, False, False),
+        ("Short 64 B bursts (100% row-miss)", 256, 8, False, True),
+        ("Mixed R/W 256 B alternating (same-row)", 64, 32, True, False),
+        ("Mixed R/W 256 B alternating (100% row-miss)", 64, 32, True, True),
+        ("Mixed R/W 64 B alternating (same-row)", 256, 8, True, False),
+        ("Mixed R/W 64 B alternating (100% row-miss)", 256, 8, True, True),
+    ]
+    for label, bursts, beats, mixed, row_stride in cases:
+        tot_wr = tot_rd = 0
+        pk_wr = pk_rd = 0.0
+        for _ in range(runs):
+            wr_mbs, rd_mbs, _, wr_cyc, rd_cyc = bench_matrix(ser, bursts, beats, mixed, row_stride)
+            tot_wr += wr_cyc
+            tot_rd += rd_cyc
+            pk_wr = max(pk_wr, wr_mbs)
+            pk_rd = max(pk_rd, rd_mbs)
+        bytes_tot = runs * bursts * beats * 8
+        avg_wr = bytes_tot * PCLK_HZ / tot_wr / 1e6
+        avg_rd = bytes_tot * PCLK_HZ / tot_rd / 1e6
+        avg_comb = (2 * bytes_tot) * PCLK_HZ / (tot_wr + tot_rd) / 1e6
+        print(f"  {label:<42} | {avg_wr:5.1f} ({pk_wr:5.1f})   | {avg_rd:5.1f} ({pk_rd:5.1f})   | {avg_comb:8.1f}", flush=True)
+
+    print(f"\nScalar / Cache-Line AXI4 Latency (avg over {runs * 64} txns @ 75.94 MHz):")
+    print(f"  {'Transaction (AW->B / AR->RLAST)':<42} | {'WR avg (min)':>16} | {'RD avg (min)':>16}")
+    print("  " + "-" * 82)
+    lat_cases = [
+        ("8 B scalar (same-row hit)", 64, 1, False),
+        ("8 B scalar (100% row-miss)", 64, 1, True),
+        ("16 B cache-line (same-row hit)", 64, 2, False),
+        ("16 B cache-line (100% row-miss)", 64, 2, True),
+    ]
+    ns_per_cyc = 1e9 / PCLK_HZ
+    for label, bursts, beats, row_stride in lat_cases:
+        tot_wr = tot_rd = 0
+        min_wr = min_rd = float("inf")
+        for _ in range(runs):
+            _, _, _, wr_cyc, rd_cyc = bench_matrix(ser, bursts, beats, False, row_stride)
+            tot_wr += wr_cyc
+            tot_rd += rd_cyc
+            min_wr = min(min_wr, wr_cyc / bursts)
+            min_rd = min(min_rd, rd_cyc / bursts)
+        w_avg = tot_wr / (runs * bursts)
+        r_avg = tot_rd / (runs * bursts)
+        print(f"  {label:<42} | {w_avg:4.1f} ({w_avg*ns_per_cyc:3.0f}ns, min {min_wr:3.1f}) | {r_avg:4.1f} ({r_avg*ns_per_cyc:3.0f}ns, min {min_rd:3.1f})", flush=True)
+
+
 def make_demo_image(w: int = 32, h: int = 16) -> bytes:
     rgb = bytearray()
     cx, cy = (w - 1) / 2.0, (h - 1) / 2.0
@@ -126,6 +194,8 @@ def main() -> int:
     ap.add_argument("--baud", type=int, default=115200, help="UART baud rate (default: 115200)")
     ap.add_argument("--samples", type=int, default=30, help="Live throughput samples (default: 30)")
     ap.add_argument("--bursts", type=int, default=8, help="2 KiB bursts per sample (default: 8 -> 16 KiB)")
+    ap.add_argument("--workload", action="store_true", help="Run sequential vs mixed R/W vs row-miss matrix")
+    ap.add_argument("--runs", type=int, default=100, help="Repetitions per row in --workload (default: 100)")
     args = ap.parse_args()
 
     if args.flash:
@@ -134,6 +204,10 @@ def main() -> int:
     with serial.Serial(args.port, args.baud, timeout=2.0) as ser:
         ping_ddr3(ser)
         print(f"[OK] Tang Primer 20K DDR3 bridge ready on {args.port} @ {args.baud} baud")
+
+        if args.workload:
+            run_workload_suite(ser, runs=args.runs)
+            return 0
 
         msg = b"Hello Tang Primer 20K DDR3! AXI4 64-bit round-trip OK."
         write_ddr3(ser, 0x00001000, msg)

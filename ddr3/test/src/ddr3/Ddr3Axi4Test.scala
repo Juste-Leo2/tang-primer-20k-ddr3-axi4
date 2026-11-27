@@ -465,4 +465,122 @@ class Ddr3Axi4Test extends AnyFunSuite {
       println("[SIM 32b+CDC] Async Axi4CC + unaligned 32-bit lane write/read PASSED!")
     }
   }
+
+  test("DDR3 AXI4 64-bit & 128-bit Mixed R/W and Short Row-Miss Workload Benchmark") {
+    for (dataW <- Seq(64, 128)) {
+      val axiCfg    = Axi4Config(addressWidth = 32, dataWidth = dataW, idWidth = 4)
+      val beatBytes = dataW / 8
+      val burstSize = Integer.numberOfTrailingZeros(beatBytes)
+      val fullMask  = (BigInt(1) << beatBytes) - 1
+
+      SimConfig.compile(new Ddr3Axi4SimHarness(axiCfg, Ddr3Config(isSimulation = true))).doSim { dut =>
+        dut.clockDomain.forkStimulus(period = 10)
+        dut.io.axi.ar.valid #= false
+        dut.io.axi.aw.valid #= false
+        dut.io.axi.w.valid  #= false
+        dut.io.axi.b.ready  #= true
+        dut.io.axi.r.ready  #= true
+        dut.io.corePhy.dlllock    #= false
+        dut.io.corePhy.rst_lock_n #= false
+        dut.io.corePhy.rburst     #= 0
+        dut.io.corePhy.dq_raw     #= 0
+        for (i <- 0 until 8) dut.io.corePhy.dq_in(i) #= (0xB000 + i)
+        dut.clockDomain.waitSampling(5)
+        dut.io.corePhy.dlllock    #= true
+        dut.io.corePhy.rst_lock_n #= true
+
+        fork {
+          var wlTimer = 0
+          while (!dut.io.init_done.toBoolean) {
+            if (dut.io.corePhy.dqs_out.toBigInt == 0xAA || dut.io.corePhy.dqs_out.toBigInt == 0x55) wlTimer = 12
+            dut.io.corePhy.dq_raw #= (if (wlTimer > 0) { wlTimer -= 1; (1 | (1 << 8)) } else 0)
+            dut.io.corePhy.rburst #= (if (dut.io.corePhy.dqs_read.toBigInt == 0x0F) 3 else 0)
+            dut.clockDomain.waitSampling()
+          }
+        }
+        dut.clockDomain.waitSamplingWhere(120000)(dut.io.init_done.toBoolean)
+        assert(dut.io.init_done.toBoolean)
+        dut.clockDomain.waitSampling(5)
+
+        var cycles = 0L
+        fork {
+          while (true) { dut.clockDomain.waitSampling(); cycles += 1 }
+        }
+
+        def doWrite(addr: Long, beats: Int): Long = {
+          val t0 = cycles
+          dut.io.axi.aw.valid         #= true
+          dut.io.axi.aw.payload.addr  #= addr
+          dut.io.axi.aw.payload.len   #= beats - 1
+          dut.io.axi.aw.payload.size  #= burstSize
+          dut.io.axi.aw.payload.burst #= 1
+          dut.io.axi.aw.payload.id    #= 1
+          do { dut.clockDomain.waitSampling() } while (!dut.io.axi.aw.ready.toBoolean)
+          dut.io.axi.aw.valid #= false
+
+          dut.io.axi.w.valid #= true
+          for (b <- 0 until beats) {
+            dut.io.axi.w.payload.data #= BigInt(b + 1)
+            dut.io.axi.w.payload.strb #= fullMask
+            dut.io.axi.w.payload.last #= (b == beats - 1)
+            do { dut.clockDomain.waitSampling() } while (!dut.io.axi.w.ready.toBoolean)
+          }
+          dut.io.axi.w.valid #= false
+          dut.clockDomain.waitSamplingWhere(200)(dut.io.axi.b.valid.toBoolean)
+          assert(dut.io.axi.b.valid.toBoolean, s"${dataW}b write B timeout at 0x${addr.toHexString}")
+          cycles - t0
+        }
+
+        def doRead(addr: Long, beats: Int): Long = {
+          val t0 = cycles
+          var rCount = 0
+          val mon = fork {
+            while (rCount < beats) {
+              if (dut.io.axi.r.valid.toBoolean && dut.io.axi.r.ready.toBoolean) rCount += 1
+              dut.clockDomain.waitSampling()
+            }
+          }
+          dut.io.axi.ar.valid         #= true
+          dut.io.axi.ar.payload.addr  #= addr
+          dut.io.axi.ar.payload.len   #= beats - 1
+          dut.io.axi.ar.payload.size  #= burstSize
+          dut.io.axi.ar.payload.burst #= 1
+          dut.io.axi.ar.payload.id    #= 2
+          do { dut.clockDomain.waitSampling() } while (!dut.io.axi.ar.ready.toBoolean)
+          dut.io.axi.ar.valid #= false
+          dut.clockDomain.waitSamplingWhere(200)(rCount == beats)
+          assert(rCount == beats, s"${dataW}b read R timeout at 0x${addr.toHexString}")
+          cycles - t0
+        }
+
+        val bursts64 = 8
+        val beats64  = 64 / beatBytes
+
+        // 1. Short 64B bursts: same-row hits vs +0x800 row-miss
+        val wrHit64  = (0 until bursts64).map(i => doWrite(0x10000L + i * 64L, beats64)).sum
+        val rdHit64  = (0 until bursts64).map(i => doRead(0x10000L + i * 64L, beats64)).sum
+        val wrMiss64 = (0 until bursts64).map(i => doWrite(0x20000L + i * 2048L, beats64)).sum
+        val rdMiss64 = (0 until bursts64).map(i => doRead(0x20000L + i * 2048L, beats64)).sum
+
+        // 2. Mixed R/W alternating 64B (WR then RD per step): same-row vs row-miss
+        val mixHitCyc  = (0 until bursts64).map(i => doWrite(0x30000L + i * 64L, beats64) + doRead(0x30000L + i * 64L, beats64)).sum
+        val mixMissCyc = (0 until bursts64).map(i => doWrite(0x40000L + i * 2048L, beats64) + doRead(0x40000L + i * 2048L, beats64)).sum
+
+        val totB = bursts64 * 64.0
+        println(f"[WORKLOAD ${dataW}b @75.94MHz] 8x64B Hit: WR=${totB * 75.9375 / wrHit64}%.1f MB/s, RD=${totB * 75.9375 / rdHit64}%.1f MB/s")
+        println(f"[WORKLOAD ${dataW}b @75.94MHz] 8x64B RowMiss: WR=${totB * 75.9375 / wrMiss64}%.1f MB/s, RD=${totB * 75.9375 / rdMiss64}%.1f MB/s")
+        println(f"[WORKLOAD ${dataW}b @75.94MHz] Mixed R/W 8x(64B+64B): Hit=${2 * totB * 75.9375 / mixHitCyc}%.1f MB/s, RowMiss=${2 * totB * 75.9375 / mixMissCyc}%.1f MB/s")
+
+        // 3. Single-block (16B) scalar latency (hit vs row-miss)
+        val beats16 = 16 / beatBytes
+        val wr16Hit  = (0 until 4).map(i => doWrite(0x50000L + i * 16L, beats16)).sum / 4.0
+        val rd16Hit  = (0 until 4).map(i => doRead(0x50000L + i * 16L, beats16)).sum / 4.0
+        val wr16Miss = (0 until 4).map(i => doWrite(0x60000L + i * 2048L, beats16)).sum / 4.0
+        val rd16Miss = (0 until 4).map(i => doRead(0x60000L + i * 2048L, beats16)).sum / 4.0
+        val nsPerCyc = 1000.0 / 75.9375
+        println(f"[LATENCY ${dataW}b @75.94MHz] 16B Hit: WR=${wr16Hit}%.1f cyc (${wr16Hit * nsPerCyc}%.0f ns), RD=${rd16Hit}%.1f cyc (${rd16Hit * nsPerCyc}%.0f ns)")
+        println(f"[LATENCY ${dataW}b @75.94MHz] 16B RowMiss: WR=${wr16Miss}%.1f cyc (${wr16Miss * nsPerCyc}%.0f ns), RD=${rd16Miss}%.1f cyc (${rd16Miss * nsPerCyc}%.0f ns)")
+      }
+    }
+  }
 }

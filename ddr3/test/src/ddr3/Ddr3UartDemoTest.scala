@@ -133,6 +133,22 @@ class Ddr3UartDemoTest extends AnyFunSuite {
       val rdCyc  = (0 until 4).map(i => bytes(4 + i) << (i * 8)).sum
       assert(status == 'K'.toInt, s"Benchmark status expected 'K', got ${status.toChar}")
       assert(wrCyc > 0 && rdCyc > 0, s"Expected positive cycle counts, got wr=$wrCyc rd=$rdCyc")
+
+      // 5. Matrix benchmark 'M': 2 bursts x 64B (8 beats) with +2048B stride (row-miss) and mixed R/W
+      for ((label, flags) <- Seq(("row-miss", 0x02), ("mixed+row-miss", 0x03))) {
+        sendByte('M'.toInt)
+        sendByte(1)     // bursts_m1 = 1 -> 2 bursts
+        sendByte(7)     // beats_m1  = 7 -> 8 beats (64 B)
+        sendByte(flags) // bit0=mixed, bit1=rowStride(+2048B)
+        val mStatus = recvByte()
+        val mBytes  = Array.fill(8)(recvByte())
+        val mWrCyc  = (0 until 4).map(i => mBytes(i) << (i * 8)).sum
+        val mRdCyc  = (0 until 4).map(i => mBytes(4 + i) << (i * 8)).sum
+        assert(mStatus == 'K'.toInt, s"Matrix '$label' expected 'K', got ${mStatus.toChar}")
+        assert(mWrCyc > 0 && mRdCyc > 0, s"Matrix '$label' invalid cycles: wr=$mWrCyc rd=$mRdCyc")
+        println(f"[SIM UART-DEMO] Matrix '$label' 2x64B (wr=$mWrCyc cyc, rd=$mRdCyc cyc) PASSED!")
+      }
+
       println(f"[SIM UART-DEMO] Ping + 16B round-trip + 2KiB bench (wr=${wrCyc} cyc, rd=${rdCyc} cyc) PASSED!")
     }
   }

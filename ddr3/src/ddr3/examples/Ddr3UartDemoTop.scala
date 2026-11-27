@@ -13,6 +13,9 @@ import spinal.lib.bus.amba4.axi._
  *   - 'R' (0x52) + addr[31:0] + len_m1[7:0] -> AXI4 burst read -> replies (len_m1+1)*8 bytes
  *   - 'B' (0x42) + bursts_m1[7:0] -> on-chip (bursts_m1+1)*2 KiB AXI4 write+read benchmark
  *       replies 9 bytes: status ('K' or 'E') + wrCycles[31:0] + rdCycles[31:0]
+ *   - 'M' (0x4D) + bursts_m1[7:0] + beats_m1[7:0] + flags[7:0] -> configurable workload benchmark
+ *       flags(0)=1: mixed R/W alternating per burst, flags(1)=1: +2048B stride (force row miss)
+ *       replies 9 bytes: status ('K' or 'E') + wrCycles[31:0] + rdCycles[31:0]
  */
 class Ddr3UartBridge(
   val axiConfig: Axi4Config = Ddr3Axi4.defaultAxiConfig(dataWidth = 64),
@@ -38,7 +41,7 @@ class Ddr3UartBridge(
   object S extends SpinalEnum {
     val IDLE, SEND_PING, RX_HDR, WR_AW, WR_RX_WORD, WR_W_BEAT, WR_B, WR_ACK,
         RD_AR, RD_WAIT_R, RD_TX_WORD,
-        B_RX_LEN, B_WR_AW, B_WR_W, B_WR_B, B_RD_AR, B_RD_R, B_TX_RES = newElement()
+        B_RX_LEN, M_RX_HDR, B_WR_AW, B_WR_W, B_WR_B, B_RD_AR, B_RD_R, B_TX_RES = newElement()
   }
 
   val state      = RegInit(S.IDLE)
@@ -55,10 +58,16 @@ class Ddr3UartBridge(
 
   // On-chip throughput benchmark registers
   val bBurstsM1  = Reg(UInt(8 bits)) init(0)
+  val bBeatsM1   = Reg(UInt(8 bits)) init(255)
+  val bMixed     = RegInit(False)
+  val bRowStride = RegInit(False)
+  val bHdrIdx    = Reg(UInt(2 bits)) init(0)
   val bBurstIdx  = Reg(UInt(8 bits)) init(0)
   val bWrCycles  = Reg(UInt(32 bits)) init(0)
   val bRdCycles  = Reg(UInt(32 bits)) init(0)
   val bErr       = RegInit(False)
+
+  val bStrideBytes = bRowStride ? U(2048, 32 bits) | ((bBeatsM1.resize(16) + 1) << 3).resize(32)
 
   val benchWord = (B"16'hA55A" ## bBurstIdx.asBits ## beatCnt.asBits ##
                    B"16'hCAFE" ## (bBurstIdx ^ beatCnt).asBits ## (~beatCnt).asBits)
@@ -80,7 +89,7 @@ class Ddr3UartBridge(
   io.axi.aw.valid        := (state === S.WR_AW || state === S.B_WR_AW)
   io.axi.aw.payload.addr := addrReg.resized
   io.axi.aw.payload.id   := 0
-  io.axi.aw.payload.len  := inBenchWr ? U(255, 8 bits) | lenM1
+  io.axi.aw.payload.len  := inBenchWr ? bBeatsM1 | lenM1
   io.axi.aw.payload.size := 3 // 8 bytes per beat (64-bit)
   io.axi.aw.payload.burst := B"2'b01" // INCR
   io.axi.aw.payload.lock := 0
@@ -92,14 +101,14 @@ class Ddr3UartBridge(
   io.axi.w.valid        := (state === S.WR_W_BEAT || state === S.B_WR_W)
   io.axi.w.payload.data := (state === S.B_WR_W) ? benchWord | wordBuf
   io.axi.w.payload.strb := B"8'hFF"
-  io.axi.w.payload.last := (state === S.B_WR_W) ? (beatCnt === 255) | (beatCnt === lenM1)
+  io.axi.w.payload.last := (state === S.B_WR_W) ? (beatCnt === bBeatsM1) | (beatCnt === lenM1)
 
   io.axi.b.ready := (state === S.WR_B || state === S.B_WR_B)
 
   io.axi.ar.valid        := (state === S.RD_AR || state === S.B_RD_AR)
   io.axi.ar.payload.addr := addrReg.resized
   io.axi.ar.payload.id   := 0
-  io.axi.ar.payload.len  := inBenchRd ? U(255, 8 bits) | lenM1
+  io.axi.ar.payload.len  := inBenchRd ? bBeatsM1 | lenM1
   io.axi.ar.payload.size := 3
   io.axi.ar.payload.burst := B"2'b01"
   io.axi.ar.payload.lock := 0
@@ -138,6 +147,10 @@ class Ddr3UartBridge(
         } elsewhen(rxByte === 0x42) { // 'B'
           cmdCnt := cmdCnt + 1
           state  := S.B_RX_LEN
+        } elsewhen(rxByte === 0x4D) { // 'M'
+          cmdCnt  := cmdCnt + 1
+          bHdrIdx := 0
+          state   := S.M_RX_HDR
         }
       }
     }
@@ -233,17 +246,41 @@ class Ddr3UartBridge(
       }
     }
 
-    // --- On-chip 64-bit AXI4 Burst Benchmark ('B') ---
+    // --- On-chip 64-bit AXI4 Burst Benchmark ('B' and 'M') ---
     is(S.B_RX_LEN) {
       when(rx.io.read.valid) {
-        bBurstsM1 := rxByte.asUInt
-        bBurstIdx := 0
-        beatCnt   := 0
-        bWrCycles := 0
-        bRdCycles := 0
-        bErr      := False
-        addrReg   := U"32'h0020_0000"
-        state     := S.B_WR_AW
+        bBurstsM1  := rxByte.asUInt
+        bBeatsM1   := 255
+        bMixed     := False
+        bRowStride := False
+        bBurstIdx  := 0
+        beatCnt    := 0
+        bWrCycles  := 0
+        bRdCycles  := 0
+        bErr       := False
+        addrReg    := U"32'h0020_0000"
+        state      := S.B_WR_AW
+      }
+    }
+
+    is(S.M_RX_HDR) {
+      when(rx.io.read.valid) {
+        switch(bHdrIdx) {
+          is(0) { bBurstsM1 := rxByte.asUInt }
+          is(1) { bBeatsM1  := rxByte.asUInt }
+          is(2) {
+            bMixed     := rxByte(0)
+            bRowStride := rxByte(1)
+            bBurstIdx  := 0
+            beatCnt    := 0
+            bWrCycles  := 0
+            bRdCycles  := 0
+            bErr       := False
+            addrReg    := U"32'h0020_0000"
+            state      := S.B_WR_AW
+          }
+        }
+        bHdrIdx := bHdrIdx + 1
       }
     }
 
@@ -256,7 +293,7 @@ class Ddr3UartBridge(
 
     is(S.B_WR_W) {
       when(io.axi.w.fire) {
-        when(beatCnt === 255) {
+        when(beatCnt === bBeatsM1) {
           state := S.B_WR_B
         } otherwise {
           beatCnt := beatCnt + 1
@@ -266,13 +303,15 @@ class Ddr3UartBridge(
 
     is(S.B_WR_B) {
       when(io.axi.b.valid) {
-        when(bBurstIdx === bBurstsM1) {
+        when(bMixed) {
+          state := S.B_RD_AR
+        } elsewhen(bBurstIdx === bBurstsM1) {
           bBurstIdx := 0
           addrReg   := U"32'h0020_0000"
           state     := S.B_RD_AR
         } otherwise {
           bBurstIdx := bBurstIdx + 1
-          addrReg   := addrReg + 2048
+          addrReg   := addrReg + bStrideBytes
           state     := S.B_WR_AW
         }
       }
@@ -296,8 +335,8 @@ class Ddr3UartBridge(
             state   := S.B_TX_RES
           } otherwise {
             bBurstIdx := bBurstIdx + 1
-            addrReg   := addrReg + 2048
-            state     := S.B_RD_AR
+            addrReg   := addrReg + bStrideBytes
+            state     := bMixed ? S.B_WR_AW | S.B_RD_AR
           }
         } otherwise {
           beatCnt := beatCnt + 1
