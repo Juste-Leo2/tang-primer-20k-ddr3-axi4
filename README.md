@@ -48,6 +48,8 @@ Ready-to-run bitstream + `pyserial` visualizer in [`demo/`](demo/) (**no Mill or
 
 *(To rebuild the demo bitstream from SpinalHDL sources: `python eda-flow.py --preset demo --skip-compile --flash openfpgaloader`.)*
 
+> **Board tip:** if you re-flash SRAM repeatedly while the board stays powered and observe a data/calibration glitch, unplug and replug the USB cable to power-cycle the SDRAM/PHY cleanly before running `--flash`.
+
 ## Quickstart & Commands (Windows)
 
 ```powershell
