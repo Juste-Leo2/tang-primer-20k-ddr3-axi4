@@ -13,12 +13,17 @@ case class Ddr3Config(
   bankWidth: Int      = 3,
   isSimulation: Boolean = false,
   pclkHz: Int         = 75937500,
-  refreshIntervalNs: Int = 7800
+  refreshIntervalNs: Int = 7800,
+  maxOutstanding: Int = 8
 ) {
   require(rowWidth >= 12 && rowWidth <= 16, s"Invalid rowWidth=$rowWidth")
   require(colWidth >= 8 && colWidth <= 12, s"Invalid colWidth=$colWidth")
   require(bankWidth == 3, s"DDR3 requires bankWidth=3, got $bankWidth")
   require(pclkHz > 0, s"pclkHz must be positive, got $pclkHz")
+  require(
+    maxOutstanding == 2 || maxOutstanding == 4 || maxOutstanding == 8 || maxOutstanding == 16,
+    s"maxOutstanding must be 2, 4, 8, or 16, got $maxOutstanding"
+  )
 
   /** Block address width (1 block = 128 bits = 16 bytes = 1 BL8 x16 burst). */
   def addrWidth: Int = rowWidth + colWidth + bankWidth
@@ -64,27 +69,31 @@ case class Ddr3Config(
 object Ddr3Config {
   /** Hardware configuration preset for Tang Primer 20K (75.9375 MHz pclk / 303.75 MHz DDR3). */
   def tangPrimer20k(
-    rowWidth: Int  = 14,
-    colWidth: Int  = 10,
-    bankWidth: Int = 3,
-    pclkHz: Int    = 75937500
+    rowWidth: Int       = 14,
+    colWidth: Int       = 10,
+    bankWidth: Int      = 3,
+    pclkHz: Int         = 75937500,
+    maxOutstanding: Int = 8
   ): Ddr3Config = Ddr3Config(
     rowWidth = rowWidth,
     colWidth = colWidth,
     bankWidth = bankWidth,
     isSimulation = false,
-    pclkHz = pclkHz
+    pclkHz = pclkHz,
+    maxOutstanding = maxOutstanding
   )
 
   /** Fast-initialization simulation preset for Verilator / iverilog / formal. */
   def simulation(
-    rowWidth: Int  = 14,
-    colWidth: Int  = 10,
-    bankWidth: Int = 3
+    rowWidth: Int       = 14,
+    colWidth: Int       = 10,
+    bankWidth: Int      = 3,
+    maxOutstanding: Int = 8
   ): Ddr3Config = Ddr3Config(
     rowWidth = rowWidth,
     colWidth = colWidth,
     bankWidth = bankWidth,
-    isSimulation = true
+    isSimulation = true,
+    maxOutstanding = maxOutstanding
   )
 }

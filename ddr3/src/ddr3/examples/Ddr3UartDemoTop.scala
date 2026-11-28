@@ -15,6 +15,7 @@ import spinal.lib.bus.amba4.axi._
  *       replies 9 bytes: status ('K' or 'E') + wrCycles[31:0] + rdCycles[31:0]
  *   - 'M' (0x4D) + bursts_m1[7:0] + beats_m1[7:0] + flags[7:0] -> configurable workload benchmark
  *       flags(0)=1: mixed R/W alternating per burst, flags(1)=1: +2048B stride (force row miss)
+ *       flags(2)=1: pipelined multi-outstanding (saturates bridge queue without waiting B/RLAST)
  *       replies 9 bytes: status ('K' or 'E') + wrCycles[31:0] + rdCycles[31:0]
  */
 class Ddr3UartBridge(
@@ -41,7 +42,8 @@ class Ddr3UartBridge(
   object S extends SpinalEnum {
     val IDLE, SEND_PING, RX_HDR, WR_AW, WR_RX_WORD, WR_W_BEAT, WR_B, WR_ACK,
         RD_AR, RD_WAIT_R, RD_TX_WORD,
-        B_RX_LEN, M_RX_HDR, B_WR_AW, B_WR_W, B_WR_B, B_RD_AR, B_RD_R, B_TX_RES = newElement()
+        B_RX_LEN, M_RX_HDR, B_WR_AW, B_WR_W, B_WR_B, B_RD_AR, B_RD_R,
+        B_PIPE_WR, B_PIPE_RD, B_PIPE_MIX, B_TX_RES = newElement()
   }
 
   val state      = RegInit(S.IDLE)
@@ -61,21 +63,42 @@ class Ddr3UartBridge(
   val bBeatsM1   = Reg(UInt(8 bits)) init(255)
   val bMixed     = RegInit(False)
   val bRowStride = RegInit(False)
+  val bPipelined = RegInit(False)
   val bHdrIdx    = Reg(UInt(2 bits)) init(0)
   val bBurstIdx  = Reg(UInt(8 bits)) init(0)
   val bWrCycles  = Reg(UInt(32 bits)) init(0)
   val bRdCycles  = Reg(UInt(32 bits)) init(0)
   val bErr       = RegInit(False)
 
+  // Pipelined multi-outstanding benchmark registers
+  val pCmdIdx     = Reg(UInt(8 bits)) init(0)
+  val pCmdAddr    = Reg(UInt(32 bits)) init(0)
+  val pCmdDone    = RegInit(False)
+  val pAwSent     = Reg(UInt(9 bits)) init(0)
+  val pWrBurstIdx = Reg(UInt(8 bits)) init(0)
+  val pWrBeatCnt  = Reg(UInt(8 bits)) init(0)
+  val pWrDone     = RegInit(False)
+  val pBIdx       = Reg(UInt(8 bits)) init(0)
+  val pBDone      = RegInit(False)
+  val pRdBurstIdx = Reg(UInt(8 bits)) init(0)
+  val pRdBeatCnt  = Reg(UInt(8 bits)) init(0)
+  val pRDone      = RegInit(False)
+  val pMixIsRd    = RegInit(False)
+
   val bStrideBytes = bRowStride ? U(2048, 32 bits) | ((bBeatsM1.resize(16) + 1) << 3).resize(32)
 
-  val benchWord = (B"16'hA55A" ## bBurstIdx.asBits ## beatCnt.asBits ##
-                   B"16'hCAFE" ## (bBurstIdx ^ beatCnt).asBits ## (~beatCnt).asBits)
+  private def mkBenchWord(burst: UInt, beat: UInt): Bits =
+    B"16'hA55A" ## burst.asBits ## beat.asBits ##
+      B"16'hCAFE" ## (burst ^ beat).asBits ## (~beat).asBits
 
-  when(state === S.B_WR_AW || state === S.B_WR_W || state === S.B_WR_B) {
+  val benchWord     = mkBenchWord(bBurstIdx, beatCnt)
+  val pipeWrWord    = mkBenchWord(pWrBurstIdx, pWrBeatCnt)
+  val pipeRdExpWord = mkBenchWord(pRdBurstIdx, pRdBeatCnt)
+
+  when(state === S.B_WR_AW || state === S.B_WR_W || state === S.B_WR_B || state === S.B_PIPE_WR || state === S.B_PIPE_MIX) {
     bWrCycles := bWrCycles + 1
   }
-  when(state === S.B_RD_AR || state === S.B_RD_R) {
+  when(state === S.B_RD_AR || state === S.B_RD_R || state === S.B_PIPE_RD) {
     bRdCycles := bRdCycles + 1
   }
 
@@ -83,13 +106,18 @@ class Ddr3UartBridge(
   io.cmd_count := cmdCnt
 
   // AXI4 defaults
-  val inBenchWr = (state === S.B_WR_AW || state === S.B_WR_W || state === S.B_WR_B)
-  val inBenchRd = (state === S.B_RD_AR || state === S.B_RD_R)
+  val inBenchWr     = (state === S.B_WR_AW || state === S.B_WR_W || state === S.B_WR_B)
+  val inBenchRd     = (state === S.B_RD_AR || state === S.B_RD_R)
+  val inPipeWr      = (state === S.B_PIPE_WR || state === S.B_PIPE_MIX)
+  val inPipeRd      = (state === S.B_PIPE_RD || state === S.B_PIPE_MIX)
+  val pipeAwValid   = !pCmdDone && ((state === S.B_PIPE_WR) || (state === S.B_PIPE_MIX && !pMixIsRd))
+  val pipeArValid   = !pCmdDone && ((state === S.B_PIPE_RD) || (state === S.B_PIPE_MIX &&  pMixIsRd))
+  val pipeWValid    = inPipeWr && !pWrDone && (pAwSent =/= pWrBurstIdx.resize(9))
 
-  io.axi.aw.valid        := (state === S.WR_AW || state === S.B_WR_AW)
-  io.axi.aw.payload.addr := addrReg.resized
-  io.axi.aw.payload.id   := 0
-  io.axi.aw.payload.len  := inBenchWr ? bBeatsM1 | lenM1
+  io.axi.aw.valid        := (state === S.WR_AW || state === S.B_WR_AW || pipeAwValid)
+  io.axi.aw.payload.addr := (inPipeWr ? pCmdAddr | addrReg).resized
+  io.axi.aw.payload.id   := (inPipeWr ? pCmdIdx.resize(axiConfig.idWidth) | U(0, axiConfig.idWidth bits))
+  io.axi.aw.payload.len  := (inBenchWr || inPipeWr) ? bBeatsM1 | lenM1
   io.axi.aw.payload.size := 3 // 8 bytes per beat (64-bit)
   io.axi.aw.payload.burst := B"2'b01" // INCR
   io.axi.aw.payload.lock := 0
@@ -98,17 +126,17 @@ class Ddr3UartBridge(
   io.axi.aw.payload.qos  := 0
   io.axi.aw.payload.region := 0
 
-  io.axi.w.valid        := (state === S.WR_W_BEAT || state === S.B_WR_W)
-  io.axi.w.payload.data := (state === S.B_WR_W) ? benchWord | wordBuf
+  io.axi.w.valid        := (state === S.WR_W_BEAT || state === S.B_WR_W || pipeWValid)
+  io.axi.w.payload.data := inPipeWr ? pipeWrWord | ((state === S.B_WR_W) ? benchWord | wordBuf)
   io.axi.w.payload.strb := B"8'hFF"
-  io.axi.w.payload.last := (state === S.B_WR_W) ? (beatCnt === bBeatsM1) | (beatCnt === lenM1)
+  io.axi.w.payload.last := inPipeWr ? (pWrBeatCnt === bBeatsM1) | ((state === S.B_WR_W) ? (beatCnt === bBeatsM1) | (beatCnt === lenM1))
 
-  io.axi.b.ready := (state === S.WR_B || state === S.B_WR_B)
+  io.axi.b.ready := (state === S.WR_B || state === S.B_WR_B || state === S.B_PIPE_WR || (state === S.B_PIPE_MIX && !pBDone))
 
-  io.axi.ar.valid        := (state === S.RD_AR || state === S.B_RD_AR)
-  io.axi.ar.payload.addr := addrReg.resized
-  io.axi.ar.payload.id   := 0
-  io.axi.ar.payload.len  := inBenchRd ? bBeatsM1 | lenM1
+  io.axi.ar.valid        := (state === S.RD_AR || state === S.B_RD_AR || pipeArValid)
+  io.axi.ar.payload.addr := (inPipeRd ? pCmdAddr | addrReg).resized
+  io.axi.ar.payload.id   := (inPipeRd ? pCmdIdx.resize(axiConfig.idWidth) | U(0, axiConfig.idWidth bits))
+  io.axi.ar.payload.len  := (inBenchRd || inPipeRd) ? bBeatsM1 | lenM1
   io.axi.ar.payload.size := 3
   io.axi.ar.payload.burst := B"2'b01"
   io.axi.ar.payload.lock := 0
@@ -117,7 +145,7 @@ class Ddr3UartBridge(
   io.axi.ar.payload.qos  := 0
   io.axi.ar.payload.region := 0
 
-  io.axi.r.ready := (state === S.RD_WAIT_R || state === S.B_RD_R)
+  io.axi.r.ready := (state === S.RD_WAIT_R || state === S.B_RD_R || state === S.B_PIPE_RD || (state === S.B_PIPE_MIX && !pRDone))
 
   // TX stream defaults
   tx.io.write.valid   := False
@@ -253,6 +281,7 @@ class Ddr3UartBridge(
         bBeatsM1   := 255
         bMixed     := False
         bRowStride := False
+        bPipelined := False
         bBurstIdx  := 0
         beatCnt    := 0
         bWrCycles  := 0
@@ -269,15 +298,33 @@ class Ddr3UartBridge(
           is(0) { bBurstsM1 := rxByte.asUInt }
           is(1) { bBeatsM1  := rxByte.asUInt }
           is(2) {
-            bMixed     := rxByte(0)
-            bRowStride := rxByte(1)
-            bBurstIdx  := 0
-            beatCnt    := 0
-            bWrCycles  := 0
-            bRdCycles  := 0
-            bErr       := False
-            addrReg    := U"32'h0020_0000"
-            state      := S.B_WR_AW
+            bMixed      := rxByte(0)
+            bRowStride  := rxByte(1)
+            bPipelined  := rxByte(2)
+            bBurstIdx   := 0
+            beatCnt     := 0
+            bWrCycles   := 0
+            bRdCycles   := 0
+            bErr        := False
+            addrReg     := U"32'h0020_0000"
+            pCmdIdx     := 0
+            pCmdAddr    := U"32'h0020_0000"
+            pCmdDone    := False
+            pAwSent     := 0
+            pWrBurstIdx := 0
+            pWrBeatCnt  := 0
+            pWrDone     := False
+            pBIdx       := 0
+            pBDone      := False
+            pRdBurstIdx := 0
+            pRdBeatCnt  := 0
+            pRDone      := False
+            pMixIsRd    := False
+            when(rxByte(2)) {
+              state := rxByte(0) ? S.B_PIPE_MIX | S.B_PIPE_WR
+            } otherwise {
+              state := S.B_WR_AW
+            }
           }
         }
         bHdrIdx := bHdrIdx + 1
@@ -344,6 +391,136 @@ class Ddr3UartBridge(
       }
     }
 
+    is(S.B_PIPE_WR) {
+      when(io.axi.aw.fire) {
+        pAwSent  := pAwSent + 1
+        pCmdAddr := pCmdAddr + bStrideBytes
+        when(pCmdIdx === bBurstsM1) {
+          pCmdDone := True
+        } otherwise {
+          pCmdIdx := pCmdIdx + 1
+        }
+      }
+      when(io.axi.w.fire) {
+        when(pWrBeatCnt === bBeatsM1) {
+          pWrBeatCnt := 0
+          when(pWrBurstIdx === bBurstsM1) {
+            pWrDone := True
+          } otherwise {
+            pWrBurstIdx := pWrBurstIdx + 1
+          }
+        } otherwise {
+          pWrBeatCnt := pWrBeatCnt + 1
+        }
+      }
+      when(io.axi.b.fire) {
+        when(io.axi.b.payload.id =/= pBIdx.resize(axiConfig.idWidth)) {
+          bErr := True
+        }
+        when(pBIdx === bBurstsM1) {
+          pCmdIdx     := 0
+          pCmdAddr    := U"32'h0020_0000"
+          pCmdDone    := False
+          pRdBurstIdx := 0
+          pRdBeatCnt  := 0
+          state       := S.B_PIPE_RD
+        } otherwise {
+          pBIdx := pBIdx + 1
+        }
+      }
+    }
+
+    is(S.B_PIPE_RD) {
+      when(io.axi.ar.fire) {
+        pCmdAddr := pCmdAddr + bStrideBytes
+        when(pCmdIdx === bBurstsM1) {
+          pCmdDone := True
+        } otherwise {
+          pCmdIdx := pCmdIdx + 1
+        }
+      }
+      when(io.axi.r.fire) {
+        when(io.axi.r.payload.data =/= pipeRdExpWord ||
+             io.axi.r.payload.id =/= pRdBurstIdx.resize(axiConfig.idWidth) ||
+             io.axi.r.payload.last =/= (pRdBeatCnt === bBeatsM1)) {
+          bErr := True
+        }
+        when(pRdBeatCnt === bBeatsM1) {
+          pRdBeatCnt := 0
+          when(pRdBurstIdx === bBurstsM1) {
+            byteIdx := 0
+            state   := S.B_TX_RES
+          } otherwise {
+            pRdBurstIdx := pRdBurstIdx + 1
+          }
+        } otherwise {
+          pRdBeatCnt := pRdBeatCnt + 1
+        }
+      }
+    }
+
+    is(S.B_PIPE_MIX) {
+      when(!pCmdDone) {
+        when(!pMixIsRd && io.axi.aw.fire) {
+          pAwSent  := pAwSent + 1
+          pMixIsRd := True
+        } elsewhen(pMixIsRd && io.axi.ar.fire) {
+          pMixIsRd := False
+          pCmdAddr := pCmdAddr + bStrideBytes
+          when(pCmdIdx === bBurstsM1) {
+            pCmdDone := True
+          } otherwise {
+            pCmdIdx := pCmdIdx + 1
+          }
+        }
+      }
+      when(io.axi.w.fire) {
+        when(pWrBeatCnt === bBeatsM1) {
+          pWrBeatCnt := 0
+          when(pWrBurstIdx === bBurstsM1) {
+            pWrDone := True
+          } otherwise {
+            pWrBurstIdx := pWrBurstIdx + 1
+          }
+        } otherwise {
+          pWrBeatCnt := pWrBeatCnt + 1
+        }
+      }
+      val bLastNow = io.axi.b.fire && (pBIdx === bBurstsM1)
+      when(io.axi.b.fire) {
+        when(io.axi.b.payload.id =/= pBIdx.resize(axiConfig.idWidth)) {
+          bErr := True
+        }
+        when(pBIdx === bBurstsM1) {
+          pBDone := True
+        } otherwise {
+          pBIdx := pBIdx + 1
+        }
+      }
+      val rLastNow = io.axi.r.fire && (pRdBeatCnt === bBeatsM1) && (pRdBurstIdx === bBurstsM1)
+      when(io.axi.r.fire) {
+        when(io.axi.r.payload.data =/= pipeRdExpWord ||
+             io.axi.r.payload.id =/= pRdBurstIdx.resize(axiConfig.idWidth) ||
+             io.axi.r.payload.last =/= (pRdBeatCnt === bBeatsM1)) {
+          bErr := True
+        }
+        when(pRdBeatCnt === bBeatsM1) {
+          pRdBeatCnt := 0
+          when(pRdBurstIdx === bBurstsM1) {
+            pRDone := True
+          } otherwise {
+            pRdBurstIdx := pRdBurstIdx + 1
+          }
+        } otherwise {
+          pRdBeatCnt := pRdBeatCnt + 1
+        }
+      }
+      when((pBDone || bLastNow) && (pRDone || rLastNow)) {
+        byteIdx := 0
+        state   := S.B_TX_RES
+      }
+    }
+
     is(S.B_TX_RES) {
       tx.io.write.valid   := True
       tx.io.write.payload := benchResBytes(byteIdx)
@@ -362,10 +539,10 @@ class Ddr3UartBridge(
  * Plug-and-play UART <-> DDR3 round-trip demo top for Tang Primer 20K.
  * Instantiates TangPrimer20kDdr3 (64-bit AXI4) + Ddr3UartBridge in a single clocking area.
  */
-class Ddr3UartDemoTop extends Component {
+class Ddr3UartDemoTop(maxOutstanding: Int = 8) extends Component {
   noIoPrefix()
 
-  val ddrConfig = Ddr3Config.tangPrimer20k()
+  val ddrConfig = Ddr3Config.tangPrimer20k(maxOutstanding = maxOutstanding)
   val axiConfig = Ddr3Axi4.defaultAxiConfig(dataWidth = 64)
 
   val io = new Bundle {

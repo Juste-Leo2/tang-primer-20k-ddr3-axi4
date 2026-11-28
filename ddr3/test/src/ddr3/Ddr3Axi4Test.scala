@@ -583,4 +583,340 @@ class Ddr3Axi4Test extends AnyFunSuite {
       }
     }
   }
+
+  test("DDR3 AXI4 Multi-Outstanding Ordering, Hazards & Backpressure (32/64/128-bit, depth 2/4/8/16)") {
+    for ((dataW, maxOut) <- Seq((32, 8), (64, 2), (64, 4), (64, 8), (64, 16), (128, 8))) {
+      val axiCfg    = Axi4Config(addressWidth = 32, dataWidth = dataW, idWidth = 4)
+      val beatBytes = dataW / 8
+      val burstSize = Integer.numberOfTrailingZeros(beatBytes)
+      val fullMask  = (BigInt(1) << beatBytes) - 1
+      val beatMask  = (BigInt(1) << dataW) - 1
+
+      SimConfig.compile(new Ddr3Axi4Bridge(axiCfg, Ddr3Config(maxOutstanding = maxOut))).doSim { dut =>
+        dut.clockDomain.forkStimulus(period = 10)
+        dut.io.init_done          #= false
+        dut.io.axi.aw.valid       #= false
+        dut.io.axi.w.valid        #= false
+        dut.io.axi.b.ready        #= true
+        dut.io.axi.ar.valid       #= false
+        dut.io.axi.r.ready        #= true
+        dut.io.req.ready          #= false
+        dut.io.rsp.valid          #= false
+        dut.io.rsp.payload.rdata  #= 0
+        dut.clockDomain.waitSampling(5)
+        dut.io.init_done #= true
+
+        // Pipelined 128-bit DDR3 memory model with realistic read latency
+        val mem        = scala.collection.mutable.HashMap[Long, Array[Byte]]()
+        val rspDelay   = 10
+        val rspPipe    = scala.collection.mutable.Queue[(Long, BigInt)]()
+        var cyc        = 0L
+
+        def writeBlock(blkAddr: Long, data: BigInt, strb: Int): Unit = {
+          val arr = mem.getOrElseUpdate(blkAddr, new Array[Byte](16))
+          for (b <- 0 until 16) {
+            if (((strb >> b) & 1) != 0) {
+              arr(b) = ((data >> (b * 8)) & 0xFF).toByte
+            }
+          }
+        }
+        def readBlock(blkAddr: Long): BigInt = {
+          val arr = mem.getOrElse(blkAddr, new Array[Byte](16))
+          var v   = BigInt(0)
+          for (b <- 0 until 16) {
+            v = v | (BigInt(arr(b) & 0xFF) << (b * 8))
+          }
+          v
+        }
+
+        fork {
+          while (true) {
+            // Periodic controller backpressure (ready 3 out of 4 cycles)
+            val readyNext = (cyc % 4) != 0
+            dut.io.req.ready #= readyNext
+            if (rspPipe.nonEmpty && rspPipe.head._1 <= cyc) {
+              val (_, rd) = rspPipe.dequeue()
+              dut.io.rsp.valid         #= true
+              dut.io.rsp.payload.rdata #= rd
+            } else {
+              dut.io.rsp.valid         #= false
+              dut.io.rsp.payload.rdata #= 0
+            }
+            dut.clockDomain.waitSampling()
+            cyc += 1
+            if (dut.io.req.valid.toBoolean && dut.io.req.ready.toBoolean) {
+              val blkAddr = dut.io.req.payload.addr.toLong
+              if (dut.io.req.payload.write.toBoolean) {
+                writeBlock(blkAddr, dut.io.req.payload.wdata.toBigInt, dut.io.req.payload.wstrb.toInt)
+              } else {
+                rspPipe.enqueue((cyc + rspDelay, readBlock(blkAddr)))
+              }
+            }
+          }
+        }
+        dut.clockDomain.waitSampling(2)
+
+        def expectedWord(byteAddr: Long, pat: BigInt): BigInt = (pat ^ BigInt(byteAddr)) & beatMask
+
+        // 1. Issue maxOut back-to-back pipelined writes with distinct IDs, holding b.ready = false
+        dut.io.axi.b.ready #= false
+        val numQueue = maxOut
+        val wDone = fork {
+          for (q <- 0 until numQueue) {
+            val addr = 0x1000L + q * 64L
+            val beats = 32 / beatBytes
+            for (b <- 0 until beats) {
+              dut.io.axi.w.valid        #= true
+              dut.io.axi.w.payload.data #= expectedWord(addr + b * beatBytes, BigInt(0x1122334455667788L + q))
+              dut.io.axi.w.payload.strb #= fullMask
+              dut.io.axi.w.payload.last #= (b == beats - 1)
+              do { dut.clockDomain.waitSampling() } while (!dut.io.axi.w.ready.toBoolean)
+            }
+          }
+          dut.io.axi.w.valid #= false
+        }
+        for (q <- 0 until numQueue) {
+          val addr  = 0x1000L + q * 64L
+          val beats = 32 / beatBytes
+          dut.io.axi.aw.valid         #= true
+          dut.io.axi.aw.payload.addr  #= addr
+          dut.io.axi.aw.payload.len   #= beats - 1
+          dut.io.axi.aw.payload.size  #= burstSize
+          dut.io.axi.aw.payload.burst #= 1
+          dut.io.axi.aw.payload.id    #= (q & 0xF)
+          do { dut.clockDomain.waitSampling() } while (!dut.io.axi.aw.ready.toBoolean)
+        }
+        dut.io.axi.aw.valid #= false
+        wDone.join()
+
+        // Verify all 6 B responses arrive cleanly with matching IDs once b.ready goes high
+        dut.clockDomain.waitSampling(30)
+        assert(dut.io.axi.b.valid.toBoolean, s"${dataW}b BVALID should wait behind backpressure")
+        assert(dut.io.axi.b.payload.id.toInt == 0, s"${dataW}b held B ID should be 0")
+        val bGotIds = ArrayBuffer[Int]()
+        val bMon = fork {
+          while (bGotIds.length < numQueue) {
+            dut.clockDomain.waitSampling()
+            if (dut.io.axi.b.valid.toBoolean && dut.io.axi.b.ready.toBoolean) {
+              bGotIds += dut.io.axi.b.payload.id.toInt
+            }
+          }
+        }
+        dut.io.axi.b.ready #= true
+        bMon.join()
+        assert(bGotIds.toSeq == (0 until numQueue).map(_ & 0xF), s"${dataW}b B IDs mismatch: $bGotIds")
+
+        // 2. Issue 6 back-to-back ARs BEFORE the first R beat returns, verify ARs queue immediately
+        val rBeatsExpected = ArrayBuffer[(Int, BigInt, Boolean)]()
+        for (q <- 0 until numQueue) {
+          val addr  = 0x1000L + q * 64L
+          val beats = 32 / beatBytes
+          for (b <- 0 until beats) {
+            rBeatsExpected += ((q & 0xF, expectedWord(addr + b * beatBytes, BigInt(0x1122334455667788L + q)), b == beats - 1))
+          }
+        }
+        var rIdx = 0
+        val rMon = fork {
+          while (rIdx < rBeatsExpected.length) {
+            dut.io.axi.r.ready #= ((cyc % 5) != 2)
+            dut.clockDomain.waitSampling()
+            if (dut.io.axi.r.valid.toBoolean && dut.io.axi.r.ready.toBoolean) {
+              val (expId, expData, expLast) = rBeatsExpected(rIdx)
+              assert(dut.io.axi.r.payload.id.toInt == expId, s"${dataW}b R ID mismatch at beat $rIdx")
+              assert(dut.io.axi.r.payload.data.toBigInt == expData, s"${dataW}b R data mismatch at beat $rIdx")
+              assert(dut.io.axi.r.payload.last.toBoolean == expLast, s"${dataW}b RLAST mismatch at beat $rIdx")
+              rIdx += 1
+            }
+          }
+          dut.io.axi.r.ready #= true
+        }
+        val arStartCyc = cyc
+        for (q <- 0 until numQueue) {
+          val addr  = 0x1000L + q * 64L
+          val beats = 32 / beatBytes
+          dut.io.axi.ar.valid         #= true
+          dut.io.axi.ar.payload.addr  #= addr
+          dut.io.axi.ar.payload.len   #= beats - 1
+          dut.io.axi.ar.payload.size  #= burstSize
+          dut.io.axi.ar.payload.burst #= 1
+          dut.io.axi.ar.payload.id    #= (q & 0xF)
+          do { dut.clockDomain.waitSampling() } while (!dut.io.axi.ar.ready.toBoolean)
+        }
+        dut.io.axi.ar.valid #= false
+        val arAcceptCycs = cyc - arStartCyc
+        assert(arAcceptCycs <= maxOut + 2, s"${dataW}b(max=$maxOut) expected $maxOut ARs accepted in <= ${maxOut + 2} cyc, took $arAcceptCycs")
+        rMon.join()
+
+        // 3. RAW + WAR Hazard Verification (same address back-to-back AW -> AR and AR -> AW)
+        val hazAddr = 0x2040L + (if (dataW < 128) beatBytes.toLong else 0L) // exercise unaligned sub-word phase on 32b/64b too!
+        val hazBeats = 2
+        val oldPat = BigInt(0xAAAA000011112222L)
+        val newPat = BigInt(0xDEADCAFEEEEE1234L)
+
+        // Pre-seed oldPat with normal write + wait B
+        dut.io.axi.aw.valid #= true; dut.io.axi.aw.payload.addr #= hazAddr; dut.io.axi.aw.payload.len #= hazBeats - 1
+        dut.io.axi.aw.payload.size #= burstSize; dut.io.axi.aw.payload.burst #= 1; dut.io.axi.aw.payload.id #= 7
+        do { dut.clockDomain.waitSampling() } while (!dut.io.axi.aw.ready.toBoolean)
+        dut.io.axi.aw.valid #= false
+        for (b <- 0 until hazBeats) {
+          dut.io.axi.w.valid #= true; dut.io.axi.w.payload.data #= expectedWord(hazAddr + b * beatBytes, oldPat)
+          dut.io.axi.w.payload.strb #= fullMask; dut.io.axi.w.payload.last #= (b == hazBeats - 1)
+          do { dut.clockDomain.waitSampling() } while (!dut.io.axi.w.ready.toBoolean)
+        }
+        dut.io.axi.w.valid #= false
+        dut.clockDomain.waitSamplingWhere(100)(dut.io.axi.b.valid.toBoolean)
+        dut.clockDomain.waitSampling()
+
+        // Issue WAR followed immediately by RAW: AR1(hazAddr, old) -> AW2(hazAddr, new) -> AR3(hazAddr, new)
+        val hazGot = ArrayBuffer[(Int, BigInt)]()
+        val hazMon = fork {
+          while (hazGot.length < 2 * hazBeats) {
+            if (dut.io.axi.r.valid.toBoolean && dut.io.axi.r.ready.toBoolean) {
+              hazGot += ((dut.io.axi.r.payload.id.toInt, dut.io.axi.r.payload.data.toBigInt))
+            }
+            dut.clockDomain.waitSampling()
+          }
+        }
+        // AR1 (id=10) -> must see oldPat
+        dut.io.axi.ar.valid #= true; dut.io.axi.ar.payload.addr #= hazAddr; dut.io.axi.ar.payload.len #= hazBeats - 1
+        dut.io.axi.ar.payload.size #= burstSize; dut.io.axi.ar.payload.burst #= 1; dut.io.axi.ar.payload.id #= 10
+        do { dut.clockDomain.waitSampling() } while (!dut.io.axi.ar.ready.toBoolean)
+        dut.io.axi.ar.valid #= false
+
+        // AW2 (id=11) -> writes newPat
+        dut.io.axi.aw.valid #= true; dut.io.axi.aw.payload.addr #= hazAddr; dut.io.axi.aw.payload.len #= hazBeats - 1
+        dut.io.axi.aw.payload.size #= burstSize; dut.io.axi.aw.payload.burst #= 1; dut.io.axi.aw.payload.id #= 11
+        do { dut.clockDomain.waitSampling() } while (!dut.io.axi.aw.ready.toBoolean)
+        dut.io.axi.aw.valid #= false
+
+        // AR3 (id=12) IMMEDIATELY queued BEFORE W2 even finishes -> must still wait & see newPat!
+        dut.io.axi.ar.valid #= true; dut.io.axi.ar.payload.addr #= hazAddr; dut.io.axi.ar.payload.len #= hazBeats - 1
+        dut.io.axi.ar.payload.size #= burstSize; dut.io.axi.ar.payload.burst #= 1; dut.io.axi.ar.payload.id #= 12
+        do { dut.clockDomain.waitSampling() } while (!dut.io.axi.ar.ready.toBoolean)
+        dut.io.axi.ar.valid #= false
+
+        for (b <- 0 until hazBeats) {
+          dut.io.axi.w.valid #= true; dut.io.axi.w.payload.data #= expectedWord(hazAddr + b * beatBytes, newPat)
+          dut.io.axi.w.payload.strb #= fullMask; dut.io.axi.w.payload.last #= (b == hazBeats - 1)
+          do { dut.clockDomain.waitSampling() } while (!dut.io.axi.w.ready.toBoolean)
+        }
+        dut.io.axi.w.valid #= false
+        dut.clockDomain.waitSamplingWhere(100)(dut.io.axi.b.valid.toBoolean)
+        hazMon.join()
+
+        assert(hazGot(0) == (10, expectedWord(hazAddr, oldPat)), s"${dataW}b WAR beat 0 failed")
+        assert(hazGot(1) == (10, expectedWord(hazAddr + beatBytes, oldPat)), s"${dataW}b WAR beat 1 failed")
+        assert(hazGot(2) == (12, expectedWord(hazAddr, newPat)), s"${dataW}b RAW beat 0 failed")
+        assert(hazGot(3) == (12, expectedWord(hazAddr + beatBytes, newPat)), s"${dataW}b RAW beat 1 failed")
+        println(s"[MULTI-OUTSTANDING ${dataW}b max=$maxOut] ${numQueue}x AR queued in $arAcceptCycs cyc, WAR & RAW hazards PASSED")
+      }
+    }
+  }
+
+  test("DDR3 AXI4 Multi-Outstanding Full Controller Pipeline (64b & 128b)") {
+    for (dataW <- Seq(64, 128)) {
+      val axiCfg    = Axi4Config(addressWidth = 32, dataWidth = dataW, idWidth = 4)
+      val beatBytes = dataW / 8
+      val burstSize = Integer.numberOfTrailingZeros(beatBytes)
+      val fullMask  = (BigInt(1) << beatBytes) - 1
+
+      SimConfig.compile(new Ddr3Axi4SimHarness(axiCfg, Ddr3Config(isSimulation = true))).doSim { dut =>
+        dut.clockDomain.forkStimulus(period = 10)
+        dut.io.axi.ar.valid #= false
+        dut.io.axi.aw.valid #= false
+        dut.io.axi.w.valid  #= false
+        dut.io.axi.b.ready  #= true
+        dut.io.axi.r.ready  #= true
+        dut.io.corePhy.dlllock    #= false
+        dut.io.corePhy.rst_lock_n #= false
+        dut.io.corePhy.rburst     #= 0
+        dut.io.corePhy.dq_raw     #= 0
+        for (i <- 0 until 8) dut.io.corePhy.dq_in(i) #= (0xC000 + i)
+        dut.clockDomain.waitSampling(5)
+        dut.io.corePhy.dlllock    #= true
+        dut.io.corePhy.rst_lock_n #= true
+
+        fork {
+          var wlTimer = 0
+          while (!dut.io.init_done.toBoolean) {
+            if (dut.io.corePhy.dqs_out.toBigInt == 0xAA || dut.io.corePhy.dqs_out.toBigInt == 0x55) wlTimer = 12
+            dut.io.corePhy.dq_raw #= (if (wlTimer > 0) { wlTimer -= 1; (1 | (1 << 8)) } else 0)
+            dut.io.corePhy.rburst #= (if (dut.io.corePhy.dqs_read.toBigInt == 0x0F) 3 else 0)
+            dut.clockDomain.waitSampling()
+          }
+        }
+        dut.clockDomain.waitSamplingWhere(120000)(dut.io.init_done.toBoolean)
+        assert(dut.io.init_done.toBoolean)
+        dut.clockDomain.waitSampling(5)
+
+        var cycles = 0L
+        fork { while (true) { dut.clockDomain.waitSampling(); cycles += 1 } }
+
+        val bursts  = 8
+        val beats64 = 64 / beatBytes
+        val totB    = bursts * 64.0
+
+        // Pipelined 8x64B Writes (all 8 AWs + Ws streamed back-to-back)
+        val wrT0 = cycles
+        var bGot = 0
+        val bMon = fork {
+          while (bGot < bursts) {
+            if (dut.io.axi.b.valid.toBoolean && dut.io.axi.b.ready.toBoolean) {
+              assert(dut.io.axi.b.payload.id.toInt == (bGot & 0xF))
+              bGot += 1
+            }
+            dut.clockDomain.waitSampling()
+          }
+        }
+        val wStream = fork {
+          for (q <- 0 until bursts; b <- 0 until beats64) {
+            dut.io.axi.w.valid #= true; dut.io.axi.w.payload.data #= BigInt(q * 16 + b + 1)
+            dut.io.axi.w.payload.strb #= fullMask; dut.io.axi.w.payload.last #= (b == beats64 - 1)
+            do { dut.clockDomain.waitSampling() } while (!dut.io.axi.w.ready.toBoolean)
+          }
+          dut.io.axi.w.valid #= false
+        }
+        for (q <- 0 until bursts) {
+          dut.io.axi.aw.valid #= true; dut.io.axi.aw.payload.addr #= (0x10000L + q * 64L)
+          dut.io.axi.aw.payload.len #= beats64 - 1; dut.io.axi.aw.payload.size #= burstSize
+          dut.io.axi.aw.payload.burst #= 1; dut.io.axi.aw.payload.id #= (q & 0xF)
+          do { dut.clockDomain.waitSampling() } while (!dut.io.axi.aw.ready.toBoolean)
+        }
+        dut.io.axi.aw.valid #= false
+        wStream.join(); bMon.join()
+        val wrPipeCyc = cycles - wrT0
+
+        // Pipelined 8x64B Reads (all 8 ARs queued back-to-back before awaiting R)
+        val rdT0 = cycles
+        var rGot = 0
+        val rMon = fork {
+          var beatInBurst = 0
+          var qIdx        = 0
+          while (rGot < bursts * beats64) {
+            if (dut.io.axi.r.valid.toBoolean && dut.io.axi.r.ready.toBoolean) {
+              assert(dut.io.axi.r.payload.id.toInt == (qIdx & 0xF))
+              assert(dut.io.axi.r.payload.last.toBoolean == (beatInBurst == beats64 - 1))
+              rGot += 1
+              beatInBurst += 1
+              if (beatInBurst == beats64) { beatInBurst = 0; qIdx += 1 }
+            }
+            dut.clockDomain.waitSampling()
+          }
+        }
+        for (q <- 0 until bursts) {
+          dut.io.axi.ar.valid #= true; dut.io.axi.ar.payload.addr #= (0x10000L + q * 64L)
+          dut.io.axi.ar.payload.len #= beats64 - 1; dut.io.axi.ar.payload.size #= burstSize
+          dut.io.axi.ar.payload.burst #= 1; dut.io.axi.ar.payload.id #= (q & 0xF)
+          do { dut.clockDomain.waitSampling() } while (!dut.io.axi.ar.ready.toBoolean)
+        }
+        dut.io.axi.ar.valid #= false
+        val arQueuedIn = cycles - rdT0
+        assert(arQueuedIn <= 10, s"${dataW}b full core should queue 8 ARs fast, took $arQueuedIn cyc")
+        rMon.join()
+        val rdPipeCyc = cycles - rdT0
+
+        println(f"[PIPELINED ${dataW}b @75.94MHz] 8x64B Hit: WR=${totB * 75.9375 / wrPipeCyc}%.1f MB/s ($wrPipeCyc cyc), RD=${totB * 75.9375 / rdPipeCyc}%.1f MB/s ($rdPipeCyc cyc)")
+      }
+    }
+  }
 }

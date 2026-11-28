@@ -19,25 +19,29 @@ object Ddr3Gen {
       else if (args.contains("--128") || envWidth.contains("128")) 128
       else 64
     val useCdc = args.contains("--cdc") || sys.env.get("DDR3_AXI_CDC").contains("1")
+    val outIdx = args.indexOf("--outstanding")
+    val outstanding =
+      if (outIdx >= 0 && outIdx + 1 < args.length) args(outIdx + 1).toInt
+      else sys.env.get("DDR3_AXI_OUTSTANDING").map(_.toInt).getOrElse(8)
 
     val axiConfig = Ddr3Axi4.defaultAxiConfig(dataWidth = width)
-    val hwConfig  = Ddr3Config.tangPrimer20k()
+    val hwConfig  = Ddr3Config.tangPrimer20k(maxOutstanding = outstanding)
 
-    println("Generating Ddr3Controller Verilog...")
+    println(s"Generating Ddr3Controller Verilog (maxOutstanding=$outstanding)...")
     spinalConfig.generateVerilog(new Ddr3Controller(hwConfig))
 
-    println(s"Generating Ddr3Axi4 (${width}-bit AXI4) Verilog...")
+    println(s"Generating Ddr3Axi4 (${width}-bit AXI4, maxOutstanding=$outstanding) Verilog...")
     spinalConfig.generateVerilog(new Ddr3Axi4(axiConfig, hwConfig))
 
-    println(s"Generating TangPrimer20kDdr3 (${width}-bit AXI4 plug-and-play) Verilog...")
+    println(s"Generating TangPrimer20kDdr3 (${width}-bit AXI4, maxOutstanding=$outstanding plug-and-play) Verilog...")
     spinalConfig.generateVerilog(new TangPrimer20kDdr3(axiConfig, hwConfig))
 
     val cdcLabel = if (useCdc) ", async 27MHz Axi4CC" else ""
-    println(s"Generating Ddr3TesterTop (${width}-bit AXI4${cdcLabel} hardware top for Tang Primer 20K)...")
+    println(s"Generating Ddr3TesterTop (${width}-bit AXI4${cdcLabel}, maxOutstanding=$outstanding hardware top for Tang Primer 20K)...")
     spinalConfig.generateVerilog(new Ddr3TesterTop(axiConfig, hwConfig, useAsyncAxiClock = useCdc))
 
-    println("Generating Ddr3UartDemoTop (64-bit AXI4 UART <-> DDR3 demo top)...")
-    spinalConfig.generateVerilog(new Ddr3UartDemoTop)
+    println(s"Generating Ddr3UartDemoTop (64-bit AXI4 UART <-> DDR3 demo top, maxOutstanding=$outstanding)...")
+    spinalConfig.generateVerilog(new Ddr3UartDemoTop(outstanding))
 
     println("Generating Ddr3ControllerSim (iverilog sim vs Micron model, short timeouts)...")
     spinalConfig.generateVerilog(new Ddr3ControllerSim)

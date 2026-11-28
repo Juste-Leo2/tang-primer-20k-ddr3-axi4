@@ -43,8 +43,8 @@ class Ddr3UartDemoHarness extends Component {
   core.io.phy.dq_raw := (wlTimer > 0) ? B"16'h0101" | B"16'h0000"
   core.io.phy.rburst := (core.io.phy.dqs_read === 0x0F) ? B"2'b11" | B"2'b00"
 
-  val mem = Mem(Bits(128 bits), 256)
-  val curWord = mem.readAsync(core.io.req.payload.addr(7 downto 0))
+  val mem = Mem(Bits(128 bits), 1024)
+  val curWord = mem.readAsync(core.io.req.payload.addr(9 downto 0))
   val nextWord = Bits(128 bits)
   for (byteIdx <- 0 until 16) {
     nextWord(byteIdx * 8 + 7 downto byteIdx * 8) :=
@@ -53,7 +53,7 @@ class Ddr3UartDemoHarness extends Component {
         curWord(byteIdx * 8 + 7 downto byteIdx * 8)
   }
   when(core.io.req.fire && core.io.req.payload.write) {
-    mem.write(core.io.req.payload.addr(7 downto 0), nextWord)
+    mem.write(core.io.req.payload.addr(9 downto 0), nextWord)
   }
 
   val simRdFifo = new StreamFifo(Bits(128 bits), 64)
@@ -134,19 +134,26 @@ class Ddr3UartDemoTest extends AnyFunSuite {
       assert(status == 'K'.toInt, s"Benchmark status expected 'K', got ${status.toChar}")
       assert(wrCyc > 0 && rdCyc > 0, s"Expected positive cycle counts, got wr=$wrCyc rd=$rdCyc")
 
-      // 5. Matrix benchmark 'M': 2 bursts x 64B (8 beats) with +2048B stride (row-miss) and mixed R/W
-      for ((label, flags) <- Seq(("row-miss", 0x02), ("mixed+row-miss", 0x03))) {
+      // 5. Matrix benchmark 'M': sequential & pipelined (hit / row-miss / mixed R/W)
+      for ((label, burstsM1, beatsM1, flags) <- Seq(
+        ("seq row-miss", 1, 7, 0x02),
+        ("seq mixed+row-miss", 1, 7, 0x03),
+        ("pipe same-row", 3, 7, 0x04),
+        ("pipe row-miss", 3, 7, 0x06),
+        ("pipe mixed RAW", 3, 1, 0x05)
+      )) {
         sendByte('M'.toInt)
-        sendByte(1)     // bursts_m1 = 1 -> 2 bursts
-        sendByte(7)     // beats_m1  = 7 -> 8 beats (64 B)
-        sendByte(flags) // bit0=mixed, bit1=rowStride(+2048B)
+        sendByte(burstsM1)
+        sendByte(beatsM1)
+        sendByte(flags)
         val mStatus = recvByte()
         val mBytes  = Array.fill(8)(recvByte())
         val mWrCyc  = (0 until 4).map(i => mBytes(i) << (i * 8)).sum
         val mRdCyc  = (0 until 4).map(i => mBytes(4 + i) << (i * 8)).sum
         assert(mStatus == 'K'.toInt, s"Matrix '$label' expected 'K', got ${mStatus.toChar}")
-        assert(mWrCyc > 0 && mRdCyc > 0, s"Matrix '$label' invalid cycles: wr=$mWrCyc rd=$mRdCyc")
-        println(f"[SIM UART-DEMO] Matrix '$label' 2x64B (wr=$mWrCyc cyc, rd=$mRdCyc cyc) PASSED!")
+        val expectRd = ((flags & 0x05) != 0x05)
+        assert(mWrCyc > 0 && (!expectRd || mRdCyc > 0), s"Matrix '$label' invalid cycles: wr=$mWrCyc rd=$mRdCyc")
+        println(f"[SIM UART-DEMO] Matrix '$label' (wr=$mWrCyc cyc, rd=$mRdCyc cyc) PASSED!")
       }
 
       println(f"[SIM UART-DEMO] Ping + 16B round-trip + 2KiB bench (wr=${wrCyc} cyc, rd=${rdCyc} cyc) PASSED!")
