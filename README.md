@@ -7,7 +7,7 @@ Open-source **DDR3 + AXI4** memory subsystem written in **SpinalHDL** for the **
 
 ## Plug-and-Play Usage (`TangPrimer20kDdr3`)
 
-Instantiate [`TangPrimer20kDdr3`](ddr3/src/ddr3/board/TangPrimer20kDdr3.scala) to get the PLL (`303.75 MHz` CK / `75.94 MHz` controller clock), Power-On-Reset, DDR3 controller, and **32 / 64 (default) / 128-bit AXI4** slave port in one block:
+Instantiate [`TangPrimer20kDdr3`](ddr3/src/ddr3/board/TangPrimer20kDdr3.scala) to get the PLL (303.75 MHz CK / 75.94 MHz controller clock), Power-On-Reset, DDR3 controller, and **32 / 64 (default) / 128-bit AXI4** slave port in one block:
 
 ```scala
 // 1. Standard 64-bit AXI4 in controllerClockDomain (75.94 MHz)
@@ -29,16 +29,16 @@ val ddr3Async = TangPrimer20kDdr3(
 
 ## Verified Hardware Results (Tang Primer 20K)
 
-All modes verified in Verilator (`ddr3.test`) and on physical Tang Primer 20K hardware (`pclk = 75.94 MHz`, `CK = 303.75 MHz`, including byte-masked `DDR3_DM[1:0]` writes and optional `27 MHz` async `Axi4CC`):
+All modes verified in Verilator (`ddr3.test`) and on physical Tang Primer 20K hardware (pclk = 75.94 MHz, CK = 303.75 MHz, including byte-masked `DDR3_DM[1:0]` writes and optional 27 MHz async `Axi4CC`):
 
-| Mode | Resources (`Ddr3TesterTop`) | Sequential HW Throughput (avg / peak) | Hardware Status |
+| Mode | Resources (`Ddr3TesterTop`) | Hardware Throughput (avg / peak) | Hardware Status |
 |---|---|---|---|
-| **32-bit** (`--32`) | `LUT=4858`, `REG=2187`, `BSRAM=1` | ~145 MB/s WR, ~241 MB/s RD *(sim)* | `1359` passes, `0` fails (`32b+CDC`: `912` passes) |
-| **64-bit** *(default)* | `LUT=5019`, `REG=2278`, `BSRAM=1` (`77.1 MHz` Fmax) | **579.9 / 550.0 MB/s** seq, **599.3 / 582.4 MB/s** pipe (`732.0` mixed) | `932` passes, `0` fails (`maxOutstanding = 8`) |
-| **128-bit** (`--128`) | `LUT=4527`, `REG=1959`, `BSRAM=5` | **~960 MB/s** (`peak ~965`) WR, **~794 MB/s** (`peak ~804`) RD | `1183` passes, `0` fails |
+| **32-bit** (`--32`) | 4858 LUT, 2187 REG, 1 BSRAM | ~145 MB/s WR, ~241 MB/s RD *(sim)* | 1359 passes, 0 fails (32b+CDC: 912 passes) |
+| **64-bit** *(default)* | 5019 LUT, 2278 REG, 1 BSRAM (77.1 MHz Fmax) | **579.9 / 550.0 MB/s** seq, **599.3 / 582.4 MB/s** pipe (732.0 mixed) | 932 passes, 0 fails (`maxOutstanding` = 8) |
+| **128-bit** (`--128`) | 4527 LUT, 1959 REG, 5 BSRAM | **~960 MB/s** (peak ~965) WR, **~794 MB/s** (peak ~804) RD | 1183 passes, 0 fails |
 
-- **Multi-outstanding pipelined & scalar latency (64-bit HW, `maxOutstanding = 8`, 100-run avg):** `64 B` same-row pipelined **`568.8 MB/s`** RD / **`466.4 MB/s`** WR (`+191%` RD vs sequential), `256 B` mixed R/W pipelined **`732.0 MB/s`** combined; `16 B` read latency **`18.5 cyc` (`243 ns`)** same-row hit / **`20.7 cyc` (`273 ns`)** row-miss. Queue depth scaling (`2 / 4 / 8 / 16`) & full matrix in [`doc/bench.md`](doc/bench.md).
-- **AXI4 integration notes:** supports `INCR` and `FIXED` bursts (not `WRAP`), expects `AxSIZE` matching the configured bus width (use `WSTRB` for partial/sub-word writes), queues up to `Ddr3Config.maxOutstanding` pending bursts (`2 / 4 / 8 [default] / 16`) in strict chronological order (RAW/WAR/WAW safe), and tracks a single open bank/row at a time.
+- **Multi-outstanding pipelined & scalar latency (64-bit HW, `maxOutstanding` = 8, 100-run avg):** 64 B same-row pipelined **568.8 MB/s** RD / **466.4 MB/s** WR (+191.4% RD vs sequential), 256 B mixed R/W pipelined **732.0 MB/s** combined; 16 B read latency **18.5 cyc (243 ns)** same-row hit / **20.7 cyc (273 ns)** row-miss. Queue depth scaling (2 / 4 / 8 / 16) & full matrix in [`doc/bench.md`](doc/bench.md).
+- **AXI4 integration notes:** supports `INCR` and `FIXED` bursts (not `WRAP`), expects `AxSIZE` matching the configured bus width (use `WSTRB` for partial/sub-word writes), queues up to `Ddr3Config.maxOutstanding` pending bursts (2 / 4 / 8 [default] / 16) in strict chronological order (RAW/WAR/WAW safe), and tracks a single open bank/row at a time.
 
 ## Quick PC ↔ DDR3 Demo (`demo/`)
 
