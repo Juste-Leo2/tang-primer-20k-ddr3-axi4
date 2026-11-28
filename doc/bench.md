@@ -121,3 +121,20 @@ From `Ddr3Axi4Test` (`Ddr3Config.isSimulation = true`, simplified PHY loopback, 
 - **`16 B` single-block latency:**
   - **64-bit:** Hit `WR 7.0 cyc (92 ns) / RD 20.0 cyc (263 ns)`, RowMiss `WR 8.3 cyc (109 ns) / RD 26.0 cyc (342 ns)`
   - **128-bit:** Hit `WR 6.0 cyc (79 ns) / RD 19.8 cyc (260 ns)`, RowMiss `WR 7.0 cyc (92 ns) / RD 25.0 cyc (329 ns)`
+
+*Sim vs Hardware note:* `Ddr3Axi4Test` pipelined benchmarks measure over only `8` bursts (`512 B`, so initial startup/latency weighs more heavily), whereas physical hardware measures `256` continuous bursts (`64 B` pipelined RD reaches `474.1 MB/s` in sim vs `568.8 MB/s` on silicon).
+
+---
+
+## 5. Theoretical Ceiling vs Measured Hardware Efficiency (`@ 75.94 MHz`)
+
+| Metric (`GW2A-LV18PG256C8/I7`, `maxOutstanding = 8` unless noted) | Measured (HW) | Theoretical Ceiling | Efficiency |
+|---|---|---|---|
+| **Sequential `2 KiB` same-row (WR / RD)** | `579.9` / `550.0 MB/s` | `607.5 MB/s` *(64b 1-dir)* | **`95.5%` / `90.5%`** |
+| **Pipelined `256 B` same-row (WR / RD)** | `599.3` / `582.4 MB/s` | `607.5 MB/s` *(64b 1-dir)* | **`98.7%` / `95.9%`** |
+| **Pipelined `256 B` row-miss (WR / RD)** | `596.1` / `577.6 MB/s` | `607.5 MB/s` *(64b 1-dir)* | **`98.1%` / `95.1%`** |
+| **Pipelined `64 B` same-row (WR / RD)** | `466.4` / `568.8 MB/s` | `607.5 MB/s` *(64b 1-dir)* | **`76.8%` / `93.6%`** |
+| **Pipelined `16 B` same-row (`max = 16`, WR / RD)** | `389.0` / `558.4 MB/s` | `607.5 MB/s` *(64b 1-dir)* | **`64.0%` / `91.9%`** |
+| **Pipelined Mixed R/W `256 B` same-row (Comb)** | `732.0 MB/s` | `1215.0 MB/s` *(full-duplex `W+R` / 128b DQ)* | **`60.2%`** |
+
+*Note: all hardware percentages include periodic `7.8 us` (`592` `pclk` cycle) SDRAM auto-refreshes (`tRFC = 64 CK`).*
