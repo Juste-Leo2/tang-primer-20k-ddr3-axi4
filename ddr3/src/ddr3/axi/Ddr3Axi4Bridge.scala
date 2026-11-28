@@ -37,7 +37,8 @@ class Ddr3Axi4Bridge(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Con
   val phaseBits      = log2Up(beatsPerWord)
   val strbWidth      = dataWidth / 8
   val is128Bit       = (beatsPerWord == 1)
-  val maxOutstanding = 8
+  val maxOutstanding = config.maxOutstanding
+  val outCntWidth    = log2Up(maxOutstanding + 1)
 
   private def subWordPhase(addr: UInt): UInt = addr(3 downto 4 - phaseBits)
 
@@ -162,7 +163,7 @@ class Ddr3Axi4Bridge(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Con
   val wStartThresh     = if (is128Bit) 3 else 12
 
   val wPackQueue = if (is128Bit) null else new DistLowLatencyFifo(UInt(phaseBits bits), maxOutstanding)
-  val wPackCredits = if (is128Bit) Reg(UInt(4 bits)) init(0) else null
+  val wPackCredits = if (is128Bit) Reg(UInt(outCntWidth bits)) init(0) else null
   val wPackActive  = if (is128Bit) null else RegInit(False)
   val wAsmData     = if (is128Bit) null else Reg(Bits(128 bits)) init(0)
   val wAsmStrb     = if (is128Bit) null else Reg(Bits(16 bits)) init(0)
@@ -423,11 +424,11 @@ class Ddr3Axi4Bridge(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Con
 
   if (is128Bit) {
     val wLastFire = io.axi.w.fire && io.axi.w.payload.last
-    wPackCredits := wPackCredits + awFire.asUInt.resize(4) - wLastFire.asUInt.resize(4)
+    wPackCredits := wPackCredits + awFire.asUInt.resize(outCntWidth) - wLastFire.asUInt.resize(outCntWidth)
   }
 
   // Registered AXI B Output Stage
-  val bDoneCount = Reg(UInt(4 bits)) init(0)
+  val bDoneCount = Reg(UInt(outCntWidth bits)) init(0)
   val bValidReg  = RegInit(False)
   val bIdReg     = Reg(UInt(axiConfig.idWidth bits)) init(0)
   val bConsume   = !bValidReg || io.axi.b.ready
@@ -441,7 +442,7 @@ class Ddr3Axi4Bridge(val axiConfig: Axi4Config, val config: Ddr3Config = Ddr3Con
     bValidReg := True
     bIdReg    := bIdQueue.io.pop.payload
   }
-  bDoneCount := bDoneCount + wBurstDonePop.asUInt.resize(4) - bIssue.asUInt.resize(4)
+  bDoneCount := bDoneCount + wBurstDonePop.asUInt.resize(outCntWidth) - bIssue.asUInt.resize(outCntWidth)
 
   // Shared outReq Mux & AXI R/B Wires
   outReq.valid := rdReqValid || wrReqValid

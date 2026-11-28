@@ -91,25 +91,53 @@ def bench_ddr3(ser: serial.Serial, bursts: int = 8) -> tuple[float, float]:
     return (size_bytes * PCLK_HZ / wr_cyc / 1e6, size_bytes * PCLK_HZ / rd_cyc / 1e6)
 
 
-def bench_matrix(ser: serial.Serial, bursts: int, beats: int, mixed: bool, row_stride: bool) -> tuple[float, float, float, int, int]:
+def bench_matrix(
+    ser: serial.Serial, bursts: int, beats: int, mixed: bool, row_stride: bool, pipelined: bool = False
+) -> tuple[float, float, float, int, int]:
     """Run configurable workload ('M') and return (wr_mbs, rd_mbs, combined_mbs, wr_cyc, rd_cyc)."""
-    flags = (1 if mixed else 0) | (2 if row_stride else 0)
+    flags = (1 if mixed else 0) | (2 if row_stride else 0) | (4 if pipelined else 0)
     ser.write(b"M" + bytes([bursts - 1, beats - 1, flags]))
     status, wr_cyc, rd_cyc = struct.unpack("<cII", read_exact(ser, 9))
     if status != b"K":
-        raise RuntimeError(f"DDR3 workload verify failed (status={status!r}, mixed={mixed}, row_stride={row_stride})")
+        raise RuntimeError(
+            f"DDR3 workload verify failed (status={status!r}, mixed={mixed}, row_stride={row_stride}, pipelined={pipelined})"
+        )
     total_bytes = bursts * beats * 8
-    wr_mbs = total_bytes * PCLK_HZ / wr_cyc / 1e6
-    rd_mbs = total_bytes * PCLK_HZ / rd_cyc / 1e6
+    wr_mbs = total_bytes * PCLK_HZ / wr_cyc / 1e6 if wr_cyc > 0 else 0.0
+    rd_mbs = total_bytes * PCLK_HZ / rd_cyc / 1e6 if rd_cyc > 0 else 0.0
     comb_mbs = (2 * total_bytes) * PCLK_HZ / (wr_cyc + rd_cyc) / 1e6
     return wr_mbs, rd_mbs, comb_mbs, wr_cyc, rd_cyc
 
 
-def run_workload_suite(ser: serial.Serial, runs: int = 100) -> None:
-    print(f"\nHardware DDR3 Workload Matrix (64-bit AXI4 @ 75.94 MHz, avg over {runs} runs/row, data verified):")
-    print(f"  {'Workload (16 KiB x runs)':<42} | {'WR avg (peak)':>15} | {'RD avg (peak)':>15} | {'Comb avg':>8}")
-    print("  " + "-" * 91)
-    cases = [
+def _print_matrix(ser: serial.Serial, title: str, cases: list[tuple[str, int, int, bool, bool]], runs: int, pipelined: bool) -> None:
+    print(f"\n{title} (64-bit AXI4 @ 75.94 MHz, avg over {runs} runs/row, data verified):")
+    print(f"  {'Workload':<44} | {'WR avg (peak)':>15} | {'RD avg (peak)':>15} | {'Comb avg':>8}")
+    print("  " + "-" * 93)
+    for label, bursts, beats, mixed, row_stride in cases:
+        tot_wr = tot_rd = 0
+        pk_wr = pk_rd = pk_comb = 0.0
+        for _ in range(runs):
+            wr_mbs, rd_mbs, comb_mbs, wr_cyc, rd_cyc = bench_matrix(ser, bursts, beats, mixed, row_stride, pipelined)
+            tot_wr += wr_cyc
+            tot_rd += rd_cyc
+            pk_wr = max(pk_wr, wr_mbs)
+            pk_rd = max(pk_rd, rd_mbs)
+            pk_comb = max(pk_comb, comb_mbs)
+        bytes_tot = runs * bursts * beats * 8
+        avg_comb = (2 * bytes_tot) * PCLK_HZ / (tot_wr + tot_rd) / 1e6
+        if mixed and pipelined and tot_rd == 0:
+            wr_col = f"{'--':>15}"
+            rd_col = f"{'--':>15}"
+        else:
+            avg_wr = bytes_tot * PCLK_HZ / tot_wr / 1e6
+            avg_rd = bytes_tot * PCLK_HZ / tot_rd / 1e6
+            wr_col = f"{avg_wr:5.1f} ({pk_wr:5.1f})  "
+            rd_col = f"{avg_rd:5.1f} ({pk_rd:5.1f})  "
+        print(f"  {label:<44} | {wr_col} | {rd_col} | {avg_comb:8.1f}", flush=True)
+
+
+def run_workload_suite(ser: serial.Serial, runs: int = 100, pipe_only: bool = False) -> None:
+    seq_cases = [
         ("Sequential 2 KiB bursts (same-row hits)", 8, 256, False, False),
         ("Sequential 256 B bursts (same-row hits)", 64, 32, False, False),
         ("Short 256 B bursts (100% row-miss)", 64, 32, False, True),
@@ -120,20 +148,24 @@ def run_workload_suite(ser: serial.Serial, runs: int = 100) -> None:
         ("Mixed R/W 64 B alternating (same-row)", 256, 8, True, False),
         ("Mixed R/W 64 B alternating (100% row-miss)", 256, 8, True, True),
     ]
-    for label, bursts, beats, mixed, row_stride in cases:
-        tot_wr = tot_rd = 0
-        pk_wr = pk_rd = 0.0
-        for _ in range(runs):
-            wr_mbs, rd_mbs, _, wr_cyc, rd_cyc = bench_matrix(ser, bursts, beats, mixed, row_stride)
-            tot_wr += wr_cyc
-            tot_rd += rd_cyc
-            pk_wr = max(pk_wr, wr_mbs)
-            pk_rd = max(pk_rd, rd_mbs)
-        bytes_tot = runs * bursts * beats * 8
-        avg_wr = bytes_tot * PCLK_HZ / tot_wr / 1e6
-        avg_rd = bytes_tot * PCLK_HZ / tot_rd / 1e6
-        avg_comb = (2 * bytes_tot) * PCLK_HZ / (tot_wr + tot_rd) / 1e6
-        print(f"  {label:<42} | {avg_wr:5.1f} ({pk_wr:5.1f})   | {avg_rd:5.1f} ({pk_rd:5.1f})   | {avg_comb:8.1f}", flush=True)
+    pipe_cases = [
+        ("Pipelined 256 B bursts (same-row hits)", 64, 32, False, False),
+        ("Pipelined 256 B bursts (100% row-miss)", 64, 32, False, True),
+        ("Pipelined 64 B bursts (same-row hits)", 256, 8, False, False),
+        ("Pipelined 64 B bursts (100% row-miss)", 256, 8, False, True),
+        ("Pipelined 16 B cache-line (same-row hits)", 256, 2, False, False),
+        ("Pipelined 16 B cache-line (100% row-miss)", 256, 2, False, True),
+        ("Pipelined Mixed R/W 256 B (same-row, RAW)", 64, 32, True, False),
+        ("Pipelined Mixed R/W 64 B (same-row, RAW)", 256, 8, True, False),
+        ("Pipelined Mixed R/W 16 B (same-row, RAW)", 256, 2, True, False),
+        ("Pipelined Mixed R/W 64 B (row-miss, RAW)", 256, 8, True, True),
+    ]
+    if not pipe_only:
+        _print_matrix(ser, "Hardware DDR3 Sequential Matrix (no saturation, 1 in-flight)", seq_cases, runs, pipelined=False)
+    _print_matrix(ser, "Hardware DDR3 Pipelined Multi-Outstanding Matrix (queue-saturated)", pipe_cases, runs, pipelined=True)
+
+    if pipe_only:
+        return
 
     print(f"\nScalar / Cache-Line AXI4 Latency (avg over {runs * 64} txns @ 75.94 MHz):")
     print(f"  {'Transaction (AW->B / AR->RLAST)':<42} | {'WR avg (min)':>16} | {'RD avg (min)':>16}")
@@ -149,7 +181,7 @@ def run_workload_suite(ser: serial.Serial, runs: int = 100) -> None:
         tot_wr = tot_rd = 0
         min_wr = min_rd = float("inf")
         for _ in range(runs):
-            _, _, _, wr_cyc, rd_cyc = bench_matrix(ser, bursts, beats, False, row_stride)
+            _, _, _, wr_cyc, rd_cyc = bench_matrix(ser, bursts, beats, False, row_stride, pipelined=False)
             tot_wr += wr_cyc
             tot_rd += rd_cyc
             min_wr = min(min_wr, wr_cyc / bursts)
@@ -194,7 +226,8 @@ def main() -> int:
     ap.add_argument("--baud", type=int, default=115200, help="UART baud rate (default: 115200)")
     ap.add_argument("--samples", type=int, default=30, help="Live throughput samples (default: 30)")
     ap.add_argument("--bursts", type=int, default=8, help="2 KiB bursts per sample (default: 8 -> 16 KiB)")
-    ap.add_argument("--workload", action="store_true", help="Run sequential vs mixed R/W vs row-miss matrix")
+    ap.add_argument("--workload", action="store_true", help="Run sequential vs pipelined vs row-miss matrix")
+    ap.add_argument("--pipe-only", action="store_true", help="With --workload, run only the pipelined saturated matrix")
     ap.add_argument("--runs", type=int, default=100, help="Repetitions per row in --workload (default: 100)")
     args = ap.parse_args()
 
@@ -206,7 +239,7 @@ def main() -> int:
         print(f"[OK] Tang Primer 20K DDR3 bridge ready on {args.port} @ {args.baud} baud")
 
         if args.workload:
-            run_workload_suite(ser, runs=args.runs)
+            run_workload_suite(ser, runs=args.runs, pipe_only=args.pipe_only)
             return 0
 
         msg = b"Hello Tang Primer 20K DDR3! AXI4 64-bit round-trip OK."

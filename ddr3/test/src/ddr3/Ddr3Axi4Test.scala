@@ -584,15 +584,15 @@ class Ddr3Axi4Test extends AnyFunSuite {
     }
   }
 
-  test("DDR3 AXI4 Multi-Outstanding Ordering, Hazards & Backpressure (32/64/128-bit)") {
-    for (dataW <- Seq(32, 64, 128)) {
+  test("DDR3 AXI4 Multi-Outstanding Ordering, Hazards & Backpressure (32/64/128-bit, depth 2/4/8/16)") {
+    for ((dataW, maxOut) <- Seq((32, 8), (64, 2), (64, 4), (64, 8), (64, 16), (128, 8))) {
       val axiCfg    = Axi4Config(addressWidth = 32, dataWidth = dataW, idWidth = 4)
       val beatBytes = dataW / 8
       val burstSize = Integer.numberOfTrailingZeros(beatBytes)
       val fullMask  = (BigInt(1) << beatBytes) - 1
       val beatMask  = (BigInt(1) << dataW) - 1
 
-      SimConfig.compile(new Ddr3Axi4Bridge(axiCfg, Ddr3Config())).doSim { dut =>
+      SimConfig.compile(new Ddr3Axi4Bridge(axiCfg, Ddr3Config(maxOutstanding = maxOut))).doSim { dut =>
         dut.clockDomain.forkStimulus(period = 10)
         dut.io.init_done          #= false
         dut.io.axi.aw.valid       #= false
@@ -658,9 +658,9 @@ class Ddr3Axi4Test extends AnyFunSuite {
 
         def expectedWord(byteAddr: Long, pat: BigInt): BigInt = (pat ^ BigInt(byteAddr)) & beatMask
 
-        // 1. Issue 6 back-to-back pipelined writes with distinct IDs, holding b.ready = false
+        // 1. Issue maxOut back-to-back pipelined writes with distinct IDs, holding b.ready = false
         dut.io.axi.b.ready #= false
-        val numQueue = 6
+        val numQueue = maxOut
         val wDone = fork {
           for (q <- 0 until numQueue) {
             val addr = 0x1000L + q * 64L
@@ -744,7 +744,7 @@ class Ddr3Axi4Test extends AnyFunSuite {
         }
         dut.io.axi.ar.valid #= false
         val arAcceptCycs = cyc - arStartCyc
-        assert(arAcceptCycs <= 8, s"${dataW}b expected all 6 ARs accepted in <= 8 cyc, took $arAcceptCycs")
+        assert(arAcceptCycs <= maxOut + 2, s"${dataW}b(max=$maxOut) expected $maxOut ARs accepted in <= ${maxOut + 2} cyc, took $arAcceptCycs")
         rMon.join()
 
         // 3. RAW + WAR Hazard Verification (same address back-to-back AW -> AR and AR -> AW)
@@ -808,7 +808,7 @@ class Ddr3Axi4Test extends AnyFunSuite {
         assert(hazGot(1) == (10, expectedWord(hazAddr + beatBytes, oldPat)), s"${dataW}b WAR beat 1 failed")
         assert(hazGot(2) == (12, expectedWord(hazAddr, newPat)), s"${dataW}b RAW beat 0 failed")
         assert(hazGot(3) == (12, expectedWord(hazAddr + beatBytes, newPat)), s"${dataW}b RAW beat 1 failed")
-        println(s"[MULTI-OUTSTANDING ${dataW}b] 6x AR queued in $arAcceptCycs cyc, WAR & RAW hazards PASSED")
+        println(s"[MULTI-OUTSTANDING ${dataW}b max=$maxOut] ${numQueue}x AR queued in $arAcceptCycs cyc, WAR & RAW hazards PASSED")
       }
     }
   }

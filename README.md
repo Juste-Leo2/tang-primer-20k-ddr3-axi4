@@ -34,11 +34,11 @@ All modes verified in Verilator (`ddr3.test`) and on physical Tang Primer 20K ha
 | Mode | Resources (`Ddr3TesterTop`) | Sequential HW Throughput (avg / peak) | Hardware Status |
 |---|---|---|---|
 | **32-bit** (`--32`) | `LUT=4858`, `REG=2187`, `BSRAM=1` | ~145 MB/s WR, ~241 MB/s RD *(sim)* | `1359` passes, `0` fails (`32b+CDC`: `912` passes) |
-| **64-bit** *(default)* | `LUT=4941`, `REG=2245`, `BSRAM=1` | **580.0 MB/s** (`peak 586.3`) WR, **548.8 MB/s** (`peak 556.7`) RD | `1226` passes, `0` fails (`64b+CDC`: `1171` passes) |
+| **64-bit** *(default)* | `LUT=5019`, `REG=2278`, `BSRAM=1` (`77.1 MHz` Fmax) | **579.9 / 550.0 MB/s** seq, **599.3 / 582.4 MB/s** pipe (`732.0` mixed) | `932` passes, `0` fails (`maxOutstanding = 8`) |
 | **128-bit** (`--128`) | `LUT=4527`, `REG=1959`, `BSRAM=5` | **~960 MB/s** (`peak ~965`) WR, **~794 MB/s** (`peak ~804`) RD | `1183` passes, `0` fails |
 
-- **Mixed R/W, short row-miss & scalar latency (64-bit HW, 100-run avg):** `256 B` mixed R/W 100% row-miss **`387.4 MB/s`** combined (`402.0` WR / `373.8` RD), `64 B` mixed R/W 100% row-miss **`211.1 MB/s`** combined (`252.6` WR / `181.4` RD); `16 B` read latency **`19.5 cyc` (`257 ns`)** same-row hit / **`21.7 cyc` (`286 ns`)** row-miss. Full breakdown in [`doc/bench.md`](doc/bench.md).
-- **AXI4 integration notes:** supports `INCR` and `FIXED` bursts (not `WRAP`), expects `AxSIZE` matching the configured bus width (use `WSTRB` for partial/sub-word writes), arbitrates one `AW` or `AR` burst at a time, and tracks a single open bank/row at a time.
+- **Multi-outstanding pipelined & scalar latency (64-bit HW, `maxOutstanding = 8`, 100-run avg):** `64 B` same-row pipelined **`568.8 MB/s`** RD / **`466.4 MB/s`** WR (`+191%` RD vs sequential), `256 B` mixed R/W pipelined **`732.0 MB/s`** combined; `16 B` read latency **`18.5 cyc` (`243 ns`)** same-row hit / **`20.7 cyc` (`273 ns`)** row-miss. Queue depth scaling (`2 / 4 / 8 / 16`) & full matrix in [`doc/bench.md`](doc/bench.md).
+- **AXI4 integration notes:** supports `INCR` and `FIXED` bursts (not `WRAP`), expects `AxSIZE` matching the configured bus width (use `WSTRB` for partial/sub-word writes), queues up to `Ddr3Config.maxOutstanding` pending bursts (`2 / 4 / 8 [default] / 16`) in strict chronological order (RAW/WAR/WAW safe), and tracks a single open bank/row at a time.
 
 ## Quick PC ↔ DDR3 Demo (`demo/`)
 
@@ -66,7 +66,7 @@ Ready-to-run bitstream + `pyserial` visualizer in [`demo/`](demo/) (**no Mill or
 ```powershell
 setup.bat                                           # Downloads Mill + OSS CAD Suite (Verilator, openFPGALoader)
 
-.\mill.bat -i ddr3.runMain ddr3.Ddr3Gen             # Generate Verilog in hw/gen/ (flags: --32 | --128, --cdc)
+.\mill.bat -i ddr3.runMain ddr3.Ddr3Gen             # Generate Verilog in hw/gen/ (flags: --32 | --128, --cdc, --outstanding N)
 .\mill.bat -i ddr3.test                             # Run all Verilator unit tests (24 tests)
 
 python eda-flow.py --preset ddr3 --skip-compile     # Headless Gowin synthesis & PnR -> build_eda/impl/pnr/
